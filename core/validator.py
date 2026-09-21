@@ -554,6 +554,48 @@ def _indicator_grounding_error(indicator_text: str, chart) -> str | None:
     return f"δηλώνει όψη «{aspect_type}» μεταξύ {p1} και {p2}, που δεν υπάρχει στο Παράρτημα Όψεων του χάρτη"
 
 
+def _indicator_kind(indicator_text: str) -> str:
+    """Επιστρέφει «θεση», «οψη», ή «» (κενό αν δεν αναγνωρίζεται) από το
+    πεδίο «Τύπος:» ενός δείκτη -- κοινή βάση για τα νέα _real_aspect_weight()
+    και _indicator_points()."""
+    fields = _parse_indicator_fields(indicator_text)
+    return _strip_greek_diacritics(fields.get("τυπος", "").strip().lower())
+
+
+def _real_aspect_weight(indicator_text: str, chart) -> str | None:
+    """Fix (πραγματικό αίτημα χρήστη, μετά από συζήτηση): επιστρέφει την
+    ΠΡΑΓΜΑΤΙΚΗ κατηγορία βαρύτητας μιας όψης από το chart.aspects -- όχι
+    ό,τι δηλώθηκε στο πεδίο «Βαρύτητα:» του δείκτη (που θα μπορούσε να
+    είναι λάθος ή απλώς αντιγραμμένο χωρίς έλεγχο). Πριν, ο validator δεν
+    ήλεγχε ΚΑΘΟΛΟΥ τη βαρύτητα ενός δείκτη -- μία μεμονωμένη «Πλατιά αλλά
+    έγκυρη» όψη περνούσε σιωπηλά σαν πλήρης τεκμηρίωση, αντίθετα με τον
+    ρητό κανόνα ιεράρχησης βαρύτητας. Επιστρέφει None για δείκτη Θέσης
+    (δεν έχει βαρύτητα) ή αν η όψη δεν είναι έγκυρη/υπαρκτή."""
+    if _indicator_kind(indicator_text) != "οψη":
+        return None
+    fields = _parse_indicator_fields(indicator_text)
+    p1 = _exact_point_name(fields.get("σημειο 1", ""))
+    p2 = _exact_point_name(fields.get("σημειο 2", ""))
+    aspect_type = _exact_aspect_type(fields.get("οψη", ""))
+    if not (p1 and p2 and aspect_type):
+        return None
+    for a in chart.aspects:
+        if {a.first, a.second} == {p1, p2} and a.aspect == aspect_type:
+            return a.weight
+    return None
+
+
+def _indicator_points(indicator_text: str) -> set[str]:
+    """Τα σημεία που εμπλέκονται σε έναν δείκτη όψης (Σημείο 1/Σημείο 2) --
+    χρησιμοποιείται για τη νέα εξαίρεση «δύο όψεις Πλατιά αλλά έγκυρη με
+    κοινό σημείο» (μηχανική προσέγγιση του "ίδιο θέμα", όχι σημασιολογική
+    εικασία)."""
+    fields = _parse_indicator_fields(indicator_text)
+    points = {_exact_point_name(fields.get("σημειο 1", "")), _exact_point_name(fields.get("σημειο 2", ""))}
+    points.discard(None)
+    return points
+
+
 def _indicator_fingerprint(indicator_text: str, chart):
     """Fix (deep review, 5ος γύρος, ξαναγράφτηκε στον 7ο γύρο για να
     χρησιμοποιεί τη δομημένη μορφή αντί για εικασία): το ίδιο τεχνικό
@@ -666,14 +708,50 @@ def _talent_documentation_block_errors(audit_text: str, talent_titles: list[str]
             fp2 = _indicator_fingerprint(d2.group(1), chart)
             if fp1 is not None and fp1 == fp2:
                 two_ok = False
+            else:
+                # Fix (πραγματικό αίτημα χρήστη): ο validator ΔΕΝ έλεγχε ποτέ
+                # την πραγματική βαρύτητα ενός δείκτη -- μία "Πλατιά αλλά
+                # έγκυρη" όψη περνούσε σιωπηλά σαν να ήταν πλήρης τεκμηρίωση,
+                # αντίθετα με τον ρητό κανόνα "οι Πλατιές χρησιμοποιούνται
+                # μόνο υποστηρικτικά, ποτέ ως αυτοτελής δείκτης". Τώρα
+                # απαιτείται τουλάχιστον ΕΝΑΣ δείκτης πρωτεύουσας βαρύτητας
+                # (Θέση, ή Όψη με πραγματική βαρύτητα Στενή/ισχυρή ή
+                # Κανονική) -- με μία ρητή, στενή εξαίρεση: δύο ΔΙΑΚΡΙΤΕΣ
+                # όψεις «Πλατιά αλλά έγκυρη» που μοιράζονται ένα κοινό σημείο
+                # (μηχανική προσέγγιση του "ίδιο θέμα", χωρίς σημασιολογική
+                # εικασία -- αν αξίζει ή όχι δεν αποφασίζεται με μάντεμα).
+                w1, w2 = _real_aspect_weight(d1.group(1), chart), _real_aspect_weight(d2.group(1), chart)
+                kind1 = _indicator_kind(d1.group(1))
+                kind2 = _indicator_kind(d2.group(1))
+                if kind1 in ("θεση", "οψη") and kind2 in ("θεση", "οψη"):
+                    primary1 = kind1 == "θεση" or w1 in ("Στενή/ισχυρή", "Κανονική")
+                    primary2 = kind2 == "θεση" or w2 in ("Στενή/ισχυρή", "Κανονική")
+                    if not (primary1 or primary2):
+                        both_wide = w1 == "Πλατιά αλλά έγκυρη" and w2 == "Πλατιά αλλά έγκυρη"
+                        shared_point = both_wide and (_indicator_points(d1.group(1)) & _indicator_points(d2.group(1)))
+                        if not shared_point:
+                            two_ok = False
+                # Αν κάποιος από τους δύο δεν είναι καν δομημένος (kind == ""),
+                # ΔΕΝ ακυρώνουμε εδώ -- αφήνουμε το two_ok όπως είναι, ώστε να
+                # φτάσει στο grounding-check παρακάτω και να πάρει το πιο
+                # συγκεκριμένο μήνυμα "δεν χρησιμοποιεί τη δομημένη μορφή".
         single = re.search(r"Μοναδικός\s+ισχυρός\s+δείκτης\s*:\s*([^\r\n]*)", block, re.IGNORECASE)
         justification = re.search(r"Αιτιολόγηση\s+ισχύος[^\r\n:]*:\s*([^\r\n]*)", block, re.IGNORECASE)
         single_ok = nonempty(single.group(1) if single else None) and nonempty(justification.group(1) if justification else None)
+        if single_ok and check_grounding:
+            # Ο «Μοναδικός ισχυρός δείκτης» πρέπει να είναι ΠΡΑΓΜΑΤΙΚΑ ισχυρός
+            # -- αν είναι όψη, η όντως καταγεγραμμένη βαρύτητά του πρέπει να
+            # είναι Στενή/ισχυρή (όπως λέει το δικό της παράδειγμα της
+            # δεσμευτικής εντολής), όχι απλώς οποιαδήποτε μη κενή δήλωση.
+            if _indicator_kind(single.group(1)) == "οψη" and _real_aspect_weight(single.group(1), chart) != "Στενή/ισχυρή":
+                single_ok = False
         if not (two_ok or single_ok):
             errors.append(
                 f"Το ταλέντο «{title}» δεν έχει πλήρη τεκμηρίωση στο μπλοκ του: χρειάζεται είτε δύο μη κενούς "
-                "και διαφορετικούς «Δείκτης 1»/«Δείκτης 2», είτε «Μοναδικός ισχυρός δείκτης» ΜΑΖΙ με "
-                "«Αιτιολόγηση ισχύος και άμεσης συνάφειας»."
+                "και διαφορετικούς «Δείκτης 1»/«Δείκτης 2» -- τουλάχιστον έναν εκ των οποίων πρωτεύουσας "
+                "βαρύτητας (Θέση, ή Όψη Στενής/ισχυρής ή Κανονικής βαρύτητας), ή δύο όψεις «Πλατιά αλλά "
+                "έγκυρη» με κοινό σημείο -- είτε «Μοναδικός ισχυρός δείκτης» πραγματικά Στενής/ισχυρής "
+                "βαρύτητας ΜΑΖΙ με «Αιτιολόγηση ισχύος και άμεσης συνάφειας»."
             )
         elif check_grounding:
             # Fix (deep review, 3ος & 4ος γύρος): ο έλεγχος πάνω περνάει με
