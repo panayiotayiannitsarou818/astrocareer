@@ -725,14 +725,24 @@ def _orientation_audit_errors(chart, audit_text: str, client_text: str = "") -> 
     if not re.search(r"(?:ιεράρχηση|βαρύτητα).{0,120}(?:Στεν|Ισχυρ|Κανονικ|Πλατι)", audit_text, re.IGNORECASE | re.DOTALL):
         errors.append("Το τεχνικό δελτίο δεν δηλώνει καθαρά την ιεράρχηση βαρύτητας των όψεων.")
     errors.extend(_orientation_technical_mismatches(chart, audit_text))
-    for aspect in sorted(chart.aspects, key=lambda item: item.orb)[:5]:
+    # Fix (πραγματικό εύρημα χρήστη): πριν ελεγχόταν μηχανικά μόνο η κάλυψη
+    # των 5 στενότερων όψεων -- σε πυκνό χάρτη μπορεί να υπάρχουν 15-20+
+    # ακόμη όψεις με έγκυρη βαρύτητα (Στενή/ισχυρή ή Κανονική) που έμεναν
+    # εντελώς εκτός ελέγχου, αφήνοντας τον αριθμό ταλέντων στην τύχη της
+    # εξαντλητικότητας της συγκεκριμένης συνεδρίας παραγωγής. Τώρα ελέγχεται
+    # η πλήρης κάλυψη κάθε όψης αυτής της κατηγορίας βαρύτητας, όχι μόνο των
+    # 5 στενότερων -- συμμετρικό με την ενημερωμένη οδηγία στη δεσμευτική εντολή.
+    covered_weights = ("Στενή/ισχυρή", "Κανονική")
+    for aspect in sorted(chart.aspects, key=lambda item: item.orb):
+        if aspect.weight not in covered_weights:
+            continue
         co, orb_ok, type_ok, weight_ok = _co_occurs_with_orb(
             audit_text, aspect.first, aspect.second, aspect.orb_text,
             aspect.aspect, aspect.weight,
         )
         if not (co and orb_ok and type_ok and weight_ok):
             errors.append(
-                f"Η στενή όψη {aspect.first}–{aspect.second} ({aspect.aspect}, orb {aspect.orb_text}, {aspect.weight}) "
+                f"Η όψη {aspect.first}–{aspect.second} ({aspect.aspect}, orb {aspect.orb_text}, {aspect.weight}) "
                 "δεν τεκμηριώνεται πλήρως στο τεχνικό δελτίο."
             )
     return list(dict.fromkeys(errors))
@@ -890,15 +900,20 @@ def _career_consistency_errors(client_text: str, audit_text: str) -> list[str]:
     approved_fields_norm.discard("")
     for raw_line in client_fields.splitlines():
         line = re.sub(r"^[\s#*•-]*", "", raw_line).strip()
-        # Fix (deep review κριτική #4, 2ος γύρος, σοβαρό): πριν αναγνωριζόταν
-        # ΜΟΝΟ η αριθμημένη μορφή "1. Τομέας" -- ένας τομέας γραμμένος με
-        # bullet ("- Τομέας" / "• Τομέας") δεν ταίριαζε καθόλου με το regex,
-        # οπότε η γραμμή απλώς παραλειπόταν σιωπηλά χωρίς κανέναν έλεγχο.
-        # Ένας μη εγκεκριμένος τομέας σε μορφή bullet περνούσε χωρίς σφάλμα.
-        match = re.match(r"\d+[.)]\s*(.+)", line) or re.match(r"[-•*]\s*(.+)", raw_line.strip())
-        if not match:
+        if not line:
             continue
-        field = re.sub(r"\*+", "", match.group(1)).strip()
+        # Fix (πραγματικό round-trip bug, εντοπίστηκε με πραγματικό ανέβασμα
+        # .docx): η αρίθμηση "1." μετατρέπεται σε ΕΓΓΕΝΗ Word λίστα όταν
+        # φτιάχνεται το .docx -- ο χαρακτήρας δεν επιβιώνει σαν literal
+        # κείμενο στην επαναφόρτωση, οπότε η απαίτηση αριθμού/bullet δεν
+        # έβρισκε ΠΟΤΕ αντιστοιχία και ΚΑΝΕΝΑΣ τομέας δεν ελεγχόταν.
+        # Τώρα αναγνωρίζεται ο τίτλος τομέα αποκλείοντας τις γνωστές
+        # υπο-γραμμές (Γιατί/Ενδεικτικά), αντί να απαιτείται ο δείκτης.
+        m = re.match(r"\d+[.)]\s*(.+)", line) or re.match(r"[-•*]\s*(.+)", raw_line.strip())
+        field = m.group(1) if m else line
+        if re.match(r"Γιατί\s+μπορεί\s+να\s+ταιριάζει|Ενδεικτικά\s+επαγγέλματα|Why\s+it\s+may\s+fit|Example\s+Careers", field, re.IGNORECASE):
+            continue
+        field = re.sub(r"\*+", "", field).strip()
         if field and _career_norm(field) not in approved_fields_norm:
             errors.append(f"Ο επαγγελματικός τομέας «{field}» δεν έχει εγκριθεί στο τεχνικό δελτίο.")
 
@@ -1032,15 +1047,35 @@ def _extract_talent_titles(text: str) -> list[str]:
     δεσμευτική εντολή («Συνοπτικά, τα ταλέντα προς διερεύνηση είναι:» /
     "In summary, the talents to explore are:"). Κοινή βάση για
     _duplicate_talent_titles() και τον ανά-ταλέντο έλεγχο τεκμηρίωσης στο
-    _orientation_audit_errors()."""
+    _orientation_audit_errors().
+
+    Fix (πραγματικό round-trip bug, εντοπίστηκε με πραγματικό ανέβασμα
+    .docx): (1) το παλιό όριο περίμενε κενή γραμμή πριν την επόμενη
+    ενότητα -- αλλά το docx_text() ΠΟΤΕ δεν διατηρεί κενές γραμμές (τις
+    φιλτράρει), οπότε το όριο δεν έβρισκε ποτέ σημείο να σταματήσει και
+    "κατάπινε" όλο το υπόλοιπο έγγραφο. Τώρα το όριο είναι η επόμενη
+    γνωστή επικεφαλίδα (Επαγγελματικοί Τομείς/Career Fields). (2) τα
+    bullet markers («-») που γράφτηκαν στο αρχικό κείμενο μετατρέπονται
+    σε ΕΓΓΕΝΗ μορφοποίηση λίστας Word όταν φτιάχνεται το .docx -- ο
+    χαρακτήρας «-» δεν επιβιώνει σαν literal κείμενο στην επαναφόρτωση.
+    Το marker είναι τώρα προαιρετικό: κάθε μη κενή γραμμή μέσα στα όρια
+    της ενότητας μετράει ως τίτλος.
+    """
     m = re.search(
-        r"(?:Συνοπτικά,\s*τα\s+ταλέντα\s+προς\s+διερεύνηση\s+είναι|In\s+summary,\s*the\s+talents\s+to\s+explore\s+are)"
-        r"\s*:(?P<body>[\s\S]{0,3000}?)(?:\n\s*\n\s*[A-ZΑ-Ω]|$)",
+        r"(?:Συνοπτικά,\s*τα\s+ταλέντα\s+προς\s+διερεύνηση\s+είναι|In\s+summary,\s*the\s+talents\s+to\s+explore\s+are)\s*:",
         text, re.IGNORECASE,
     )
     if not m:
         return []
-    return re.findall(r"(?:^|\n)\s*(?:[-•*]|\d+[.)])\s*(.+)", m.group("body"))
+    end_m = re.search(
+        r"Επαγγελματικ(?:οί|ούς)\s+Τομ(?:είς|έα)|Career\s+Fields",
+        text[m.end():], re.IGNORECASE,
+    )
+    body = text[m.end():m.end() + end_m.start()] if end_m else text[m.end():m.end() + 2000]
+    return [
+        re.sub(r"^\s*(?:[-•*]|\d+[.)])\s*", "", line).strip()
+        for line in body.splitlines() if line.strip()
+    ]
 
 
 def _duplicate_talent_titles(text: str) -> list[str]:
@@ -1067,6 +1102,45 @@ def _duplicate_talent_titles(text: str) -> list[str]:
     return list(dict.fromkeys(dups))
 
 
+def _split_talent_paragraphs(talents_block: str) -> list[str]:
+    """Ομαδοποιεί τις γραμμές της ενότητας «Ταλέντα προς διερεύνηση» σε μία
+    ομάδα (τίτλος+παράγραφος) ανά ταλέντο.
+
+    Fix (ΠΡΑΓΜΑΤΙΚΟ round-trip bug, εντοπίστηκε με πραγματικό ανέβασμα ενός
+    δικού μας παραγόμενου .docx στην ίδια την εφαρμογή): ο παλιός
+    διαχωρισμός βασιζόταν αποκλειστικά σε κενή γραμμή (`\\n\\s*\\n`) ανάμεσα
+    σε ταλέντα. Όμως το docx_text() -- η συνάρτηση που διαβάζει ΚΑΘΕ
+    πραγματικό .docx πίσω σε κείμενο για έλεγχο -- ΔΕΝ διατηρεί ΠΟΤΕ κενές
+    γραμμές (τις φιλτράρει ρητά). Αποτέλεσμα: ένα τέλεια σωστό, πραγματικό
+    Word deliverable έδειχνε ΟΛΑ τα ταλέντα σαν ΜΙΑ γιγάντια "παράγραφο"
+    εκατοντάδων λέξεων μόλις ανέβαινε για έλεγχο -- ενώ το ίδιο ακριβώς
+    κείμενο σε ωμή μορφή περνούσε κανονικά. Τώρα η ομαδοποίηση δεν
+    εξαρτάται καθόλου από κενές γραμμές: κάθε νέα ΚΟΝΤΗ γραμμή (<20 λέξεις)
+    που εμφανίζεται μετά από μια ήδη «σωματώδη» ομάδα (δηλαδή μετά από μια
+    γραμμή με ≥20 λέξεις) θεωρείται νέος τίτλος ταλέντου -- λειτουργεί
+    εξίσου καλά είτε επιβιώσουν κενές γραμμές είτε όχι.
+    """
+    def word_count(s: str) -> int:
+        return len(re.findall(r"\b[\wΆ-ώ]+\b", s, re.UNICODE))
+
+    groups: list[str] = []
+    current: list[str] = []
+    for line in talents_block.split("\n"):
+        if not line.strip():
+            if current:
+                groups.append("\n".join(current))
+                current = []
+            continue
+        if current and any(word_count(l) >= 20 for l in current) and word_count(line) < 20:
+            groups.append("\n".join(current))
+            current = [line]
+        else:
+            current.append(line)
+    if current:
+        groups.append("\n".join(current))
+    return groups
+
+
 def _talent_paragraph_titles(text: str) -> list[str]:
     """Μετράει πόσες πραγματικές παράγραφοι ταλέντου παρουσιάστηκαν στην
     ενότητα «Ταλέντα προς διερεύνηση» (χρησιμοποιεί το ίδιο κατώφλι >=20
@@ -1085,9 +1159,8 @@ def _talent_paragraph_titles(text: str) -> list[str]:
         r"Συνοπτικά,\s*τα\s+ταλέντα|In\s+summary,\s*the\s+talents",
         talents_block, maxsplit=1, flags=re.IGNORECASE,
     )[0]
-    paragraphs = [p.strip() for p in re.split(r"\n\s*\n", talents_block) if p.strip()]
     titles = []
-    for p in paragraphs:
+    for p in _split_talent_paragraphs(talents_block):
         words = re.findall(r"\b[\wΆ-ώ]+\b", p, re.UNICODE)
         if len(words) < 20:
             continue
@@ -1121,9 +1194,8 @@ def _talent_paragraph_length_issues(text: str) -> tuple[list[str], list[str]]:
         r"Συνοπτικά,\s*τα\s+ταλέντα|In\s+summary,\s*the\s+talents",
         talents_block, maxsplit=1, flags=re.IGNORECASE,
     )[0]
-    paragraphs = [p.strip() for p in re.split(r"\n\s*\n", talents_block) if p.strip()]
     warnings, hard_errors = [], []
-    for p in paragraphs:
+    for p in _split_talent_paragraphs(talents_block):
         words = re.findall(r"\b[\wΆ-ώ]+\b", p, re.UNICODE)
         n = len(words)
         if n < 20:
