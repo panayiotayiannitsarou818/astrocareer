@@ -1,4 +1,5 @@
 import re
+import openai
 import streamlit as st
 from core.reference_loader import (
     docx_text, load_orientation_command, load_unified_short_example,
@@ -9,7 +10,7 @@ from core.prompts import (
     build_orientation_source, build_orientation_prompt, split_orientation_response,
 )
 from core.docx_builder import build_orientation_docx, build_orientation_client_docx, build_orientation_audit_docx
-from core.generator import generate_analysis
+from core.generator import generate_analysis, classify_generation_error
 from core.validator import validate_orientation
 from core.case_state import reset_case_state, handle_pdf_upload
 from core.i18n import TR
@@ -282,6 +283,17 @@ with st.container(border=True):
                         file_name=st.session_state.orientation_audit_docx_name,
                         use_container_width=True,
                     )
+            except openai.APIError as e:
+                # Fix (πρόβλημα #11 από τη σταθερή λίστα ελέγχου): πριν όλα τα
+                # σφάλματα API/δικτύου έδειχναν το ΙΔΙΟ γενικό μήνυμα
+                # "Η αυτόματη δημιουργία απέτυχε" -- αδιακρίτως από αποτυχία
+                # validation (που ήδη είχε το δικό της, σαφές auto_exhausted
+                # μήνυμα). Η ταξινόμηση γίνεται στο core/generator.py
+                # (classify_generation_error), ώστε να ελέγχεται με tests.
+                key = classify_generation_error(e)
+                st.error(t.get(f"auto_error_{key}", t["auto_error"]))
+                if key == "other":
+                    with st.expander(t["technical_detail"]): st.code(str(e))
             except Exception as e:
                 st.error(t["auto_error"])
                 with st.expander(t["technical_detail"]): st.code(str(e))
