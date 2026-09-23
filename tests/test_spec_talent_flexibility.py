@@ -9,7 +9,10 @@ validator μπορεί πραγματικά να ελέγξει δομικά -- 
 """
 from core.models import Aspect, Chart, Point
 from core.validator import (
+    _co_occurs_with_orb,
+    _decision_ok_on_line,
     _duplicate_talent_titles,
+    _line_declares_indicator,
     _exact_aspect_type,
     _exact_point_name,
     _exact_sign,
@@ -17,6 +20,7 @@ from core.validator import (
     _indicator_grounding_error,
     _mentioned_point_names,
     _orientation_audit_errors,
+    _talent_block_membership,
     _talent_documentation_block_errors,
     _talent_paragraph_length_issues,
     validate_orientation,
@@ -527,6 +531,26 @@ def test_inline_cross_reference_to_a_heading_does_not_truncate_the_block_early()
     assert "ΤΕΛΕΥΤΑΙΟΣ" in block
 
 
+# --- Αίτημα χρήστη: αριθμημένοι τίτλοι ταλέντων για εύκολη αναφορά ---
+
+def test_numbered_talent_title_still_matches_unnumbered_summary_list():
+    """Ο πελάτης προτίμησε αριθμημένους τίτλους ταλέντων («1. Τίτλος») για
+    εύκολη προφορική αναφορά -- ο αριθμός είναι διακοσμητικός και δεν
+    πρέπει να σπάει την αντιστοίχιση με τη (μη αριθμημένη) συνοπτική
+    λίστα, ή το ίδιο ταλέντο θα φαινόταν σαν αναντιστοιχία."""
+    client = _make_client_text(n_talents=1, n_fields=1)
+    client = client.replace(
+        "Ταλέντο 1\n" + " ".join(["λέξη"] * 90),
+        "1. Ταλέντο 1\n" + " ".join(["λέξη"] * 90),
+    )
+    audit = _make_audit_text(n_talents=1, n_fields=1)
+    result = validate_orientation(
+        CHART, client, {"Όνομα": "Gavriela Doe"},
+        presentation_mode="Απλή και πρακτική", audit_text=audit, format_issues=[],
+    )
+    assert result.ok, result.details_lines()
+
+
 # --- Deep-review 5ος γύρος: το ίδιο στοιχείο με δύο διατυπώσεις δεν μετράει ως δύο δείκτες ---
 
 def test_same_fact_worded_differently_is_not_two_distinct_indicators():
@@ -932,6 +956,538 @@ def test_single_strong_indicator_must_be_genuinely_narrow():
     assert errors == []  # Στενή/ισχυρή όντως -- πρέπει να περάσει
 
 
+def test_position_indicator_cannot_be_the_single_strong_indicator():
+    """Πραγματικό bug (κριτική chat): η δεσμευτική εντολή λέει ρητά ότι ο
+    «Μοναδικός ισχυρός δείκτης» πρέπει να είναι ΟΨΗ Στενής/ισχυρής
+    βαρύτητας -- ένας δείκτης Θέσης δεν πρέπει ΠΟΤΕ να περνάει από αυτόν
+    τον δρόμο, όσο "ισχυρή" κι αν φαίνεται η θέση."""
+    chart = _two_point_chart_with_real_trine()
+    errors = _talent_documentation_block_errors(
+        "ΤΑΛΕΝΤΟ: Χ\n"
+        "Μοναδικός ισχυρός δείκτης: Τύπος: Θέση | Σημείο: Κρόνος | Οίκος: 6\n"
+        "Αιτιολόγηση ισχύος και άμεσης συνάφειας: πολύ ισχυρή θέση.\n",
+        ["Χ"], chart,
+    )
+    assert errors and "δεν έχει πλήρη τεκμηρίωση" in errors[0]
+
+
+def test_bare_aspect_mention_without_decision_fails_coverage():
+    """Πραγματικό bug (κριτική chat): μια «γυμνή» αναφορά μιας όψης (σωστό
+    ζεύγος+τύπος+orb+βαρύτητα) χωρίς καμία δήλωση αν χρησιμοποιήθηκε ή
+    γιατί αποκλείστηκε δεν πρέπει να περάσει τον έλεγχο κάλυψης -- η
+    δεσμευτική εντολή απαιτεί ρητά μία από τις δύο δηλώσεις."""
+    chart = Chart(
+        name="Test", date="1 Jan 2000", time="12:00", place="Nicosia", house_system="Placidus",
+        points=[
+            Point("G", "Κρόνος", "Αιγόκερως", 10, 0, 0, 280.0, house=6),
+            Point("A", "Ήλιος", "Κριός", 5, 0, 0, 5.0, house=1),
+            Point("B", "Σελήνη", "Ζυγός", 5, 0, 0, 185.0, house=7),
+        ],
+        cusps=[], aspects=[
+            Aspect("Κρόνος", "Ήλιος", "Τρίγωνο", 1.0, "1°00′", "Στενή/ισχυρή", "test"),
+            Aspect("Σελήνη", "Ήλιος", "Τετράγωνο", 3.0, "3°00′", "Κανονική", "test"),
+        ],
+        warnings=[],
+    )
+    client = _make_client_text(n_talents=1, n_fields=1)
+    audit = (
+        "Παράρτημα τεκμηρίωσης ελέγχου\nΤΑΛΕΝΤΟ: Ταλέντο 1\n"
+        "Δείκτης 1: Τύπος: Όψη | Σημείο 1: Κρόνος | Όψη: Τρίγωνο | Σημείο 2: Ήλιος | Orb: 1°00′ | Βαρύτητα: Στενή/ισχυρή\n"
+        "Δείκτης 2: Τύπος: Θέση | Σημείο: Κρόνος | Οίκος: 6\n"
+        "Ιεράρχηση βαρύτητας: Κανονική.\n"
+        "Σελήνη–Ήλιος | Τετράγωνο | orb 3°00′ | Κανονική\n"  # γυμνή αναφορά, καμία δήλωση
+        "ΕΓΚΕΚΡΙΜΕΝΟΙ ΕΠΑΓΓΕΛΜΑΤΙΚΟΙ ΤΟΜΕΙΣ\n- Τομέας 1\n"
+        "ΕΓΚΕΚΡΙΜΕΝΑ ΕΠΑΓΓΕΛΜΑΤΑ\n- επάγγελμα 1α, επάγγελμα 1β\n"
+    )
+    result = validate_orientation(
+        chart, client, {"Όνομα": "Gavriela Doe"},
+        presentation_mode="Απλή και πρακτική", audit_text=audit, format_issues=[],
+    )
+    assert not result.ok
+    assert any("Σελήνη–Ήλιος" in line and "πρέπει να δηλώνεται ρητά" in line for line in result.details_lines())
+
+
+def test_explicit_exclusion_with_decision_word_still_passes_coverage():
+    """Έλεγχος αρνητικού: μια όψη με ρητή λέξη-απόφασης (ΕΞΑΙΡΕΙΤΑΙ) δίπλα
+    της πρέπει να περνάει κανονικά την κάλυψη."""
+    chart = Chart(
+        name="Test", date="1 Jan 2000", time="12:00", place="Nicosia", house_system="Placidus",
+        points=[
+            Point("G", "Κρόνος", "Αιγόκερως", 10, 0, 0, 280.0, house=6),
+            Point("A", "Ήλιος", "Κριός", 5, 0, 0, 5.0, house=1),
+            Point("B", "Σελήνη", "Ζυγός", 5, 0, 0, 185.0, house=7),
+        ],
+        cusps=[], aspects=[
+            Aspect("Κρόνος", "Ήλιος", "Τρίγωνο", 1.0, "1°00′", "Στενή/ισχυρή", "test"),
+            Aspect("Σελήνη", "Ήλιος", "Τετράγωνο", 3.0, "3°00′", "Κανονική", "test"),
+        ],
+        warnings=[],
+    )
+    client = _make_client_text(n_talents=1, n_fields=1)
+    audit = (
+        "Παράρτημα τεκμηρίωσης ελέγχου\nΤΑΛΕΝΤΟ: Ταλέντο 1\n"
+        "Δείκτης 1: Τύπος: Όψη | Σημείο 1: Κρόνος | Όψη: Τρίγωνο | Σημείο 2: Ήλιος | Orb: 1°00′ | Βαρύτητα: Στενή/ισχυρή\n"
+        "Δείκτης 2: Τύπος: Θέση | Σημείο: Κρόνος | Οίκος: 6\n"
+        "Ιεράρχηση βαρύτητας: Κανονική.\n"
+        "Σελήνη–Ήλιος | Τετράγωνο | orb 3°00′ | Κανονική -- ΕΞΑΙΡΕΙΤΑΙ: επικαλύπτεται θεματικά.\n"
+        "ΕΓΚΕΚΡΙΜΕΝΟΙ ΕΠΑΓΓΕΛΜΑΤΙΚΟΙ ΤΟΜΕΙΣ\n- Τομέας 1\n"
+        "ΕΓΚΕΚΡΙΜΕΝΑ ΕΠΑΓΓΕΛΜΑΤΑ\n- επάγγελμα 1α, επάγγελμα 1β\n"
+    )
+    result = validate_orientation(
+        chart, client, {"Όνομα": "Gavriela Doe"},
+        presentation_mode="Απλή και πρακτική", audit_text=audit, format_issues=[],
+    )
+    assert result.ok, result.details_lines()
+
+
+# --- Δεύτερος γύρος κριτικής chat: αιτιολόγηση εξαίρεσης + ανάμειξη γραμμών ---
+
+def test_exclusion_keyword_without_justification_is_rejected():
+    """Πραγματικό bug (κριτική chat): η δεσμευτική εντολή απαιτεί ρητά
+    «ΕΞΑΙΡΕΙΤΑΙ» ΜΕ αιτιολόγηση -- η ψιλή λέξη χωρίς καμία εξήγηση μετά
+    δεν πρέπει να αρκεί."""
+    chart = Chart(
+        name="Test", date="1 Jan 2000", time="12:00", place="Nicosia", house_system="Placidus",
+        points=[
+            Point("G", "Κρόνος", "Αιγόκερως", 10, 0, 0, 280.0, house=6),
+            Point("A", "Ήλιος", "Κριός", 5, 0, 0, 5.0, house=1),
+            Point("B", "Σελήνη", "Ζυγός", 5, 0, 0, 185.0, house=7),
+        ],
+        cusps=[], aspects=[
+            Aspect("Κρόνος", "Ήλιος", "Τρίγωνο", 1.0, "1°00′", "Στενή/ισχυρή", "test"),
+            Aspect("Σελήνη", "Ήλιος", "Τετράγωνο", 3.0, "3°00′", "Κανονική", "test"),
+        ],
+        warnings=[],
+    )
+    client = _make_client_text(n_talents=1, n_fields=1)
+    audit = (
+        "Παράρτημα τεκμηρίωσης ελέγχου\nΤΑΛΕΝΤΟ: Ταλέντο 1\n"
+        "Δείκτης 1: Τύπος: Όψη | Σημείο 1: Κρόνος | Όψη: Τρίγωνο | Σημείο 2: Ήλιος | Orb: 1°00′ | Βαρύτητα: Στενή/ισχυρή\n"
+        "Δείκτης 2: Τύπος: Θέση | Σημείο: Κρόνος | Οίκος: 6\n"
+        "Ιεράρχηση βαρύτητας: Κανονική.\n"
+        "Σελήνη–Ήλιος | Τετράγωνο | orb 3°00′ | Κανονική | ΕΞΑΙΡΕΙΤΑΙ\n"  # καμία αιτιολόγηση μετά
+        "ΕΓΚΕΚΡΙΜΕΝΟΙ ΕΠΑΓΓΕΛΜΑΤΙΚΟΙ ΤΟΜΕΙΣ\n- Τομέας 1\n"
+        "ΕΓΚΕΚΡΙΜΕΝΑ ΕΠΑΓΓΕΛΜΑΤΑ\n- επάγγελμα 1α, επάγγελμα 1β\n"
+    )
+    result = validate_orientation(
+        chart, client, {"Όνομα": "Gavriela Doe"},
+        presentation_mode="Απλή και πρακτική", audit_text=audit, format_issues=[],
+    )
+    assert not result.ok
+    assert any("πρέπει να δηλώνεται ρητά" in line for line in result.details_lines())
+
+
+def test_criteria_cannot_be_mixed_across_different_lines():
+    """Πραγματικό bug (κριτική chat, δεύτερο εύρημα): δύο ΔΙΑΦΟΡΕΤΙΚΕΣ
+    λανθασμένες γραμμές δεν πρέπει να «συνδυάζονται» σε επιτυχία -- πρέπει
+    ΜΙΑ γραμμή να έχει ΟΛΑ τα στοιχεία μαζί (σωστό τύπο, βαρύτητα, orb
+    ΚΑΙ δήλωση απόφασης)."""
+    text = (
+        "Σελήνη–Ήλιος | Τετράγωνο | orb 3°00′ | ΛΑΘΟΣ | ΧΡΗΣΙΜΟΠΟΙΕΙΤΑΙ\n"
+        "Σελήνη–Ήλιος | Σύνοδος | orb 3°00′ | Κανονική\n"
+    )
+    co, orb_ok, type_ok, weight_ok, decision_ok = _co_occurs_with_orb(
+        text, "Σελήνη", "Ήλιος", "3°00′", "Τετράγωνο", "Κανονική"
+    )
+    assert not (co and orb_ok and type_ok and weight_ok and decision_ok)
+
+
+# --- Τρίτος γύρος κριτικής chat: άρνηση, αυθαίρετο όριο χαρακτήρων, Δείκτης εκτός ΤΑΛΕΝΤΟ ---
+
+def test_negated_usage_without_justification_is_rejected():
+    """Πραγματικό bug (κριτική chat): «δεν χρησιμοποιείται» δεν πρέπει να
+    μετράει σαν θετική δήλωση χρήσης -- λειτουργικά είναι εξαίρεση, άρα
+    χρειάζεται τη δική της αιτιολόγηση."""
+    assert _decision_ok_on_line("Σελήνη–Ήλιος | Τετράγωνο | orb 3°00′ | Κανονική | δεν χρησιμοποιείται") is False
+
+
+def test_negated_usage_with_justification_is_accepted():
+    """Έλεγχος αρνητικού: αν η άρνηση συνοδεύεται από πραγματική
+    αιτιολόγηση, πρέπει να γίνεται δεκτή (λειτουργεί σαν εξαίρεση)."""
+    assert _decision_ok_on_line("Σελήνη–Ήλιος | Τετράγωνο | orb 3°00′ | Κανονική | δεν χρησιμοποιείται: θεματικά ασύνδετη") is True
+
+
+def test_short_but_genuine_justification_is_accepted():
+    """Πραγματικό bug (κριτική chat): το αυθαίρετο όριο 8 χαρακτήρων
+    απέρριπτε έγκυρη σύντομη αιτιολόγηση («άσχετη», 6 χαρακτήρες).
+    Αντικαταστάθηκε με έλεγχο για τουλάχιστον μία πραγματική λέξη."""
+    assert _decision_ok_on_line("Σελήνη–Ήλιος | Τετράγωνο | orb 3°00′ | Κανονική | ΕΞΑΙΡΕΙΤΑΙ: άσχετη") is True
+
+
+def test_pure_punctuation_after_exclusion_is_still_rejected():
+    """Έλεγχος αρνητικού: το νέο, πιο χαλαρό όριο δεν πρέπει να δέχεται
+    καθαρή στίξη/κενά χωρίς καμία πραγματική λέξη."""
+    assert _decision_ok_on_line("Σελήνη–Ήλιος | Τετράγωνο | orb 3°00′ | Κανονική | ΕΞΑΙΡΕΙΤΑΙ: --") is False
+
+
+def test_delta_line_outside_talent_block_is_not_implicit_usage():
+    """Πραγματικό bug (κριτική chat, τρίτο εύρημα): ένας «περιπλανώμενος»
+    Δείκτης πριν από οποιοδήποτε ΤΑΛΕΝΤΟ: μπλοκ δεν πρέπει να μετράει σαν
+    έμμεση δήλωση χρήσης."""
+    text = (
+        "Παράρτημα τεκμηρίωσης ελέγχου\n\n"
+        "Δείκτης 99: Τύπος: Όψη | Σημείο 1: Σελήνη | Όψη: Τετράγωνο | Σημείο 2: Ήλιος | Orb: 3°00′ | Βαρύτητα: Κανονική\n\n"
+        "ΤΑΛΕΝΤΟ: Ταλέντο 1\n"
+    )
+    membership = _talent_block_membership(text)
+    lines = text.split("\n")
+    idx = next(i for i, l in enumerate(lines) if "Δείκτης 99" in l)
+    assert _decision_ok_on_line(lines[idx], membership[idx]) is False
+
+
+def test_delta_line_inside_talent_block_is_still_implicit_usage():
+    """Έλεγχος αρνητικού: ένας Δείκτης μέσα σε πραγματικό, ΕΓΚΕΚΡΙΜΕΝΟ
+    ΤΑΛΕΝΤΟ: μπλοκ πρέπει να συνεχίσει να μετράει κανονικά ως χρήση."""
+    text = "ΤΑΛΕΝΤΟ: Ταλέντο 1\nΔείκτης 1: Τύπος: Θέση | Σημείο: Κρόνος | Οίκος: 6\n"
+    membership = _talent_block_membership(text)
+    lines = text.split("\n")
+    idx = next(i for i, l in enumerate(lines) if "Δείκτης 1" in l)
+    assert _decision_ok_on_line(lines[idx], membership[idx], {"ταλέντο 1"}) is True
+
+
+def test_rogue_indicator_scenario_end_to_end_is_rejected():
+    """Πλήρες σενάριο αναπαραγωγής της κριτικής: ένας δείκτης εκτός
+    ΤΑΛΕΝΤΟ: μπλοκ, για όψη που ούτε χρησιμοποιείται ούτε εξαιρείται
+    ρητά, πρέπει να απορρίπτει ολόκληρο το validation."""
+    chart = Chart(
+        name="Test", date="1 Jan 2000", time="12:00", place="Nicosia", house_system="Placidus",
+        points=[
+            Point("G", "Κρόνος", "Αιγόκερως", 10, 0, 0, 280.0, house=6),
+            Point("A", "Ήλιος", "Κριός", 5, 0, 0, 5.0, house=1),
+            Point("B", "Σελήνη", "Ζυγός", 5, 0, 0, 185.0, house=7),
+        ],
+        cusps=[], aspects=[
+            Aspect("Κρόνος", "Ήλιος", "Τρίγωνο", 1.0, "1°00′", "Στενή/ισχυρή", "test"),
+            Aspect("Σελήνη", "Ήλιος", "Τετράγωνο", 3.0, "3°00′", "Κανονική", "test"),
+        ],
+        warnings=[],
+    )
+    client = _make_client_text(n_talents=1, n_fields=1)
+    audit = (
+        "Παράρτημα τεκμηρίωσης ελέγχου\n\n"
+        "Δείκτης 99: Τύπος: Όψη | Σημείο 1: Σελήνη | Όψη: Τετράγωνο | Σημείο 2: Ήλιος | Orb: 3°00′ | Βαρύτητα: Κανονική\n\n"
+        "ΤΑΛΕΝΤΟ: Ταλέντο 1\n"
+        "Δείκτης 1: Τύπος: Όψη | Σημείο 1: Κρόνος | Όψη: Τρίγωνο | Σημείο 2: Ήλιος | Orb: 1°00′ | Βαρύτητα: Στενή/ισχυρή\n"
+        "Δείκτης 2: Τύπος: Θέση | Σημείο: Κρόνος | Οίκος: 6\n"
+        "Ιεράρχηση βαρύτητας: Κανονική.\n"
+        "ΕΓΚΕΚΡΙΜΕΝΟΙ ΕΠΑΓΓΕΛΜΑΤΙΚΟΙ ΤΟΜΕΙΣ\n- Τομέας 1\n"
+        "ΕΓΚΕΚΡΙΜΕΝΑ ΕΠΑΓΓΕΛΜΑΤΑ\n- επάγγελμα 1α, επάγγελμα 1β\n"
+    )
+    result = validate_orientation(
+        chart, client, {"Όνομα": "Gavriela Doe"},
+        presentation_mode="Απλή και πρακτική", audit_text=audit, format_issues=[],
+    )
+    assert not result.ok
+    assert any("Σελήνη–Ήλιος" in line and "πρέπει να δηλώνεται ρητά" in line for line in result.details_lines())
+
+
+# --- Τέταρτος γύρος κριτικής chat: ΧΡΗΣΙΜΟΠΟΙΕΙΤΑΙ πρέπει να επαληθεύεται, όχι μόνο να δηλώνεται ---
+
+def test_claimed_usage_without_real_indicator_is_rejected():
+    """Πραγματικό bug (κριτική chat, τέταρτο εύρημα): μια γραμμή κάλυψης
+    που λέει απλώς «ΧΡΗΣΙΜΟΠΟΙΕΙΤΑΙ» δεν πρέπει να γίνεται αποδεκτή αν η
+    ίδια η όψη δεν εμφανίζεται ΠΟΥΘΕΝΑ ως πραγματική γραμμή «Δείκτης»
+    μέσα σε κάποιο ΤΑΛΕΝΤΟ: μπλοκ -- ο ισχυρισμός πρέπει να επαληθεύεται,
+    όχι απλώς να πιστεύεται."""
+    chart = Chart(
+        name="Test", date="1 Jan 2000", time="12:00", place="Nicosia", house_system="Placidus",
+        points=[
+            Point("G", "Κρόνος", "Αιγόκερως", 10, 0, 0, 280.0, house=6),
+            Point("A", "Ήλιος", "Κριός", 5, 0, 0, 5.0, house=1),
+            Point("B", "Σελήνη", "Ζυγός", 5, 0, 0, 185.0, house=7),
+        ],
+        cusps=[], aspects=[
+            Aspect("Κρόνος", "Ήλιος", "Τρίγωνο", 1.0, "1°00′", "Στενή/ισχυρή", "test"),
+            Aspect("Σελήνη", "Ήλιος", "Τετράγωνο", 3.0, "3°00′", "Κανονική", "test"),
+        ],
+        warnings=[],
+    )
+    client = _make_client_text(n_talents=1, n_fields=1)
+    audit = (
+        "Παράρτημα τεκμηρίωσης ελέγχου\nΤΑΛΕΝΤΟ: Ταλέντο 1\n"
+        "Δείκτης 1: Τύπος: Όψη | Σημείο 1: Κρόνος | Όψη: Τρίγωνο | Σημείο 2: Ήλιος | Orb: 1°00′ | Βαρύτητα: Στενή/ισχυρή\n"
+        "Δείκτης 2: Τύπος: Θέση | Σημείο: Κρόνος | Οίκος: 6\n"
+        "Ιεράρχηση βαρύτητας: Κανονική.\n"
+        "Σελήνη–Ήλιος | Τετράγωνο | orb 3°00′ | Κανονική | ΧΡΗΣΙΜΟΠΟΙΕΙΤΑΙ\n"  # ισχυρισμός χωρίς πραγματικό Δείκτη
+        "ΕΓΚΕΚΡΙΜΕΝΟΙ ΕΠΑΓΓΕΛΜΑΤΙΚΟΙ ΤΟΜΕΙΣ\n- Τομέας 1\n"
+        "ΕΓΚΕΚΡΙΜΕΝΑ ΕΠΑΓΓΕΛΜΑΤΑ\n- επάγγελμα 1α, επάγγελμα 1β\n"
+    )
+    result = validate_orientation(
+        chart, client, {"Όνομα": "Gavriela Doe"},
+        presentation_mode="Απλή και πρακτική", audit_text=audit, format_issues=[],
+    )
+    assert not result.ok
+    assert any("Σελήνη–Ήλιος" in line and "πρέπει να δηλώνεται ρητά" in line for line in result.details_lines())
+
+
+def test_claimed_usage_with_real_indicator_is_accepted():
+    """Έλεγχος αρνητικού: αν η ίδια όψη ΟΝΤΩΣ εμφανίζεται ως Δείκτης μέσα
+    σε ΤΑΛΕΝΤΟ: μπλοκ, μια επιπλέον γραμμή «ΧΡΗΣΙΜΟΠΟΙΕΙΤΑΙ» στην κάλυψη
+    πρέπει να γίνεται κανονικά δεκτή."""
+    chart = Chart(
+        name="Test", date="1 Jan 2000", time="12:00", place="Nicosia", house_system="Placidus",
+        points=[
+            Point("G", "Κρόνος", "Αιγόκερως", 10, 0, 0, 280.0, house=6),
+            Point("A", "Ήλιος", "Κριός", 5, 0, 0, 5.0, house=1),
+            Point("B", "Σελήνη", "Ζυγός", 5, 0, 0, 185.0, house=7),
+        ],
+        cusps=[], aspects=[
+            Aspect("Κρόνος", "Ήλιος", "Τρίγωνο", 1.0, "1°00′", "Στενή/ισχυρή", "test"),
+            Aspect("Σελήνη", "Ήλιος", "Τετράγωνο", 3.0, "3°00′", "Κανονική", "test"),
+        ],
+        warnings=[],
+    )
+    client = _make_client_text(n_talents=1, n_fields=1)
+    audit = (
+        "Παράρτημα τεκμηρίωσης ελέγχου\nΤΑΛΕΝΤΟ: Ταλέντο 1\n"
+        "Δείκτης 1: Τύπος: Όψη | Σημείο 1: Κρόνος | Όψη: Τρίγωνο | Σημείο 2: Ήλιος | Orb: 1°00′ | Βαρύτητα: Στενή/ισχυρή\n"
+        "Δείκτης 2: Τύπος: Όψη | Σημείο 1: Σελήνη | Όψη: Τετράγωνο | Σημείο 2: Ήλιος | Orb: 3°00′ | Βαρύτητα: Κανονική\n"
+        "Ιεράρχηση βαρύτητας: Κανονική.\n"
+        "Σελήνη–Ήλιος | Τετράγωνο | orb 3°00′ | Κανονική | ΧΡΗΣΙΜΟΠΟΙΕΙΤΑΙ\n"  # τώρα πραγματικά επαληθεύσιμο
+        "ΕΓΚΕΚΡΙΜΕΝΟΙ ΕΠΑΓΓΕΛΜΑΤΙΚΟΙ ΤΟΜΕΙΣ\n- Τομέας 1\n"
+        "ΕΓΚΕΚΡΙΜΕΝΑ ΕΠΑΓΓΕΛΜΑΤΑ\n- επάγγελμα 1α, επάγγελμα 1β\n"
+    )
+    result = validate_orientation(
+        chart, client, {"Όνομα": "Gavriela Doe"},
+        presentation_mode="Απλή και πρακτική", audit_text=audit, format_issues=[],
+    )
+    assert result.ok, result.details_lines()
+
+
+# --- Πέμπτος γύρος κριτικής chat: «φανταστικό» ΤΑΛΕΝΤΟ: μπλοκ δεν πρέπει να μετράει ---
+
+def _ghost_talent_chart():
+    return Chart(
+        name="Test", date="1 Jan 2000", time="12:00", place="Nicosia", house_system="Placidus",
+        points=[
+            Point("G", "Κρόνος", "Αιγόκερως", 10, 0, 0, 280.0, house=6),
+            Point("A", "Ήλιος", "Κριός", 5, 0, 0, 5.0, house=1),
+            Point("B", "Σελήνη", "Ζυγός", 5, 0, 0, 185.0, house=7),
+        ],
+        cusps=[], aspects=[
+            Aspect("Κρόνος", "Ήλιος", "Τρίγωνο", 1.0, "1°00′", "Στενή/ισχυρή", "test"),
+            Aspect("Σελήνη", "Ήλιος", "Τετράγωνο", 3.0, "3°00′", "Κανονική", "test"),
+        ],
+        warnings=[],
+    )
+
+
+def test_structured_indicator_inside_ghost_talent_block_is_rejected():
+    """Πραγματικό bug (κριτική chat, πέμπτο εύρημα): ακόμη και ένας
+    ΠΛΗΡΩΣ δομημένος δείκτης δεν πρέπει να μετράει ως χρήση αν το ΤΑΛΕΝΤΟ:
+    μπλοκ που τον περιέχει έχει τίτλο που δεν υπάρχει στο καθαρό
+    παραδοτέο («φανταστικό» ταλέντο)."""
+    chart = _ghost_talent_chart()
+    client = _make_client_text(n_talents=1, n_fields=1)
+    audit = (
+        "Παράρτημα τεκμηρίωσης ελέγχου\nΤΑΛΕΝΤΟ: Ταλέντο 1\n"
+        "Δείκτης 1: Τύπος: Όψη | Σημείο 1: Κρόνος | Όψη: Τρίγωνο | Σημείο 2: Ήλιος | Orb: 1°00′ | Βαρύτητα: Στενή/ισχυρή\n"
+        "Δείκτης 2: Τύπος: Θέση | Σημείο: Κρόνος | Οίκος: 6\n"
+        "ΤΑΛΕΝΤΟ: Φάντασμα που δεν υπάρχει στο καθαρό παραδοτέο\n"
+        "Δείκτης 99: Τύπος: Όψη | Σημείο 1: Σελήνη | Όψη: Τετράγωνο | Σημείο 2: Ήλιος | Orb: 3°00′ | Βαρύτητα: Κανονική\n"
+        "Ιεράρχηση βαρύτητας: Κανονική.\n"
+        "Σελήνη–Ήλιος | Τετράγωνο | orb 3°00′ | Κανονική | ΧΡΗΣΙΜΟΠΟΙΕΙΤΑΙ\n"
+        "ΕΓΚΕΚΡΙΜΕΝΟΙ ΕΠΑΓΓΕΛΜΑΤΙΚΟΙ ΤΟΜΕΙΣ\n- Τομέας 1\n"
+        "ΕΓΚΕΚΡΙΜΕΝΑ ΕΠΑΓΓΕΛΜΑΤΑ\n- επάγγελμα 1α, επάγγελμα 1β\n"
+    )
+    result = validate_orientation(
+        chart, client, {"Όνομα": "Gavriela Doe"},
+        presentation_mode="Απλή και πρακτική", audit_text=audit, format_issues=[],
+    )
+    assert not result.ok
+    assert any("Σελήνη–Ήλιος" in line and "πρέπει να δηλώνεται ρητά" in line for line in result.details_lines())
+
+
+def test_unstructured_negative_line_inside_ghost_talent_block_is_rejected():
+    """Ακόμη πιο ακραίο σενάριο της ίδιας κριτικής: μια μη δομημένη,
+    αρνητική γραμμή («δεν χρησιμοποιείται») μέσα σε φανταστικό ΤΑΛΕΝΤΟ:
+    μπλοκ επίσης δεν πρέπει να περνάει."""
+    chart = _ghost_talent_chart()
+    client = _make_client_text(n_talents=1, n_fields=1)
+    audit = (
+        "Παράρτημα τεκμηρίωσης ελέγχου\nΤΑΛΕΝΤΟ: Ταλέντο 1\n"
+        "Δείκτης 1: Τύπος: Όψη | Σημείο 1: Κρόνος | Όψη: Τρίγωνο | Σημείο 2: Ήλιος | Orb: 1°00′ | Βαρύτητα: Στενή/ισχυρή\n"
+        "Δείκτης 2: Τύπος: Θέση | Σημείο: Κρόνος | Οίκος: 6\n"
+        "ΤΑΛΕΝΤΟ: Φάντασμα\n"
+        "Δείκτης 99: Η όψη Σελήνη–Ήλιος Τετράγωνο δεν χρησιμοποιείται\n"
+        "Ιεράρχηση βαρύτητας: Κανονική.\n"
+        "Σελήνη–Ήλιος | Τετράγωνο | orb 3°00′ | Κανονική | ΧΡΗΣΙΜΟΠΟΙΕΙΤΑΙ\n"
+        "ΕΓΚΕΚΡΙΜΕΝΟΙ ΕΠΑΓΓΕΛΜΑΤΙΚΟΙ ΤΟΜΕΙΣ\n- Τομέας 1\n"
+        "ΕΓΚΕΚΡΙΜΕΝΑ ΕΠΑΓΓΕΛΜΑΤΑ\n- επάγγελμα 1α, επάγγελμα 1β\n"
+    )
+    result = validate_orientation(
+        chart, client, {"Όνομα": "Gavriela Doe"},
+        presentation_mode="Απλή και πρακτική", audit_text=audit, format_issues=[],
+    )
+    assert not result.ok
+    assert any("Σελήνη–Ήλιος" in line and "πρέπει να δηλώνεται ρητά" in line for line in result.details_lines())
+
+
+# --- Έκτος γύρος κριτικής chat: μη δομημένη/αρνητική γραμμή ΜΕΣΑ σε εγκεκριμένο μπλοκ + ghost μπλοκ ---
+
+def test_unstructured_negative_indicator_inside_approved_block_is_rejected():
+    """Πραγματικό bug (κριτική chat, έκτο εύρημα): ακόμη κι ΜΕΣΑ σε
+    εγκεκριμένο ΤΑΛΕΝΤΟ: μπλοκ, μια πρόσθετη μη δομημένη/αρνητική γραμμή
+    («Δείκτης 99: ... δεν χρησιμοποιείται») δεν πρέπει να μετράει ως
+    χρήση -- η "συντόμευση Δείκτης" πρέπει να επαληθεύει πραγματική δομή,
+    όχι μόνο τη λέξη-πρόθεμα."""
+    chart = Chart(
+        name="Test", date="1 Jan 2000", time="12:00", place="Nicosia", house_system="Placidus",
+        points=[
+            Point("G", "Κρόνος", "Αιγόκερως", 10, 0, 0, 280.0, house=6),
+            Point("A", "Ήλιος", "Κριός", 5, 0, 0, 5.0, house=1),
+            Point("B", "Σελήνη", "Ζυγός", 5, 0, 0, 185.0, house=7),
+        ],
+        cusps=[], aspects=[
+            Aspect("Κρόνος", "Ήλιος", "Τρίγωνο", 1.0, "1°00′", "Στενή/ισχυρή", "test"),
+            Aspect("Σελήνη", "Ήλιος", "Τετράγωνο", 3.0, "3°00′", "Κανονική", "test"),
+        ],
+        warnings=[],
+    )
+    client = _make_client_text(n_talents=1, n_fields=1)
+    audit = (
+        "Παράρτημα τεκμηρίωσης ελέγχου\nΤΑΛΕΝΤΟ: Ταλέντο 1\n"
+        "Δείκτης 1: Τύπος: Όψη | Σημείο 1: Κρόνος | Όψη: Τρίγωνο | Σημείο 2: Ήλιος | Orb: 1°00′ | Βαρύτητα: Στενή/ισχυρή\n"
+        "Δείκτης 2: Τύπος: Θέση | Σημείο: Κρόνος | Οίκος: 6\n"
+        "Δείκτης 99: Η όψη Σελήνη–Ήλιος Τετράγωνο με orb 3°00′ και βαρύτητα Κανονική δεν χρησιμοποιείται\n"
+        "Ιεράρχηση βαρύτητας: Κανονική.\n"
+        "ΕΓΚΕΚΡΙΜΕΝΟΙ ΕΠΑΓΓΕΛΜΑΤΙΚΟΙ ΤΟΜΕΙΣ\n- Τομέας 1\n"
+        "ΕΓΚΕΚΡΙΜΕΝΑ ΕΠΑΓΓΕΛΜΑΤΑ\n- επάγγελμα 1α, επάγγελμα 1β\n"
+    )
+    result = validate_orientation(
+        chart, client, {"Όνομα": "Gavriela Doe"},
+        presentation_mode="Απλή και πρακτική", audit_text=audit, format_issues=[],
+    )
+    assert not result.ok
+    # Η πραγματική, σωστή όψη (Κρόνος-Ήλιος) πρέπει να ΜΗΝ απορρίπτεται --
+    # μόνο η ψευδής/αρνημένη αναφορά για τη Σελήνη-Ήλιος.
+    assert not any("Κρόνος–Ήλιος" in line for line in result.details_lines())
+    assert any("Σελήνη–Ήλιος" in line and "πρέπει να δηλώνεται ρητά" in line for line in result.details_lines())
+
+
+def test_extra_ghost_talent_block_in_audit_is_flagged():
+    """Πραγματικό bug (κριτική chat, δεύτερο εύρημα): ένα ΕΠΙΠΛΕΟΝ ΤΑΛΕΝΤΟ:
+    μπλοκ στο τεχνικό δελτίο, με τίτλο που δεν υπάρχει στο καθαρό
+    παραδοτέο, πρέπει να επισημαίνεται ρητά -- όχι να περνάει σιωπηλά."""
+    chart = Chart(
+        name="Test", date="1 Jan 2000", time="12:00", place="Nicosia", house_system="Placidus",
+        points=[
+            Point("G", "Κρόνος", "Αιγόκερως", 10, 0, 0, 280.0, house=6),
+            Point("A", "Ήλιος", "Κριός", 5, 0, 0, 5.0, house=1),
+        ],
+        cusps=[], aspects=[Aspect("Κρόνος", "Ήλιος", "Τρίγωνο", 1.0, "1°00′", "Στενή/ισχυρή", "test")],
+        warnings=[],
+    )
+    client = _make_client_text(n_talents=1, n_fields=1)
+    audit = (
+        "Παράρτημα τεκμηρίωσης ελέγχου\nΤΑΛΕΝΤΟ: Ταλέντο 1\n"
+        "Δείκτης 1: Τύπος: Όψη | Σημείο 1: Κρόνος | Όψη: Τρίγωνο | Σημείο 2: Ήλιος | Orb: 1°00′ | Βαρύτητα: Στενή/ισχυρή\n"
+        "Δείκτης 2: Τύπος: Θέση | Σημείο: Κρόνος | Οίκος: 6\n"
+        "ΤΑΛΕΝΤΟ: Εντελώς ανύπαρκτο επιπλέον ταλέντο\n"
+        "Δείκτης 1: Τύπος: Θέση | Σημείο: Κρόνος | Ζώδιο: Αιγόκερως\n"
+        "Δείκτης 2: Τύπος: Θέση | Σημείο: Κρόνος | Οίκος: 6\n"
+        "Ιεράρχηση βαρύτητας: Κανονική.\n"
+        "ΕΓΚΕΚΡΙΜΕΝΟΙ ΕΠΑΓΓΕΛΜΑΤΙΚΟΙ ΤΟΜΕΙΣ\n- Τομέας 1\n"
+        "ΕΓΚΕΚΡΙΜΕΝΑ ΕΠΑΓΓΕΛΜΑΤΑ\n- επάγγελμα 1α, επάγγελμα 1β\n"
+    )
+    result = validate_orientation(
+        chart, client, {"Όνομα": "Gavriela Doe"},
+        presentation_mode="Απλή και πρακτική", audit_text=audit, format_issues=[],
+    )
+    assert not result.ok
+    assert any(
+        "Εντελώς ανύπαρκτο επιπλέον ταλέντο" in line and "δεν εμφανίζεται στο καθαρό παραδοτέο" in line
+        for line in result.details_lines()
+    )
+
+
+def test_structured_but_negated_indicator_is_rejected():
+    """Πραγματικό bug (κριτική chat, έβδομος γύρος): ένας ΠΛΗΡΩΣ δομημένος
+    δείκτης δεν πρέπει να μετράει ως χρήση αν έχει επιπλέον, ελεύθερο
+    κείμενο άρνησης στο τέλος της γραμμής («| δεν χρησιμοποιείται») -- η
+    _parse_indicator_fields() αγνοεί σιωπηλά ένα τελευταίο κομμάτι χωρίς
+    «:», οπότε η άρνηση περνούσε απαρατήρητη."""
+    chart = Chart(
+        name="Test", date="1 Jan 2000", time="12:00", place="Nicosia", house_system="Placidus",
+        points=[
+            Point("G", "Κρόνος", "Αιγόκερως", 10, 0, 0, 280.0, house=6),
+            Point("A", "Ήλιος", "Κριός", 5, 0, 0, 5.0, house=1),
+            Point("B", "Σελήνη", "Ζυγός", 5, 0, 0, 185.0, house=7),
+        ],
+        cusps=[], aspects=[
+            Aspect("Κρόνος", "Ήλιος", "Τρίγωνο", 1.0, "1°00′", "Στενή/ισχυρή", "test"),
+            Aspect("Σελήνη", "Ήλιος", "Τετράγωνο", 3.0, "3°00′", "Κανονική", "test"),
+        ],
+        warnings=[],
+    )
+    client = _make_client_text(n_talents=1, n_fields=1)
+    audit = (
+        "Παράρτημα τεκμηρίωσης ελέγχου\nΤΑΛΕΝΤΟ: Ταλέντο 1\n"
+        "Δείκτης 1: Τύπος: Όψη | Σημείο 1: Κρόνος | Όψη: Τρίγωνο | Σημείο 2: Ήλιος | Orb: 1°00′ | Βαρύτητα: Στενή/ισχυρή\n"
+        "Δείκτης 2: Τύπος: Θέση | Σημείο: Κρόνος | Οίκος: 6\n"
+        "Δείκτης 99: Τύπος: Όψη | Σημείο 1: Σελήνη | Όψη: Τετράγωνο | Σημείο 2: Ήλιος | Orb: 3°00′ | Βαρύτητα: Κανονική | δεν χρησιμοποιείται\n"
+        "Ιεράρχηση βαρύτητας: Κανονική.\n"
+        "ΕΓΚΕΚΡΙΜΕΝΟΙ ΕΠΑΓΓΕΛΜΑΤΙΚΟΙ ΤΟΜΕΙΣ\n- Τομέας 1\n"
+        "ΕΓΚΕΚΡΙΜΕΝΑ ΕΠΑΓΓΕΛΜΑΤΑ\n- επάγγελμα 1α, επάγγελμα 1β\n"
+    )
+    result = validate_orientation(
+        chart, client, {"Όνομα": "Gavriela Doe"},
+        presentation_mode="Απλή και πρακτική", audit_text=audit, format_issues=[],
+    )
+    assert not result.ok
+    # Η πραγματική, σωστή όψη (Κρόνος-Ήλιος) πρέπει να ΜΗΝ απορρίπτεται.
+    assert not any("Κρόνος–Ήλιος" in line for line in result.details_lines())
+    assert any("Σελήνη–Ήλιος" in line and "πρέπει να δηλώνεται ρητά" in line for line in result.details_lines())
+
+
+# --- Όγδοος γύρος κριτικής chat: ευρύτερο λεξιλόγιο άρνησης + έλεγχος λέξεων εξαίρεσης στον δομημένο δείκτη ---
+
+def test_wider_negation_vocabulary_is_rejected():
+    """Πραγματικά bugs (κριτική chat, όγδοος γύρος): «never», «unused»,
+    «ουδέποτε», «χωρίς να χρησιμοποιείται» δεν αναγνωρίζονταν καθόλου ως
+    άρνηση -- περνούσαν σαν θετική δήλωση χρήσης."""
+    assert _decision_ok_on_line("Σελήνη–Ήλιος | Τετράγωνο | orb 3°00′ | Κανονική | never used") is False
+    assert _decision_ok_on_line("Σελήνη–Ήλιος | Τετράγωνο | orb 3°00′ | Κανονική | unused") is False
+    assert _decision_ok_on_line("Σελήνη–Ήλιος | Τετράγωνο | orb 3°00′ | Κανονική | ουδέποτε χρησιμοποιείται") is False
+    assert _decision_ok_on_line("Σελήνη–Ήλιος | Τετράγωνο | orb 3°00′ | Κανονική | χωρίς να χρησιμοποιείται") is False
+
+
+def test_structured_indicator_with_exclusion_keyword_is_rejected():
+    """Πραγματικό bug (κριτική chat, όγδοος γύρος): ένα δομημένο «Δείκτης»
+    με ρητή λέξη ΕΞΑΙΡΕΙΤΑΙ/αγνοείται στο τέλος («| ΕΞΑΙΡΕΙΤΑΙ: θεματικά
+    ασύνδετη») περνούσε ως χρήση -- ελεγχόταν μόνο η άρνηση, όχι οι λέξεις
+    εξαίρεσης, μέσα στο _line_declares_indicator()."""
+    assert _line_declares_indicator(
+        "Δείκτης 99: Τύπος: Όψη | Σημείο 1: Σελήνη | Όψη: Τετράγωνο | Σημείο 2: Ήλιος | Orb: 3°00′ | Βαρύτητα: Κανονική | ΕΞΑΙΡΕΙΤΑΙ: θεματικά ασύνδετη",
+        "Σελήνη", "Ήλιος", "Τετράγωνο",
+    ) is False
+    assert _line_declares_indicator(
+        "Δείκτης 99: Τύπος: Όψη | Σημείο 1: Σελήνη | Όψη: Τετράγωνο | Σημείο 2: Ήλιος | Orb: 3°00′ | Βαρύτητα: Κανονική | αγνοείται: θεματικά ασύνδετη",
+        "Σελήνη", "Ήλιος", "Τετράγωνο",
+    ) is False
+
+
+def test_real_indicator_still_recognized_after_vocabulary_expansion():
+    """Έλεγχος αρνητικού: το διευρυμένο λεξιλόγιο άρνησης/εξαίρεσης δεν
+    πρέπει να δημιουργεί ψευδείς θετικές σε πραγματικούς, έγκυρους δείκτες."""
+    real = "Δείκτης 1: Τύπος: Όψη | Σημείο 1: Κρόνος | Όψη: Τρίγωνο | Σημείο 2: Ήλιος | Orb: 1°00′ | Βαρύτητα: Στενή/ισχυρή"
+    assert _line_declares_indicator(real, "Κρόνος", "Ήλιος", "Τρίγωνο") is True
+
+
+def test_filler_word_justification_is_rejected():
+    """Πραγματικό δευτερεύον εύρημα (κριτική chat): λέξεις-γέμισμα («ναι»,
+    «όχι», «κάτι») δεν πρέπει να μετράνε ως πραγματική αιτιολόγηση εξαίρεσης."""
+    assert _decision_ok_on_line("Σελήνη–Ήλιος | Τετράγωνο | orb 3°00′ | Κανονική | ΕΞΑΙΡΕΙΤΑΙ: ναι") is False
+    assert _decision_ok_on_line("Σελήνη–Ήλιος | Τετράγωνο | orb 3°00′ | Κανονική | ΕΞΑΙΡΕΙΤΑΙ: κάτι") is False
+    assert _decision_ok_on_line("Σελήνη–Ήλιος | Τετράγωνο | orb 3°00′ | Κανονική | ΕΞΑΙΡΕΙΤΑΙ: abc") is False
+
+
+def test_genuine_short_justification_still_accepted():
+    """Έλεγχος αρνητικού: μια γνήσια σύντομη αιτιολόγηση («άσχετη») πρέπει
+    να συνεχίσει να γίνεται δεκτή -- δεν πρέπει να ξαναγίνει υπερβολικά αυστηρό."""
+    assert _decision_ok_on_line("Σελήνη–Ήλιος | Τετράγωνο | orb 3°00′ | Κανονική | ΕΞΑΙΡΕΙΤΑΙ: άσχετη") is True
+
+
 # --- Deep-review 12ος γύρος: η Χιαστί όψη (quincunx) είναι πραγματικός, υποστηριζόμενος τύπος ---
 
 def test_quincunx_aspect_type_is_accepted():
@@ -1010,15 +1566,16 @@ def test_audit_rejects_two_identical_indicators():
 
 
 def test_audit_accepts_single_strong_indicator_with_justification():
+    chart = _two_point_chart_with_real_trine()  # Κρόνος-Ήλιος Τρίγωνο, orb 1°00′, Στενή/ισχυρή
     client = _make_client_text(n_talents=1, n_fields=1)
     audit = (
         "Παράρτημα τεκμηρίωσης ελέγχου\n"
         "ΤΑΛΕΝΤΟ: Ταλέντο 1\n"
-        "Μοναδικός ισχυρός δείκτης: Στενή σύνοδος Ήλιου-Ερμή στον 3ο Οίκο.\n"
+        "Μοναδικός ισχυρός δείκτης: Τύπος: Όψη | Σημείο 1: Κρόνος | Όψη: Τρίγωνο | Σημείο 2: Ήλιος | Orb: 1°00′ | Βαρύτητα: Στενή/ισχυρή\n"
         "Αιτιολόγηση ισχύος και άμεσης συνάφειας: μικρό orb, προσωπικός πλανήτης, γωνιακό σημείο.\n"
         "Ιεράρχηση βαρύτητας: Κανονική.\n"
     )
-    errors = _orientation_audit_errors(CHART, audit, client)
+    errors = _orientation_audit_errors(chart, audit, client)
     assert not any("δεν έχει πλήρη τεκμηρίωση" in e for e in errors)
 
 

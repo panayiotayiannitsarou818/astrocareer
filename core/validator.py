@@ -118,34 +118,249 @@ def _name_pattern(name: str) -> str:
     return _NAME_FORMS.get(name, re.escape(name))
 
 
+_USAGE_KEYWORDS_RE = re.compile(r"ΧΡΗΣΙΜΟΠΟΙΕΙΤΑΙ|χρησιμοποιείται|χρησιμοποιήθηκε|\bused\b", re.IGNORECASE)
+_EXCLUSION_KEYWORDS_RE = re.compile(
+    r"ΕΞΑΙΡΕΙΤΑΙ|εξαιρείται|εξαιρέθηκε|αγνοείται|αγνοήθηκε|αποκλείστηκε|αποκλείεται|excluded|unused",
+    re.IGNORECASE,
+)
+# Fix (κριτική chat, πραγματικά κενά): "never"/"ουδέποτε"/"χωρίς" (without)
+# δεν αναγνωρίζονταν καθόλου ως άρνηση -- "never used"/"ουδέποτε
+# χρησιμοποιείται"/"χωρίς να χρησιμοποιείται" περνούσαν σαν θετική δήλωση
+# χρήσης. Το "unused" (μία λέξη, όχι "not used") δεν έχει τη δομή
+# "άρνηση+used" καθόλου -- προστέθηκε απευθείας στο _EXCLUSION_KEYWORDS_RE
+# ως ισοδύναμο του "excluded", αφού λειτουργικά σημαίνει ακριβώς αυτό.
+_NEGATION_RE = re.compile(
+    r"δεν|μη(?:ν)?\b|not\b|isn'?t\b|doesn'?t\b|never\b|ουδέποτε|χωρίς\b",
+    re.IGNORECASE,
+)
+# Επικεφαλίδες που σηματοδοτούν ότι βγήκαμε πλέον από την ενότητα ελέγχου
+# τεκμηρίωσης ταλέντων (άρα ένα «Δείκτης» μετά από αυτές δεν είναι πια
+# μέσα σε ΤΑΛΕΝΤΟ: μπλοκ, ό,τι κι αν λέει).
+_TALENT_BLOCK_END_RE = re.compile(
+    r"^\s*(?:ΕΓΚΕΚΡΙΜΕΝΟΙ|ΕΓΚΕΚΡΙΜΕΝΑ|Κάλυψη\s+όψ|Κάλυψη\s+στεν|Παράρτημα|Τελικός\s+έλεγχος|ΑΥΤΟΕΛΕΓΧΟΣ)",
+    re.IGNORECASE,
+)
+_TALENT_BLOCK_START_RE = re.compile(r"^\s*ΤΑΛΕΝΤΟ\s*:\s*(.*)$", re.IGNORECASE)
+
+
+def _norm_title(t: str) -> str:
+    """Κανονικοποίηση τίτλου ταλέντου για ανεκτική σύγκριση (πεζά/κενά/
+    τελική στίξη) -- κοινή βάση χρησιμοποιούμενη σε πολλαπλά σημεία ελέγχου."""
+    return re.sub(r"\s+", " ", t.strip().lower()).rstrip(".·")
+
+
+def _talent_block_membership(text: str) -> list[str | None]:
+    """Για κάθε γραμμή (με τη σειρά του text.split("\\n")), ο (ωμός) τίτλος
+    του ΤΑΛΕΝΤΟ: μπλοκ μέσα στο οποίο βρίσκεται η γραμμή, ή None αν δεν
+    είναι μέσα σε κανένα.
+
+    Fix (κριτική chat, ακριβής, επιβεβαιωμένη -- τρίτο εύρημα): πριν, ΚΑΘΕ
+    γραμμή που ξεκινούσε με «Δείκτης» μετρούσε αυτόματα ως έμμεση δήλωση
+    χρήσης, ΑΚΟΜΗ κι αν βρισκόταν έξω από οποιοδήποτε ΤΑΛΕΝΤΟ: μπλοκ.
+    Fix (κριτική chat, ακριβής -- πέμπτος γύρος): αυτό δεν αρκούσε --
+    επιστρέφει τώρα τον ΙΔΙΟ τον τίτλο (όχι απλό bool), ώστε ο καλών να
+    μπορεί να ελέγξει αν το μπλοκ αντιστοιχεί σε πραγματικό, εγκεκριμένο
+    ταλέντο του καθαρού παραδοτέου -- όχι σε ένα «φανταστικό» ΤΑΛΕΝΤΟ:
+    μπλοκ που δεν εμφανίζεται πουθενά στον πελάτη."""
+    current_title: str | None = None
+    membership: list[str | None] = []
+    for line in text.split("\n"):
+        m = _TALENT_BLOCK_START_RE.match(line)
+        if m:
+            current_title = m.group(1).strip()
+        elif _TALENT_BLOCK_END_RE.match(line):
+            current_title = None
+        membership.append(current_title)
+    return membership
+
+
+def _line_declares_indicator(line: str, name_a: str, name_b: str, aspect_type: str | None) -> bool:
+    """Ελέγχει αν μια γραμμή «Δείκτης...» είναι ΠΡΑΓΜΑΤΙΚΑ ένας δομημένος
+    δείκτης Όψης για το συγκεκριμένο ζεύγος+τύπο -- με πλήρη ανάλυση
+    πεδίων (Τύπος:/Σημείο 1:/Όψη:/Σημείο 2:), όχι απλή αναζήτηση υπο-
+    αλφαβητισμού.
+
+    Fix (κριτική chat, ακριβής -- πέμπτος γύρος, δεύτερο μέρος): μια μη
+    δομημένη, ακόμη και αρνητική γραμμή («Δείκτης 99: Η όψη Σελήνη–Ήλιος
+    Τετράγωνο δεν χρησιμοποιείται») περνούσε ως «δηλωμένος δείκτης» επειδή
+    ο παλιός έλεγχος έψαχνε απλώς αν τα ονόματα+τύπος εμφανίζονται
+    ΟΠΟΥΔΗΠΟΤΕ στη γραμμή. Τώρα η γραμμή πρέπει να αναλύεται σε πραγματικά
+    δομημένα πεδία Τύπος: Όψη με ακριβές Σημείο 1/Σημείο 2/Όψη.
+
+    Fix (κριτική chat, ακριβής -- έβδομος γύρος): ακόμη κι όταν η γραμμή
+    ΕΙΝΑΙ πλήρως δομημένη, ένα πρόσθετο, ελεύθερο κείμενο στο τέλος («|
+    δεν χρησιμοποιείται») περνούσε απαρατήρητο -- η _parse_indicator_fields()
+    απλώς αγνοεί ένα τελευταίο κομμάτι χωρίς «:» αντί να το εξετάσει.
+    Τώρα ελέγχεται ρητά ολόκληρη η γραμμή για άρνηση («δεν», «μη», «not»)
+    πριν θεωρηθεί έγκυρη δήλωση χρήσης.
+
+    Fix (κριτική chat, ακριβής -- όγδοος γύρος): η άρνηση δεν ήταν το μόνο
+    σήμα εξαίρεσης -- ένα δομημένο «Δείκτης» με ρητή λέξη ΕΞΑΙΡΕΙΤΑΙ/
+    αγνοείται/αποκλείεται στο τέλος («| ΕΞΑΙΡΕΙΤΑΙ: θεματικά ασύνδετη»)
+    επίσης περνούσε, αφού ελεγχόταν μόνο η _NEGATION_RE, όχι η
+    _EXCLUSION_KEYWORDS_RE. Τώρα απορρίπτεται και για τους δύο λόγους."""
+    if _NEGATION_RE.search(line) or _EXCLUSION_KEYWORDS_RE.search(line):
+        return False
+    m = re.match(r"\s*Δείκτης\s*\d*\s*:\s*(.*)$", line, re.IGNORECASE)
+    indicator_text = m.group(1) if m else line
+    if _indicator_kind(indicator_text) != "οψη":
+        return False
+    fields = _parse_indicator_fields(indicator_text)
+    p1 = _exact_point_name(fields.get("σημειο 1", ""))
+    p2 = _exact_point_name(fields.get("σημειο 2", ""))
+    if p1 is None or p2 is None or {p1, p2} != {name_a, name_b}:
+        return False
+    if not aspect_type:
+        return True
+    found_type = _exact_aspect_type(fields.get("οψη", ""))
+    return found_type == aspect_type
+
+
+def _aspect_declared_as_indicator_in_talent(text: str, membership: list[str | None],
+                                             name_a: str, name_b: str,
+                                             aspect_type: str | None,
+                                             approved_titles: set[str]) -> bool:
+    """Ελέγχει αν το ζεύγος+τύπος όψης εμφανίζεται ΠΡΑΓΜΑΤΙΚΑ ως δομημένος
+    δείκτης μέσα σε ΤΑΛΕΝΤΟ: μπλοκ που αντιστοιχεί σε πραγματικό,
+    εγκεκριμένο ταλέντο -- όχι απλώς μέσα σε ΟΠΟΙΟΔΗΠΟΤΕ μπλοκ.
+
+    Fix (κριτική chat, ακριβής, επιβεβαιωμένη -- τέταρτο εύρημα): πριν, μια
+    γραμμή κάλυψης που έλεγε απλώς «ΧΡΗΣΙΜΟΠΟΙΕΙΤΑΙ» γινόταν αποδεκτή χωρίς
+    καμία επαλήθευση ότι η όψη ΟΝΤΩΣ εμφανίζεται ως δείκτης σε κάποιο
+    ταλέντο. Fix (πέμπτος γύρος): δεν αρκεί καν αυτό -- το ΤΑΛΕΝΤΟ: μπλοκ
+    μπορούσε να είναι «φανταστικό» (τίτλος που δεν υπάρχει καθόλου στο
+    καθαρό παραδοτέο). Τώρα απαιτείται ο τίτλος του μπλοκ να ταιριάζει
+    (κανονικοποιημένα) με κάποιον από τους πραγματικά εγκεκριμένους
+    τίτλους ταλέντων."""
+    for line, block_title in zip(text.split("\n"), membership):
+        if block_title is None or _norm_title(block_title) not in approved_titles:
+            continue
+        if not re.match(r"\s*Δείκτης", line, re.IGNORECASE):
+            continue
+        if _line_declares_indicator(line, name_a, name_b, aspect_type):
+            return True
+    return False
+
+
+_FILLER_JUSTIFICATION_RE = re.compile(
+    r"^(?:ναι|όχι|οχι|κάτι|κατι|τίποτα|τιποτα|άγνωστο|αγνωστο|n/?a|abc|xx?x?)$",
+    re.IGNORECASE,
+)
+
+
+def _has_real_justification(trailing: str) -> bool:
+    """Fix (κριτική chat, δευτερεύον εύρημα): το «τουλάχιστον μία λέξη 3+
+    γραμμάτων» δεχόταν ανούσιες λέξεις-γέμισμα («ναι», «όχι», «κάτι»,
+    «abc») που δεν αποτελούν πραγματική αιτιολόγηση. Χωρίς να απαιτείται
+    πλήρης δομημένη ανασχεδίαση (η ασφαλέστερη αλλά πιο ριζική πρόταση
+    της κριτικής), απορρίπτεται τουλάχιστον το προφανές μπλοκ γεμίσματος."""
+    words = re.findall(r"[Α-ώΆ-Ωα-ωA-Za-z]{3,}", trailing)
+    return any(not _FILLER_JUSTIFICATION_RE.match(w) for w in words)
+
+
+def _decision_ok_on_line(line: str, block_title: str | None = "", approved_titles: set[str] | None = None,
+                          verified_usage_elsewhere: bool = True,
+                          name_a: str | None = None, name_b: str | None = None,
+                          aspect_type: str | None = None) -> bool:
+    """Ελέγχει αν μία γραμμή έχει έγκυρη δήλωση χρήσης/απόφασης.
+
+    Fix (κριτική chat, ακριβής): η δεσμευτική εντολή απαιτεί «ΕΞΑΙΡΕΙΤΑΙ» ΜΕ
+    ρητή αιτιολόγηση -- πριν, ο έλεγχος δεχόταν την ψιλή λέξη «ΕΞΑΙΡΕΙΤΑΙ»
+    χωρίς καμία εξήγηση μετά. Τώρα, αν η λέξη είναι εξαίρεση (όχι έμμεση
+    χρήση μέσω γραμμής «Δείκτης» μέσα σε ΤΑΛΕΝΤΟ: μπλοκ), απαιτείται
+    τουλάχιστον μία πραγματική λέξη (όχι μόνο στίξη/κενά) ΜΕΤΑ τη λέξη
+    στην ίδια γραμμή.
+
+    Fix (κριτική chat, ακριβής -- δεύτερος γύρος, δύο ευρήματα): (α) «δεν
+    χρησιμοποιείται» περνούσε σαν να ήταν θετική δήλωση χρήσης· τώρα μια
+    αρνημένη «χρησιμοποιείται» αντιμετωπίζεται σαν εξαίρεση. (β) το όριο
+    «len(trailing) >= 8» ήταν αυθαίρετο· αντικαταστάθηκε με έλεγχο για
+    τουλάχιστον μία πραγματική λέξη.
+
+    Fix (κριτική chat, ακριβής -- τρίτος γύρος): μια bare «ΧΡΗΣΙΜΟΠΟΙΕΙΤΑΙ»
+    (όχι η ίδια γραμμή «Δείκτης» μέσα σε ΤΑΛΕΝΤΟ:) πρέπει επιπλέον να
+    επαληθεύεται (verified_usage_elsewhere).
+
+    Fix (κριτική chat, ακριβής -- πέμπτος γύρος): η γραμμή «Δείκτης» μέσα
+    σε ΤΑΛΕΝΤΟ: μπλοκ μετράει ως έμμεση χρήση ΜΟΝΟ όταν ο τίτλος του
+    μπλοκ είναι πραγματικά εγκεκριμένος τίτλος.
+
+    Fix (κριτική chat, ακριβής -- έκτος γύρος): ακόμη κι ΜΕΣΑ σε εγκεκριμένο
+    μπλοκ, η «συντόμευση Δείκτης» δεχόταν ΟΠΟΙΑΔΗΠΟΤΕ γραμμή που απλώς
+    ΞΕΚΙΝΟΥΣΕ με τη λέξη «Δείκτης» -- ακόμη και μη δομημένη, αρνητική
+    πρόταση («Δείκτης 99: Η όψη ... δεν χρησιμοποιείται»). Τώρα η
+    συντόμευση απαιτεί η γραμμή να είναι ΠΡΑΓΜΑΤΙΚΑ δομημένος δείκτης για
+    το ΣΥΓΚΕΚΡΙΜΕΝΟ ζεύγος+τύπο που ελέγχεται (μέσω _line_declares_indicator),
+    όχι απλώς να ξεκινάει με τη λέξη."""
+    inside_approved_block = block_title is not None and approved_titles is not None and _norm_title(block_title) in approved_titles
+    if inside_approved_block and re.match(r"\s*Δείκτης", line, re.IGNORECASE):
+        if name_a is not None and name_b is not None:
+            if _line_declares_indicator(line, name_a, name_b, aspect_type):
+                return True
+        else:
+            return True  # παλιά κλήση χωρίς πλαίσιο ζεύγους -- διατηρεί προηγούμενη συμπεριφορά
+    m = _USAGE_KEYWORDS_RE.search(line)
+    if m:
+        preceding = line[max(0, m.start() - 15):m.start()]
+        if not _NEGATION_RE.search(preceding):
+            return verified_usage_elsewhere
+        # Αρνημένη χρήση («δεν χρησιμοποιείται») -- λειτουργικά είναι
+        # εξαίρεση, άρα χρειάζεται τη δική της αιτιολόγηση παρακάτω.
+        trailing = line[m.end():]
+        return _has_real_justification(trailing)
+    m = _EXCLUSION_KEYWORDS_RE.search(line)
+    if not m:
+        return False
+    trailing = line[m.end():]
+    return _has_real_justification(trailing)
+
+
 def _co_occurs_with_orb(text: str, name_a: str, name_b: str, orb_text: str,
                         aspect_type: str | None = None,
-                        weight: str | None = None) -> tuple[bool, bool, bool, bool]:
-    """Επιστρέφει παρουσία ζεύγους, orb, σωστού τύπου και σωστής βαρύτητας."""
+                        weight: str | None = None,
+                        approved_titles: set[str] | None = None) -> tuple[bool, bool, bool, bool, bool]:
+    """Επιστρέφει παρουσία ζεύγους, orb, σωστού τύπου, σωστής βαρύτητας, και
+    έγκυρης δήλωσης χρήσης/απόφασης -- όλα ελεγμένα ΜΑΖΙ στην ΙΔΙΑ γραμμή.
+
+    Fix (κριτική chat, ακριβής, επιβεβαιωμένη -- δεύτερο εύρημα): η
+    προηγούμενη εκδοχή έλεγχε ανά γραμμή αλλά συσσώρευε κάθε σημαία
+    (τύπος/βαρύτητα/απόφαση) ανεξάρτητα σε όλες τις γραμμές με το ίδιο
+    ζεύγος+orb -- δύο ΔΙΑΦΟΡΕΤΙΚΕΣ λανθασμένες γραμμές μπορούσαν μαζί να
+    δώσουν «επιτυχία», παρότι καμία γραμμή δεν είχε όλα τα στοιχεία μαζί
+    (π.χ. μία γραμμή με λάθος βαρύτητα αλλά σωστό τύπο, μια άλλη με λάθος
+    τύπο αλλά σωστή βαρύτητα). Τώρα κρατιέται η γραμμή που ικανοποιεί τα
+    ΠΕΡΙΣΣΟΤΕΡΑ κριτήρια ΜΑΖΙ (για ενημερωτική αναφορά σε μερική αποτυχία),
+    και η επιτυχία σημαίνει ρητά ότι ΜΙΑ γραμμή είχε τα πάντα μαζί.
+
+    Fix (κριτική chat, ακριβής -- πέμπτος γύρος): approved_titles (τίτλοι
+    ταλέντων από το καθαρό παραδοτέο) περνάει τώρα μέχρι κάθε γραμμή, ώστε
+    ένα ΤΑΛΕΝΤΟ: μπλοκ με «φανταστικό» τίτλο (που δεν υπάρχει στον
+    πελάτη) να μην μετράει ως έγκυρη χρήση -- χωρίς approved_titles
+    (None), κανένα μπλοκ δεν θεωρείται εγκεκριμένο (ασφαλές εξ ορισμού).
+    """
     co_occurs = False
-    orb_found = False
-    type_found = False
-    weight_found = False
+    best = (False, False, False, False)  # orb, type, weight, decision -- από τη ΜΙΑ καλύτερη γραμμή
     pa, pb = _name_pattern(name_a), _name_pattern(name_b)
-    for m in re.finditer(pa, text, re.IGNORECASE):
-        start = max(0, m.start() - _WINDOW)
-        end = min(len(text), m.end() + _WINDOW)
-        window = text[start:end]
-        if re.search(pb, window, re.IGNORECASE):
-            co_occurs = True
-            if orb_text in window:
-                orb_found = True
-                if aspect_type:
-                    type_found = bool(re.search(_ASPECT_FORMS.get(aspect_type, re.escape(aspect_type)), window, re.IGNORECASE))
-                else:
-                    type_found = True
-                if weight:
-                    weight_found = bool(re.search(_WEIGHT_FORMS.get(weight, re.escape(weight)), window, re.IGNORECASE))
-                else:
-                    weight_found = True
-                if type_found and weight_found:
-                    break
-    return co_occurs, orb_found, type_found, weight_found
+    membership = _talent_block_membership(text)
+    norm_approved = {_norm_title(t) for t in approved_titles} if approved_titles else set()
+    verified_elsewhere = _aspect_declared_as_indicator_in_talent(text, membership, name_a, name_b, aspect_type, norm_approved)
+    for line, block_title in zip(text.split("\n"), membership):
+        if not (re.search(pa, line, re.IGNORECASE) and re.search(pb, line, re.IGNORECASE)):
+            continue
+        co_occurs = True
+        orb_ok = orb_text in line
+        if not orb_ok:
+            continue
+        t_ok = bool(re.search(_ASPECT_FORMS.get(aspect_type, re.escape(aspect_type)), line, re.IGNORECASE)) if aspect_type else True
+        w_ok = bool(re.search(_WEIGHT_FORMS.get(weight, re.escape(weight)), line, re.IGNORECASE)) if weight else True
+        d_ok = _decision_ok_on_line(line, block_title, norm_approved, verified_elsewhere, name_a, name_b, aspect_type)
+        this_line = (orb_ok, t_ok, w_ok, d_ok)
+        if sum(this_line) > sum(best):
+            best = this_line
+        if all(this_line):
+            best = this_line
+            break
+    return (co_occurs,) + best
 
 
 def _location_claim_errors(chart, text: str) -> list[tuple[str, int, int, str]]:
@@ -739,11 +954,16 @@ def _talent_documentation_block_errors(audit_text: str, talent_titles: list[str]
         justification = re.search(r"Αιτιολόγηση\s+ισχύος[^\r\n:]*:\s*([^\r\n]*)", block, re.IGNORECASE)
         single_ok = nonempty(single.group(1) if single else None) and nonempty(justification.group(1) if justification else None)
         if single_ok and check_grounding:
-            # Ο «Μοναδικός ισχυρός δείκτης» πρέπει να είναι ΠΡΑΓΜΑΤΙΚΑ ισχυρός
-            # -- αν είναι όψη, η όντως καταγεγραμμένη βαρύτητά του πρέπει να
-            # είναι Στενή/ισχυρή (όπως λέει το δικό της παράδειγμα της
-            # δεσμευτικής εντολής), όχι απλώς οποιαδήποτε μη κενή δήλωση.
-            if _indicator_kind(single.group(1)) == "οψη" and _real_aspect_weight(single.group(1), chart) != "Στενή/ισχυρή":
+            # Fix (κριτική chat, ακριβής): η δεσμευτική εντολή λέει ρητά ότι ο
+            # «Μοναδικός ισχυρός δείκτης» ΠΡΕΠΕΙ να είναι όψη πραγματικής
+            # βαρύτητας Στενής/ισχυρής -- ΟΧΙ απλώς "αν τυχαίνει να είναι
+            # όψη, τότε ελέγξου τη βαρύτητα". Πριν, ένας δείκτης Θέσης
+            # (π.χ. «Τύπος: Θέση | Σημείο: Κρόνος | Οίκος: 6») περνούσε
+            # ασύγκριτα ως "μοναδικός ισχυρός", αφού η συνθήκη απόρριψης
+            # ενεργοποιούνταν ΜΟΝΟ όταν kind=="οψη" -- ποτέ δεν απαιτούσε
+            # ρητά να ΕΙΝΑΙ "οψη". Τώρα η θετική συνθήκη είναι ρητή: πρέπει
+            # να είναι όψη ΚΑΙ η πραγματική βαρύτητά της να είναι Στενή/ισχυρή.
+            if not (_indicator_kind(single.group(1)) == "οψη" and _real_aspect_weight(single.group(1), chart) == "Στενή/ισχυρή"):
                 single_ok = False
         if not (two_ok or single_ok):
             errors.append(
@@ -794,6 +1014,21 @@ def _orientation_audit_errors(chart, audit_text: str, client_text: str = "") -> 
     talent_titles = _extract_talent_titles(client_text) if client_text else []
     if talent_titles:
         errors.extend(_talent_documentation_block_errors(audit_text, talent_titles, chart))
+        # Fix (κριτική chat, ακριβής -- έκτος γύρος, δεύτερο εύρημα): πριν
+        # ελεγχόταν μόνο η ΜΙΑ κατεύθυνση (κάθε εγκεκριμένος τίτλος έχει
+        # μπλοκ στο τεχνικό δελτίο) -- όχι το αντίστροφο. Ένα ΕΠΙΠΛΕΟΝ
+        # ΤΑΛΕΝΤΟ: μπλοκ στο τεχνικό δελτίο, με τίτλο που δεν υπάρχει καν
+        # στο καθαρό παραδοτέο, περνούσε εντελώς απαρατήρητο -- ασυνέπεια
+        # ανάμεσα στα δύο Word χωρίς κανένα μήνυμα. Τώρα ελέγχεται και η
+        # αντίστροφη κατεύθυνση.
+        approved_norm = {_norm_title(t) for t in talent_titles}
+        audit_titles = re.findall(r"^\s*ΤΑΛΕΝΤΟ\s*:\s*(.+?)\s*$", audit_text, re.MULTILINE | re.IGNORECASE)
+        for raw_title in audit_titles:
+            if _norm_title(raw_title) not in approved_norm:
+                errors.append(
+                    f"Το τεχνικό δελτίο περιέχει το ταλέντο «{raw_title}», το οποίο δεν εμφανίζεται "
+                    "στο καθαρό παραδοτέο."
+                )
     elif not re.search(
         r"Δείκτης\s*\d|Μοναδικός\s+ισχυρός\s+δείκτης"
         r"|(?:τουλάχιστον\s+δύο|δύο\s+ή\s+περισσότερους)\s+διακριτ"
@@ -840,14 +1075,15 @@ def _orientation_audit_errors(chart, audit_text: str, client_text: str = "") -> 
     for aspect in sorted(chart.aspects, key=lambda item: item.orb):
         if aspect.weight not in covered_weights:
             continue
-        co, orb_ok, type_ok, weight_ok = _co_occurs_with_orb(
+        co, orb_ok, type_ok, weight_ok, decision_ok = _co_occurs_with_orb(
             audit_text, aspect.first, aspect.second, aspect.orb_text,
-            aspect.aspect, aspect.weight,
+            aspect.aspect, aspect.weight, set(talent_titles),
         )
-        if not (co and orb_ok and type_ok and weight_ok):
+        if not (co and orb_ok and type_ok and weight_ok and decision_ok):
             errors.append(
                 f"Η όψη {aspect.first}–{aspect.second} ({aspect.aspect}, orb {aspect.orb_text}, {aspect.weight}) "
-                "δεν τεκμηριώνεται πλήρως στο τεχνικό δελτίο."
+                "δεν τεκμηριώνεται πλήρως στο τεχνικό δελτίο -- πρέπει να δηλώνεται ρητά αν χρησιμοποιείται "
+                "ή γιατί εξαιρείται, όχι μόνο να αναφέρεται."
             )
     return list(dict.fromkeys(errors))
 
@@ -1326,7 +1562,14 @@ def _talent_paragraph_titles(text: str) -> list[str]:
         words = re.findall(r"\b[\wΆ-ώ]+\b", p, re.UNICODE)
         if len(words) < 20:
             continue
-        titles.append(p.split("\n", 1)[0][:80].strip())
+        title_guess = p.split("\n", 1)[0][:80].strip()
+        # Fix (πραγματικό αίτημα χρήστη): αν ο τίτλος ταλέντου είναι αριθμημένος
+        # («1. Τίτλος», για εύκολη αναφορά σε πελάτη/επαγγελματία), το «1. »
+        # είναι διακοσμητικό, όχι μέρος του σημασιολογικού τίτλου -- η συνοπτική
+        # λίστα ήδη αφαιρεί τέτοιους δείκτες (_extract_talent_titles). Χωρίς
+        # αυτό, ένας αριθμημένος τίτλος δεν θα ταίριαζε ΠΟΤΕ με τη μη αριθμημένη
+        # εκδοχή του στη λίστα, σπάζοντας σιωπηλά τον έλεγχο αντιστοίχισης.
+        titles.append(re.sub(r"^\s*(?:[-•*]|\d+[.)])\s*", "", title_guess))
     return titles
 
 
