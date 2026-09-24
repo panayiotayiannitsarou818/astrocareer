@@ -59,3 +59,17 @@ def test_auto_prompt_does_not_repeat_the_consistency_rule():
     prompt = build_orientation_prompt({"Όνομα": "Test"}, command, "ΠΗΓΗ", need_audit=True)
     assert prompt.count("ΥΠΟΧΡΕΩΤΙΚΟΣ ΚΑΝΟΝΑΣ ΣΥΝΕΠΕΙΑΣ") == 0
     assert command in prompt
+
+
+def test_anonymous_template_agrees_with_v12():
+    """Το ανώνυμο πρότυπο στέλνεται στο μοντέλο μαζί με την εντολή· δεν πρέπει
+    να δείχνει μορφή που ο validator απορρίπτει."""
+    from core.reference_loader import load_unified_short_example
+    example = load_unified_short_example()
+    assert "Σημείωση πριν διαβάσεις τις κάρτες:" in example
+    assert "Συνοπτικά, τα ταλέντα προς διερεύνηση είναι:" in example
+    assert "κουκκίδες" not in example            # προφίλ: μία παράγραφος
+    assert "λιγότερο από μία πρόταση" not in example  # λίστα: μόνο τίτλοι
+    assert "βασικές" not in example              # η v12 απαγορεύει «βασικό»
+    jobs = [l for l in example.split("\n") if l.startswith("Ενδεικτικά επαγγέλματα:")]
+    assert jobs and all("(" in l for l in jobs)  # εξήγηση σε παρένθεση
