@@ -452,6 +452,14 @@ class OrientationValidationResult:
     # ταλέντου εκτός του ~70-110 λέξεων στόχου. Μη δεσμευτική υπενθύμιση,
     # όχι λόγος απόρριψης.
     warnings: list = field(default_factory=list)
+    # Fix (ετικέτα απόρριψης): το technical_mismatches μαζεύει μηνύματα από
+    # πολλούς διαφορετικούς ελέγχους (όψεις/orb, τεχνικό δελτίο, τομείς/
+    # επαγγέλματα, δομή/μορφή). Πριν, το summary() τα μετρούσε ΟΛΑ ως
+    # «ασυμφωνίες όψης/orb/βαρύτητας», π.χ. 33 σφάλματα τομέων εμφανίζονταν
+    # ως σφάλματα όψεων. Εδώ κρατιέται το πλήθος ανά κατηγορία, ώστε η
+    # σύνοψη να ονομάζει σωστά την πηγή. Το technical_mismatches μένει
+    # αμετάβλητο (όλα τα μηνύματα), για συμβατότητα με όσους το διαβάζουν.
+    technical_breakdown: dict = field(default_factory=dict)
 
     def summary(self):
         if self.ok:
@@ -465,7 +473,18 @@ class OrientationValidationResult:
         if self.wrong_house_claims: parts.append(f"{len(self.wrong_house_claims)} λανθασμένες τοποθετήσεις")
         if self.unauthorized_personal_claims: parts.append(f"{len(self.unauthorized_personal_claims)} μη δηλωμένα προσωπικά στοιχεία")
         if self.missing_core_topics: parts.append("λείπουν: " + ", ".join(self.missing_core_topics))
-        if self.technical_mismatches: parts.append(f"{len(self.technical_mismatches)} ασυμφωνίες όψης/orb/βαρύτητας")
+        if self.technical_mismatches:
+            breakdown = {k: v for k, v in (self.technical_breakdown or {}).items() if v}
+            if breakdown:
+                for key, (singular, plural) in _TECHNICAL_CATEGORY_LABELS:
+                    n = breakdown.get(key)
+                    if n:
+                        parts.append(f"{n} {singular if n == 1 else plural}")
+            else:
+                # Χωρίς ανάλυση (π.χ. αποτέλεσμα φτιαγμένο αλλού): ουδέτερη
+                # διατύπωση αντί για τον παραπλανητικό χαρακτηρισμό «όψης/orb».
+                n = len(self.technical_mismatches)
+                parts.append(f"{n} τεχνικό ζήτημα" if n == 1 else f"{n} τεχνικά ζητήματα")
         if self.name_issues: parts.append(f"{len(self.name_issues)} πρόβλημα/προβλήματα ονόματος")
         return "Ο προσανατολισμός απορρίφθηκε: " + "· ".join(parts) + "."
 
@@ -480,6 +499,15 @@ class OrientationValidationResult:
         for message in self.name_issues: lines.append(message)
         for message in self.warnings: lines.append(f"[Μη δεσμευτική σημείωση] {message}")
         return lines
+
+
+# Σειρά και ετικέτες των κατηγοριών στη σύνοψη απόρριψης.
+_TECHNICAL_CATEGORY_LABELS = (
+    ("aspect", ("ασυμφωνία όψης/orb/βαρύτητας", "ασυμφωνίες όψης/orb/βαρύτητας")),
+    ("audit", ("σφάλμα στο τεχνικό δελτίο", "σφάλματα στο τεχνικό δελτίο")),
+    ("career", ("ασυμφωνία τομέων/επαγγελμάτων με το τεχνικό δελτίο", "ασυμφωνίες τομέων/επαγγελμάτων με το τεχνικό δελτίο")),
+    ("structure", ("ζήτημα δομής/μορφής/περιεχομένου", "ζητήματα δομής/μορφής/περιεχομένου")),
+)
 
 
 def _orientation_technical_mismatches(chart, text: str) -> list[str]:
@@ -1690,6 +1718,7 @@ def validate_orientation(chart, text: str, personal: dict | None = None,
     wrong=_location_claim_errors(chart,text)
     unauthorized=_unauthorized_personal_claims(personal,text)
     technical=_orientation_technical_mismatches(chart,text)
+    breakdown = {"aspect": len(technical), "audit": 0, "career": 0}
     name_issue = _name_consistency_issue(personal, text)
     if presentation_mode == "Απλή και πρακτική":
         if format_issues:
@@ -1700,8 +1729,12 @@ def validate_orientation(chart, text: str, personal: dict | None = None,
         exposed = _simple_presentation_technical_terms(text)
         if exposed:
             technical.append("Η απλή παρουσίαση περιέχει τεχνικά αστρολογικά δεδομένα: " + ", ".join(exposed) + ".")
-        technical.extend(_orientation_audit_errors(chart, audit_text or "", text))
-        technical.extend(_career_consistency_errors(text, audit_text or ""))
+        _audit = _orientation_audit_errors(chart, audit_text or "", text)
+        technical.extend(_audit)
+        breakdown["audit"] += len(_audit)
+        _career = _career_consistency_errors(text, audit_text or "")
+        technical.extend(_career)
+        breakdown["career"] += len(_career)
         if short_simple:
             # Fix (spec, νέα λογική έκτασης): αφαιρέθηκε η αυτόματη απόρριψη
             # πάνω από 1.800 λέξεις -- ο αριθμός τεκμηριωμένων ταλέντων δεν
@@ -1800,7 +1833,9 @@ def validate_orientation(chart, text: str, personal: dict | None = None,
                     + ", ".join(present) + "."
                 )
     else:
-        technical.extend(_orientation_audit_errors(chart, text, text))
+        _audit = _orientation_audit_errors(chart, text, text)
+        technical.extend(_audit)
+        breakdown["audit"] += len(_audit)
     if re.search(r"Τι\s+χρειάζεται\s+επιβεβαίωση\s*:\s*Τι\s+χρειάζεται\s+επιβεβαίωση\s*:", text, re.IGNORECASE):
         technical.append("Η ετικέτα «Τι χρειάζεται επιβεβαίωση:» επαναλαμβάνεται δύο φορές στην ίδια πρόταση.")
     if short_simple:
@@ -1829,7 +1864,11 @@ def validate_orientation(chart, text: str, personal: dict | None = None,
     name_issues = [name_issue] if name_issue else []
     length_warnings, length_hard_errors = _talent_paragraph_length_issues(text) if short_simple else ([], [])
     technical.extend(length_hard_errors)
+    # Ό,τι δεν προήλθε από όψεις/orb, τεχνικό δελτίο ή τομείς/επαγγέλματα
+    # (μορφή, συνοπτική λίστα, απαγορευμένες ενότητες, μήκος κ.λπ.).
+    breakdown["structure"] = len(technical) - breakdown["aspect"] - breakdown["audit"] - breakdown["career"]
     return OrientationValidationResult(
         not (wrong or unauthorized or missing or technical or name_issues),
         wrong, unauthorized, missing, technical, name_issues, length_warnings,
+        technical_breakdown=breakdown,
     )
