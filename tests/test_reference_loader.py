@@ -73,3 +73,13 @@ def test_anonymous_template_agrees_with_v12():
     assert "βασικές" not in example              # η v12 απαγορεύει «βασικό»
     jobs = [l for l in example.split("\n") if l.startswith("Ενδεικτικά επαγγέλματα:")]
     assert jobs and all("(" in l for l in jobs)  # εξήγηση σε παρένθεση
+
+
+def test_command_examples_never_mix_usage_and_exclusion():
+    """Αν ένα παράδειγμα της εντολής βάζει «χρησιμοποιείται» δίπλα στο
+    «ΕΞΑΙΡΕΙΤΑΙ», το μοντέλο το αντιγράφει και ο validator απορρίπτει τη
+    γραμμή ως αντιφατική (επιβεβαιωμένο με δοκιμή στον Κανόνα 7 της v12)."""
+    import re
+    for line in load_orientation_command().split("\n"):
+        if "ΕΞΑΙΡΕΙΤΑΙ" in line:
+            assert not re.search(r"χρησιμοποι", line, re.IGNORECASE), line
