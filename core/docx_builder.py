@@ -5,7 +5,7 @@ from docx.shared import Inches, Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
-from .prompts import fmt, CAREER_CONSISTENCY_RULE_EL
+from .prompts import fmt
 from .astrology import movement_text
 
 def _shade(cell, fill):
@@ -172,7 +172,7 @@ def _render_markdown_body(d, text, numbered_headings_as_bullets=False):
 def build_orientation_client_docx(doc_title, subtitle_name, analysis):
     """Καθαρό Word για τον ΠΕΛΑΤΗ της υπηρεσίας προσανατολισμού.
 
-    Ο Κανόνας 0Γ/0Δ της δεσμευτικής εντολής απαιτεί ρητά «λευκό φόντο και
+    Ο Κανόνας 3 της δεσμευτικής εντολής (v12) απαιτεί ρητά «λευκό φόντο και
     μαύρο κείμενο» στο καθαρό παραδοτέο της «Απλής και πρακτικής»
     παρουσίασης, χωρίς καμία χρωματική επισήμανση. Το build_analysis_docx
     βάφει τίτλους/επικεφαλίδες σκούρο πράσινο (κατάλληλο για την πλήρη
@@ -280,8 +280,7 @@ def build_orientation_docx(title_name, service_label, context, command_text, sou
             p=d.add_paragraph(style='List Bullet'); p.add_run(f'{key}: ').bold=True; p.add_run(str(value).strip())
     d.add_heading('ΔΕΣΜΕΥΤΙΚΗ ΕΝΤΟΛΗ ΕΠΑΓΓΕΛΜΑΤΙΚΟΥ ΠΡΟΣΑΝΑΤΟΛΙΣΜΟΥ',1)
     _add_multiline(d, command_text)
-    d.add_heading('ΥΠΟΧΡΕΩΤΙΚΟΣ ΚΑΝΟΝΑΣ ΣΥΝΕΠΕΙΑΣ ΤΑΛΕΝΤΩΝ ΚΑΙ ΕΠΑΓΓΕΛΜΑΤΩΝ',1)
-    _add_multiline(d, CAREER_CONSISTENCY_RULE_EL)
+    # Ο κανόνας συνέπειας ζει πλέον μέσα στη δεσμευτική εντολή (v12, Κανόνες 14-15).
     if style_example_text.strip():
         d.add_page_break()
         d.add_heading('ΑΝΩΝΥΜΟ ΠΡΟΤΥΠΟ ΣΥΝΤΟΜΗΣ ΕΚΔΟΣΗΣ — ΜΟΝΟ ΓΙΑ ΔΟΜΗ ΚΑΙ ΥΦΟΣ',1)

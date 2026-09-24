@@ -715,13 +715,12 @@ def test_active_prompt_contains_structured_indicator_instructions():
     παλιάς αναλυτικής έκδοσης -- ο validator απαιτούσε κάτι που το μοντέλο
     δεν είχε καν κληθεί να παράγει. Τώρα ζει επίσης στον ενεργό Κανόνα 8."""
     from core.reference_loader import load_orientation_command
-    from core.prompts import CAREER_CONSISTENCY_RULE_EL, CAREER_CONSISTENCY_RULE_EN
 
+    # Από τη v12 η οδηγία ζει αποκλειστικά μέσα στη δεσμευτική εντολή (οι
+    # παλιές σταθερές CAREER_CONSISTENCY_RULE_* αφαιρέθηκαν ως διπλοεγγραφή).
     active_prompt = load_orientation_command()
     assert "Τύπος: Θέση" in active_prompt
     assert "Τύπος: Όψη" in active_prompt
-    assert "Τύπος: Θέση" in CAREER_CONSISTENCY_RULE_EL
-    assert "Τύπος: Θέση" in CAREER_CONSISTENCY_RULE_EN
 
 
 def test_unknown_sign_value_is_rejected():

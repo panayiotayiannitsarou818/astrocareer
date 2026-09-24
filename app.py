@@ -6,7 +6,6 @@ from core.reference_loader import (
     simple_docx_format_issues,
 )
 from core.prompts import (
-    CAREER_CONSISTENCY_RULE_EL, CAREER_CONSISTENCY_RULE_EN,
     build_orientation_source, build_orientation_prompt, split_orientation_response,
 )
 from core.docx_builder import build_orientation_docx, build_orientation_client_docx, build_orientation_audit_docx
@@ -90,9 +89,6 @@ def _audit_docx_filename(display_name: str) -> str:
 presentation_label = t["presentation_simple"]
 presentation = "Απλή και πρακτική"
 
-st.success(t["success_simple"])
-st.caption(t["no_extra_data"])
-
 st.subheader(t["step3_title"])
 context = {
     t["ctx_name"]: name_override or chart.name,
@@ -125,38 +121,35 @@ language_clause = (
 )
 
 st.caption(t["upload_hint_simple"])
+# Συνοδευτικό κείμενο προς το μοντέλο. Από τη v12 όλοι οι μόνιμοι κανόνες
+# (δομή, μορφή, χρώματα, τίτλος, κανόνας συνέπειας, φραγμός υγείας) ζουν
+# ΜΟΝΟ μέσα στη δεσμευτική εντολή -- εδώ μένουν μόνο όσα αλλάζουν ανά
+# πελάτη και οι οδηγίες παράδοσης, ώστε κανένας κανόνας να μη γράφεται
+# δύο φορές σε διαφορετικές εκδοχές.
 if lang == "el":
     paste_message = """Ακολούθησε πιστά τη δεσμευτική εντολή που περιλαμβάνεται στο έγγραφο και χρησιμοποίησε αποκλειστικά τα ελεγμένα τεχνικά δεδομένα που περιέχει. Μην επινοήσεις προσωπικά, επαγγελματικά ή ψυχολογικά στοιχεία.
 
-Η επιλεγμένη παρουσίαση είναι «Απλή και πρακτική». Παράδωσε δύο χωριστά, ολοκληρωμένα αρχεία Word:
-1. Το καθαρό παραδοτέο του πελάτη, χωρίς πλανήτες, Οίκους, όψεις, orb ή κατηγορίες βαρύτητας.
-2. Το εσωτερικό τεχνικό δελτίο ελέγχου, με την πλήρη τεκμηρίωση που απαιτεί η δεσμευτική εντολή. Το δεύτερο αρχείο δεν παραδίδεται στον πελάτη.
+Παράδωσε δύο χωριστά, ολοκληρωμένα αρχεία Word:
+1. Το καθαρό παραδοτέο του πελάτη.
+2. Το εσωτερικό τεχνικό δελτίο ελέγχου, που δεν παραδίδεται στον πελάτη.
 
-Εφάρμοσε υποχρεωτικά τον Κανόνα 0Γ («Ενοποιημένος κανόνας σύντομης και απλής έκδοσης»): το καθαρό παραδοτέο σε καθημερινή γλώσσα, χωρίς σταθερό αριθμό σελίδων -- η έκταση προσαρμόζεται στον αριθμό των τεκμηριωμένων ταλέντων και επαγγελματικών τομέων -- και χωρίς τους αναλυτικούς πίνακες, το εργασιακό περιβάλλον, τα επόμενα βήματα, το σχέδιο 8–12 εβδομάδων ή τις επαναλαμβανόμενες ενότητες της πλήρους έκδοσης. Το εσωτερικό τεχνικό δελτίο παραμένει αναλυτικό.
-
-Το ανώνυμο πρότυπο σύντομης έκδοσης περιλαμβάνεται ήδη μέσα στο έγγραφο. Χρησιμοποίησέ το αποκλειστικά για τη δομή, το μήκος και την απλή γλώσσα· μην αντιγράψεις από αυτό περιεχόμενο ή συμπεράσματα.
-
-Το καθαρό Word πρέπει να έχει λευκό φόντο και μαύρο κείμενο, όπως το πρότυπο. Μην χρησιμοποιήσεις highlight, χρωματιστό φόντο, σκιάσεις, έγχρωμα πλαίσια ή χρωματιστές λωρίδες. Η έμφαση να γίνεται μόνο με τίτλους, κουκκίδες και περιορισμένη έντονη γραφή.
+Το ανώνυμο πρότυπο σύντομης έκδοσης που περιλαμβάνεται στο έγγραφο χρησιμοποιείται αποκλειστικά για τη δομή, το μήκος και την απλή γλώσσα· μην αντιγράψεις από αυτό περιεχόμενο ή συμπεράσματα.
 
 """ + language_clause + """
 
-Κάνε προσεκτικό αυτοέλεγχο πριν από την παράδοση. Ο πραγματικός validator θα εκτελεστεί στη συνέχεια μέσα στο AstroCheck Career."""
+Κάνε προσεκτικό αυτοέλεγχο πριν από την παράδοση. Ο validator του AstroCheck Career θα εκτελεστεί στη συνέχεια."""
 else:
     paste_message = """Follow the binding command included in the document precisely, and use only the checked technical data it contains. Do not invent personal, professional, or psychological details.
 
-The chosen presentation is "Simple & practical". Deliver two separate, complete Word files:
-1. The clean client deliverable, without planets, Houses, aspects, orb, or weight categories.
-2. The internal technical audit sheet, with the full documentation the binding command requires. This second file is not delivered to the client.
+Deliver two separate, complete Word files:
+1. The clean client deliverable.
+2. The internal technical audit sheet, which is not delivered to the client.
 
-Apply Rule 0Γ ("Unified simple-version rule") mandatorily: the clean deliverable in everyday language, with no fixed page count -- length adapts to the number of well-documented talents and career fields -- and must NOT include the detailed tables, work environment, next steps, the 8–12 week plan, or the repeated sections of the full version. The internal technical sheet stays detailed.
-
-The short-version anonymous template is already included inside the document. Use it only for structure, length, and plain language — do not copy content or conclusions from it.
-
-The clean Word file must have a white background and black text, like the template. Do not use highlighting, colored backgrounds, shading, colored boxes, or colored bars. Emphasis should only come from headings, bullet points, and limited bold text.
+The anonymous short-version template included in the document is to be used only for structure, length, and plain language; do not copy content or conclusions from it.
 
 """ + language_clause + """
 
-Do a careful self-check before delivering. The real validator will run afterwards inside AstroCheck Career."""
+Do a careful self-check before delivering. The AstroCheck Career validator will run afterwards."""
 
 # Ενισχυτικές οδηγίες (ισχύουν πάντα) -- προστέθηκαν μετά από πραγματικά
 # περιστατικά όπου το μοντέλο έγραφε το όνομα με λατινικούς χαρακτήρες ή τον
@@ -165,31 +158,28 @@ Do a careful self-check before delivering. The real validator will run afterward
 # (μέσω build_orientation_prompt), όχι μόνο στο κείμενο αντιγραφής για
 # ChatGPT/Claude -- αλλιώς τα δύο μονοπάτια θα έδιναν διαφορετικό αποτέλεσμα.
 reinforcement_instructions = (
-    # Fix (chat κριτική #3): η παλιά διατύπωση απαιτούσε "ελληνικούς
-    # χαρακτήρες" ακόμη και στην ελληνική λειτουργία -- αντίθετο με την
-    # απόφαση "ο πελάτης γράφει το όνομά του όπως θέλει" (π.χ. πελάτης που
-    # δίνει "Klia" δεν έπρεπε ποτέ να μετατραπεί σε "Κλία"). Η οδηγία τώρα
-    # απλώς διατηρεί ό,τι δόθηκε, χωρίς να επιβάλλει αλφάβητο.
-    f"""Γράψε το όνομα «{name_override or chart.name}» ακριβώς όπως δόθηκε από τον χρήστη, διατηρώντας τους ίδιους χαρακτήρες, τόνους, ορθογραφία και κενά. Μην το μεταγράψεις, μην το μεταφράσεις και μην το διορθώσεις αυθαίρετα -- ό,τι αλφάβητο κι αν χρησιμοποιεί το όνομα όπως δόθηκε. Ο κύριος τίτλος του εγγράφου να είναι σε κανονική μορφή πεζών/κεφαλαίων (π.χ. «Ανάδειξη Ταλέντων και Διερεύνηση Επαγγελματικών Επιλογών»), όχι ολόκληρος σε κεφαλαία."""
+    # Μόνο το όνομα αλλάζει ανά πελάτη· ο κανόνας για τον τίτλο ζει πλέον
+    # στον Κανόνα 3 της δεσμευτικής εντολής v12.
+    f"""Όνομα πελάτη: «{name_override or chart.name}». Γράψε το ακριβώς όπως δόθηκε από τον χρήστη, διατηρώντας τους ίδιους χαρακτήρες, τόνους, ορθογραφία και κενά. Μην το μεταγράψεις, μην το μεταφράσεις και μην το διορθώσεις αυθαίρετα -- ό,τι αλφάβητο κι αν χρησιμοποιεί."""
     if lang == "el" else
-    # Fix: η παλιά αγγλική εκδοχή έλεγε επίσης "in Greek characters" -- λάθος
-    # αντίγραφο του ελληνικού κλάδου, άσχετο και παραπλανητικό για πελάτη
-    # που έδωσε το όνομά του στα αγγλικά/λατινικά. Η οδηγία περί
-    # μεταγραφής έχει νόημα μόνο όταν το όνομα είναι ήδη ελληνικό.
-    #
-    # Fix (English mode): προστέθηκαν οι ακριβείς αγγλικές επικεφαλίδες που
-    # πλέον αναγνωρίζει ο validator (core/validator.py, common_topics EN
-    # patterns) -- χωρίς αυτή τη ρητή λίστα το μοντέλο θα επέλεγε δικές του
-    # διατυπώσεις, που ο μηχανικός έλεγχος δεν θα αναγνώριζε ποτέ αξιόπιστα.
-    # Το εσωτερικό τεχνικό δελτίο ΠΑΡΑΜΕΝΕΙ ελληνικό ακόμη και εδώ, ακριβώς
-    # όπως ήδη επιβάλλει το CAREER_CONSISTENCY_RULE_EN.
-    f"""Write the name "{name_override or chart.name}" exactly as given -- do not alter its spelling or spacing. The document's main title should use normal sentence/title case, not ALL CAPS.
+    # Η δεσμευτική εντολή είναι γραμμένη στα Ελληνικά. Για αγγλικό παραδοτέο
+    # δίνεται εδώ η ακριβής αντιστοίχιση των ελληνικών τίτλων/ετικετών της με
+    # τις αγγλικές που αναγνωρίζει ο validator (core/validator.py, EN
+    # patterns) -- αλλιώς το μοντέλο θα επέλεγε δικές του διατυπώσεις.
+    f"""Client name: "{name_override or chart.name}". Write it exactly as given -- do not alter its spelling, accents, or spacing, and do not transliterate or translate it.
 
-The clean client deliverable must use exactly these section headings, in this order, since the automated check looks for them literally: "Brief Profile", "Talents to Explore", "Career Fields to Explore", "Example Careers per Field", "Final Synthesis". Close the Final Synthesis with a short reminder under the heading "What to Remember". Immediately after the last talent card, before the Career Fields section, add a short bold introductory sentence, in English, using exactly this wording: "In summary, the talents to explore are:" followed by a bulleted list of all the talent titles just presented, with no ranking or omission -- the automated check also looks for this exact sentence to verify there are no duplicate talents. The internal technical audit sheet keeps its Greek section headings (ΕΓΚΕΚΡΙΜΕΝΟΙ ΕΠΑΓΓΕΛΜΑΤΙΚΟΙ ΤΟΜΕΙΣ, ΕΓΚΕΚΡΙΜΕΝΑ ΕΠΑΓΓΕΛΜΑΤΑ, ΡΗΤΗ ΤΕΚΜΗΡΙΩΣΗ ΤΟΜΕΑ ΥΓΕΙΑΣ, Παράρτημα, ΤΑΛΕΝΤΟ:, Δείκτης 1/2, Μοναδικός ισχυρός δείκτης) even though the client deliverable is in English -- it is never shown to the client, and the talent titles inside its ΤΑΛΕΝΤΟ: blocks must match the English titles used in the client deliverable exactly, so the automated cross-check can match them."""
+The binding command is written in Greek. Apply all of its rules, but write the clean client deliverable in English, using these exact English equivalents, because the automated check looks for them literally:
+- The four section headings (Heading 1), in this order: "Brief Profile", "Talents to Explore", "Career Fields to Explore", "Final Synthesis".
+- Right after the last talent, the bold sentence "In summary, the talents to explore are:" followed by a bulleted list of all talent titles, written exactly as in their headings.
+- Inside "Career Fields to Explore", each field has only three kinds of lines: the field title (Heading 2); one paragraph starting "Why it may fit:"; and one line starting "Example Careers per Field:" listing all of the field's careers comma-separated, with any explanation in parentheses right after the career name. A career name itself never contains parentheses. No other paragraphs or bullets in that section.
+- The dense-chart note (Rule 11), only when triggered: the first paragraph of "Talents to Explore", starting exactly with "Note before reading the cards:".
+- The closing paragraph of "Final Synthesis" starts with the bold words "What to Remember:" (not a separate heading) and states that these directions are not a final decision, that the subjects and activities the person enjoys and their actual performance can confirm or revise them, and above all that the final choice always remains theirs, as an expression of their free will.
+- Never use in the client deliverable: planet or point names, zodiac signs, the words "House" or "ruler", orb values, weight categories, or the words conjunction, trine, sextile, square, opposition, quincunx -- not even in their everyday sense.
+
+The internal technical audit sheet keeps all its Greek machine-readable headings and labels exactly as the binding command specifies (ΤΑΛΕΝΤΟ:, Δείκτης 1/2, Μοναδικός ισχυρός δείκτης, ΕΓΚΕΚΡΙΜΕΝΟΙ ΕΠΑΓΓΕΛΜΑΤΙΚΟΙ ΤΟΜΕΙΣ, ΕΓΚΕΚΡΙΜΕΝΑ ΕΠΑΓΓΕΛΜΑΤΑ, ΡΗΤΗ ΤΕΚΜΗΡΙΩΣΗ ΤΟΜΕΑ ΥΓΕΙΑΣ, Παράρτημα Επιβεβαιωμένων Όψεων, Τελικός έλεγχος). The talent titles in its ΤΑΛΕΝΤΟ: lines, and the field and career names in its approved lists, must be the English names exactly as they appear in the client deliverable."""
 )
 
 paste_message += "\n\n" + reinforcement_instructions
-paste_message += "\n\n" + (CAREER_CONSISTENCY_RULE_EL if lang == "el" else CAREER_CONSISTENCY_RULE_EN)
 
 with st.expander(t["paste_expander"], expanded=True):
     st.code(paste_message, language=None)

@@ -1552,7 +1552,7 @@ def _strip_dense_chart_note(talents_block: str) -> str:
     7ο/8ο "ταλέντο", προκαλώντας ψευδές σφάλμα αναντιστοιχίας στη
     συνοπτική λίστα και ψευδή προειδοποίηση έκτασης."""
     return re.sub(
-        r"(?:^|\n)[^\n]*Σημείωση\s+πριν\s+διαβάσεις\s+τις\s+κάρτες[^\n]*",
+        r"(?:^|\n)[^\n]*(?:Σημείωση\s+πριν\s+διαβάσεις\s+τις\s+κάρτες|Note\s+before\s+reading\s+the\s+cards)[^\n]*",
         "", talents_block, count=1, flags=re.IGNORECASE,
     )
 

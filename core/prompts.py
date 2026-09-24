@@ -9,25 +9,6 @@ ORIENTATION_RESPONSE_DELIMITER = "===TECHNICAL_AUDIT==="
 ORIENTATION_CLIENT_MARKER = "===CLIENT_DELIVERABLE==="
 
 
-CAREER_CONSISTENCY_RULE_EL = """ΥΠΟΧΡΕΩΤΙΚΟΣ ΚΑΝΟΝΑΣ ΣΥΝΕΠΕΙΑΣ ΤΑΛΕΝΤΩΝ ΚΑΙ ΕΠΑΓΓΕΛΜΑΤΩΝ
-Πρώτα καθόρισε στο εσωτερικό τεχνικό δελτίο τα τεκμηριωμένα ταλέντα, έπειτα τους επαγγελματικούς τομείς που συνδέονται ρητά με τουλάχιστον ένα από αυτά -- όταν ένας τομέας συνδέεται ουσιαστικά με περισσότερα ταλέντα, αναφέρονται όλα, χωρίς να απαιτείται τεχνητά δεύτερο ταλέντο για να επιτραπεί ο τομέας -- και τέλος τα επιτρεπόμενα ενδεικτικά επαγγέλματα κάθε τομέα. Το καθαρό παραδοτέο επιτρέπεται μόνο να απλοποιήσει αυτά τα ήδη εγκεκριμένα στοιχεία· απαγορεύεται να δημιουργήσει νέο ταλέντο, τομέα ή επάγγελμα κατά τη συγγραφή του.
-
-Στο τεχνικό δελτίο πρόσθεσε υποχρεωτικά τις δύο αναγνωρίσιμες ενότητες «ΕΓΚΕΚΡΙΜΕΝΟΙ ΕΠΑΓΓΕΛΜΑΤΙΚΟΙ ΤΟΜΕΙΣ» και «ΕΓΚΕΚΡΙΜΕΝΑ ΕΠΑΓΓΕΛΜΑΤΑ», ώστε κάθε τομέας και κάθε επάγγελμα του καθαρού παραδοτέου να εμφανίζεται επίσης εκεί.
-
-Απαγορεύεται να δημιουργήσεις τομέα υγείας ή επάγγελμα υγείας μόνο από γενικές έννοιες όπως «φροντίδα», «ενσυναίσθηση», «θεραπευτική ποιότητα», «ακρίβεια», «βελτίωση» ή «βοήθεια». Επαγγέλματα όπως ιατρός/γιατρός, νοσηλευτής, φαρμακοποιός, ψυχολόγος, εργοθεραπευτής ή διατροφολόγος επιτρέπονται μόνο όταν το τεχνικό δελτίο περιέχει χωριστή ενότητα «ΡΗΤΗ ΤΕΚΜΗΡΙΩΣΗ ΤΟΜΕΑ ΥΓΕΙΑΣ» και καταγράφει τουλάχιστον δύο διακριτούς λειτουργικούς δείκτες που στηρίζουν ειδικά τον κλάδο της υγείας. Αν υπάρχει μόνο ένδειξη ακρίβειας, πρακτικής βελτίωσης ή βοήθειας, χρησιμοποίησε αυτές τις ουδέτερες έννοιες χωρίς να τις μετατρέψεις σε επάγγελμα υγείας.
-
-ΚΑΘΕ Δείκτης 1/2/Μοναδικός ισχυρός δείκτης μέσα σε κάθε μπλοκ «ΤΑΛΕΝΤΟ:» πρέπει να γράφεται ΣΕ ΜΙΑ γραμμή με δομημένα υπο-πεδία χωρισμένα με «|» -- ποτέ ελεύθερη περιγραφική πρόταση -- γιατί ο αυτόματος έλεγχος τα διαβάζει μηχανικά, όχι σημασιολογικά: «Τύπος: Θέση | Σημείο: <όνομα> | Ζώδιο: <ζώδιο> | Οίκος: <αριθμός 1–12>» (τουλάχιστον ένα από Ζώδιο/Οίκος) ή «Τύπος: Όψη | Σημείο 1: <όνομα> | Όψη: <τύπος όψης> | Σημείο 2: <όνομα>». Παράδειγμα: «Δείκτης 1: Τύπος: Θέση | Σημείο: Κρόνος | Ζώδιο: Αιγόκερως | Οίκος: 6»."""
-
-CAREER_CONSISTENCY_RULE_EN = """MANDATORY TALENT-TO-CAREER CONSISTENCY RULE
-First define the documented talents in the internal technical audit, then career fields explicitly linked to at least one of those talents -- when a field is substantively linked to more than one talent, list them all, without requiring an artificial second talent just to allow the field -- and finally the allowed example jobs for each field. The clean client deliverable may only simplify those already-approved items; it must not create a new talent, field, or job while drafting.
-
-The technical audit must include the exact Greek section headings «ΕΓΚΕΚΡΙΜΕΝΟΙ ΕΠΑΓΓΕΛΜΑΤΙΚΟΙ ΤΟΜΕΙΣ» and «ΕΓΚΕΚΡΙΜΕΝΑ ΕΠΑΓΓΕΛΜΑΤΑ», and every career field and job used in the clean deliverable must also appear there.
-
-Do not infer a health field or health profession merely from generic concepts such as care, empathy, healing quality, precision, improvement, or help. Doctor/physician, nurse, pharmacist, psychologist, occupational therapist, or dietitian are allowed only if the audit includes the separate heading «ΡΗΤΗ ΤΕΚΜΗΡΙΩΣΗ ΤΟΜΕΑ ΥΓΕΙΑΣ» and at least two distinct functional indicators specifically supporting the health field.
-
-Every Δείκτης 1/2/Μοναδικός ισχυρός δείκτης inside each «ΤΑΛΕΝΤΟ:» block must be written on ONE line as structured sub-fields separated by «|» -- never as a free descriptive sentence -- because the automated check parses them mechanically, not semantically: «Τύπος: Θέση | Σημείο: <name> | Ζώδιο: <sign> | Οίκος: <number 1-12>» (at least one of Ζώδιο/Οίκος required) or «Τύπος: Όψη | Σημείο 1: <name> | Όψη: <aspect type> | Σημείο 2: <name>». Example: «Δείκτης 1: Τύπος: Θέση | Σημείο: Κρόνος | Ζώδιο: Αιγόκερως | Οίκος: 6»."""
-
-
 def build_orientation_prompt(context, command_text, orientation_source,
                               style_example_text="", language_clause="",
                               need_audit=False, extra_instructions=""):
@@ -42,8 +23,9 @@ def build_orientation_prompt(context, command_text, orientation_source,
     parts = [
         "ΔΕΣΜΕΥΤΙΚΗ ΑΡΧΗ\nΠρόκειται για χωριστή προαιρετική υπηρεσία. Χρησιμοποίησε αποκλειστικά την παρακάτω δεσμευτική εντολή, το δηλωμένο πλαίσιο και την ήδη ελεγμένη τεχνική ανάλυση του ίδιου ατόμου. Μην χρησιμοποιήσεις μνήμη ή προηγούμενες συνομιλίες και μην επινοήσεις προσωπικά δεδομένα.",
         f"ΔΗΛΩΜΕΝΟ ΠΛΑΙΣΙΟ ΥΠΗΡΕΣΙΑΣ\n{context_lines}",
+        # Ο κανόνας συνέπειας και ο φραγμός υγείας ζουν πλέον μέσα στη
+        # δεσμευτική εντολή (v12, Κανόνες 14-15) -- δεν ξαναστέλνονται εδώ.
         f"ΔΕΣΜΕΥΤΙΚΗ ΕΝΤΟΛΗ ΕΠΑΓΓΕΛΜΑΤΙΚΟΥ ΠΡΟΣΑΝΑΤΟΛΙΣΜΟΥ\n{command_text}",
-        CAREER_CONSISTENCY_RULE_EN if "English" in language_clause else CAREER_CONSISTENCY_RULE_EL,
     ]
     if style_example_text.strip():
         parts.append(
