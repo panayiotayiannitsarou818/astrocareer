@@ -13,9 +13,7 @@ from docx.oxml.ns import qn
 # επίπεδο όπως παλιά που το reference_loader.py ζούσε δίπλα στο app.py.
 REPO_ROOT = Path(__file__).resolve().parent.parent
 REFERENCE_DIR = REPO_ROOT / "references"
-DEFAULT_INSTRUCTIONS = REFERENCE_DIR / "Odigies_v5.docx"
 DEFAULT_STYLE = REFERENCE_DIR / "Elena_style_guide_v2.docx"
-ROOT_INSTRUCTIONS = REPO_ROOT / "Odigies_v5.docx"
 ROOT_STYLE = REPO_ROOT / "Elena_style_guide_v2.docx"
 COMMON_ORIENTATION = REFERENCE_DIR / "Desmeftiki_Entoli_Epaggelmatikou_Prosanatolismou_Koini_v11_UNIFIED.docx"
 UNIFIED_SHORT_EXAMPLE = REFERENCE_DIR / "Protypo_Syntomis_Ekdosis_ENOPOIIMENO.docx"
@@ -67,25 +65,6 @@ def simple_docx_format_issues(source) -> list[str]:
                 if shd is not None and shd.get(qn("w:fill"), "auto").lower() not in ("auto", "ffffff", "clear", "nil"):
                     found.add("σκίαση πίνακα")
     return sorted(found)
-
-
-@st.cache_data(show_spinner=False)
-def load_default_references() -> tuple[str, str]:
-    # @st.cache_data: το Streamlit ξανατρέχει ολόκληρο το script σε κάθε
-    # interaction, οπότε χωρίς caching αυτά τα (συχνά εκτενή) .docx
-    # ξαναδιαβάζονταν και ξαναπαρσάρονταν από τον δίσκο σε κάθε κλικ.
-    #
-    # Accept both repository layouts: a dedicated references/ folder or the
-    # two DOCX files beside app.py.  This makes GitHub web uploads simpler.
-    instructions = DEFAULT_INSTRUCTIONS if DEFAULT_INSTRUCTIONS.exists() else ROOT_INSTRUCTIONS
-    style = DEFAULT_STYLE if DEFAULT_STYLE.exists() else ROOT_STYLE
-    if not instructions.exists() or not style.exists():
-        # Πριν έγραφε "...v4...", ενώ το πραγματικό αρχείο είναι Odigies_v5.docx
-        # (και το app.py το παρουσιάζει ως "Ενσωματωμένες οδηγίες v5.3") --
-        # ένα μήνυμα σφάλματος έπρεπε τουλάχιστον να συμφωνεί με το filename.
-        raise FileNotFoundError("Λείπουν οι ενσωματωμένες οδηγίες v5 ή το πρότυπο ύφους.")
-    return docx_text(instructions), docx_text(style)
-
 
 
 def docx_text_in_order(source) -> str:
