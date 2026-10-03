@@ -1636,6 +1636,31 @@ def _talent_paragraph_length_issues(text: str) -> tuple[list[str], list[str]]:
     return warnings, hard_errors
 
 
+def _forbidden_section_headings(text: str, titles: tuple[str, ...]) -> list[str]:
+    """Επιστρέφει όσους απαγορευμένους τίτλους εμφανίζονται ως ΤΙΤΛΟΣ ΕΝΟΤΗΤΑΣ.
+
+    Το docx_text() δίνει μία γραμμή ανά παράγραφο του Word. Μια γραμμή μετρά
+    ως τίτλος ενότητας όταν, αφού αφαιρεθούν αρίθμηση/κουκκίδα/σήμανση
+    (π.χ. «5. », «## », «• », «**»), ΞΕΚΙΝΑ με τον απαγορευμένο τίτλο και:
+      - τελειώνει εκεί (προαιρετικά με «:» ή τελεία), ή
+      - ακολουθεί «:» / παύλα (ετικέτα τύπου «Επόμενα βήματα: ...»), ή
+      - ακολουθούν το πολύ 5 ακόμη λέξεις χωρίς τελικό σημείο στίξης
+        (π.χ. «Επόμενα βήματα για τους γονείς»).
+    Η ίδια φράση στη μέση ή στην αρχή μιας κανονικής πρότασης ΔΕΝ μετρά.
+    """
+    present: list[str] = []
+    lines = [re.sub(r"^[\s#>*_•·\-–—]*(?:\d{1,2}\s*[.)]\s*)?[\s*_]*", "", ln).strip() for ln in text.splitlines()]
+    for title in titles:
+        pat = re.compile(
+            re.escape(title).replace(r"\ ", r"\s+")
+            + r"[*_]*(?:\s*[.:]?\s*$|\s*[:–—-]\s|(?:\s+[^\s.;!?·]+){1,5}\s*:?\s*$)",
+            re.IGNORECASE,
+        )
+        if any(pat.match(ln) for ln in lines):
+            present.append(title)
+    return present
+
+
 def validate_orientation(chart, text: str, personal: dict | None = None,
                          service: str = "", presentation_mode: str = "Αναλυτική με αστρολογική τεκμηρίωση",
                          audit_text: str | None = None,
@@ -1826,7 +1851,14 @@ def validate_orientation(chart, text: str, personal: dict | None = None,
                 "Guidance for Parents",
                 "Guidance for Parents and Educators",
             )
-            present = [s for s in forbidden_sections if re.search(re.escape(s), text, re.IGNORECASE)]
+            # Fix (ψευδώς θετικό, περιστατικό «τα επόμενα βήματα»): ο Κανόνας 3.5
+            # απαγορεύει ΕΝΟΤΗΤΕΣ με αυτούς τους τίτλους, όχι την ίδια φράση
+            # μέσα σε πρόταση. Πριν, η αναζήτηση γινόταν σε ολόκληρο το
+            # κείμενο, οπότε μια καθημερινή φράση μέσα σε παράγραφο ταλέντου
+            # («σχεδιάζεις προσεκτικά τα επόμενα βήματα») απέρριπτε σωστό
+            # παραδοτέο. Τώρα ελέγχονται μόνο γραμμές-τίτλοι
+            # (βλ. _forbidden_section_headings).
+            present = _forbidden_section_headings(text, forbidden_sections)
             if present:
                 technical.append(
                     "Η σύντομη έκδοση περιέχει αναλυτικές ενότητες που πρέπει να παραλείπονται: "
