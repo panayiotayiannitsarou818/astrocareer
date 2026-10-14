@@ -53,3 +53,45 @@ def test_unrelated_exception_classified_as_other():
     με το τεχνικό detail ορατό όπως πριν."""
     assert classify_generation_error(ValueError("κάτι άσχετο")) == "other"
     assert classify_generation_error(TimeoutError("timeout του Python, όχι του openai")) == "other"
+
+
+# v17: τα ίδια κλειδιά ισχύουν και για τον πάροχο Anthropic (Claude).
+import anthropic
+
+
+def _a_response(status_code):
+    request = httpx.Request("POST", "https://api.anthropic.com/v1/messages")
+    return httpx.Response(status_code, request=request, json={"error": {"message": "test"}})
+
+
+@pytest.mark.parametrize(
+    "exc, expected",
+    [
+        (anthropic.AuthenticationError("bad key", response=_a_response(401), body=None), "auth"),
+        (anthropic.RateLimitError("rate limited", response=_a_response(429), body=None), "rate_limit"),
+        (anthropic.InternalServerError("server broke", response=_a_response(500), body=None), "server"),
+        (anthropic.APIStatusError("overloaded", response=_a_response(529), body=None), "server"),
+        (anthropic.APITimeoutError(request=httpx.Request("POST", "https://api.anthropic.com")), "timeout"),
+        (anthropic.APIConnectionError(request=httpx.Request("POST", "https://api.anthropic.com")), "connection"),
+    ],
+)
+def test_anthropic_errors_classified_correctly(exc, expected):
+    assert classify_generation_error(exc) == expected
+
+
+# v18: μόνιμα σφάλματα -- ο κύκλος σταματά αμέσως αντί να ξαναδοκιμάζει.
+def test_openai_insufficient_quota_is_no_credit_not_rate_limit():
+    exc = openai.RateLimitError("You exceeded your current quota", response=_response(429),
+                                body={"code": "insufficient_quota"})
+    assert classify_generation_error(exc) == "no_credit"
+
+
+def test_model_not_found_both_providers():
+    assert classify_generation_error(openai.NotFoundError("model does not exist", response=_response(404), body=None)) == "model_not_found"
+    assert classify_generation_error(anthropic.NotFoundError("model: x", response=_a_response(404), body=None)) == "model_not_found"
+
+
+def test_anthropic_low_credit_is_no_credit():
+    exc = anthropic.BadRequestError("Your credit balance is too low to access the Anthropic API.",
+                                    response=_a_response(400), body=None)
+    assert classify_generation_error(exc) == "no_credit"

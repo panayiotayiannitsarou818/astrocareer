@@ -707,6 +707,23 @@ def _parse_indicator_fields(text: str) -> dict[str, str]:
     return fields
 
 
+def _duplicate_indicator_fields(text: str) -> list[str]:
+    """v18.2.1 (εξωτερική κριτική): «Σημείο: Κρόνος | Οίκος: 12 | Οίκος: 6»
+    εγκρινόταν, επειδή το _parse_indicator_fields κρατά μόνο την ΤΕΛΕΥΤΑΙΑ
+    τιμή. Επιστρέφει τα ονόματα πεδίων που εμφανίζονται >1 φορά στον ίδιο
+    δείκτη (ακόμη και με ίδια τιμή -- ο δείκτης πρέπει να είναι μονοσήμαντος)."""
+    seen, dups = {}, []
+    for segment in text.split("|"):
+        if ":" not in segment:
+            continue
+        raw_key = segment.partition(":")[0].strip()
+        key = _strip_greek_diacritics(raw_key.lower())
+        if key in seen and raw_key not in dups and seen[key] not in dups:
+            dups.append(seen[key])
+        seen.setdefault(key, raw_key)
+    return dups
+
+
 def _indicator_grounding_error(indicator_text: str, chart) -> str | None:
     """Fix (deep review, 7ος γύρος, ΟΡΙΣΤΙΚΗ ΔΙΟΡΘΩΣΗ): οι προηγούμενες
     εκδοχές προσπαθούσαν να μαντέψουν ΣΕ ΠΟΙΟ σημείο αναφέρεται ένας
@@ -728,6 +745,11 @@ def _indicator_grounding_error(indicator_text: str, chart) -> str | None:
     απορρίπτεται ρητά ως τέτοιος -- καμία εικασία, καμία απόσταση χαρακτήρων.
     """
     real_points = {p.name: p for p in chart.points}
+    dups = _duplicate_indicator_fields(indicator_text)
+    if dups:
+        names = ", ".join(f"«{d}»" for d in dups)
+        return (f"επαναλαμβάνει το πεδίο {names} μέσα στον ίδιο δείκτη -- κάθε πεδίο γράφεται ΜΙΑ φορά, "
+                "με μία μόνο τιμή (αφαίρεσε την επανάληψη)")
     fields = _parse_indicator_fields(indicator_text)
     kind = _strip_greek_diacritics(fields.get("τυπος", "").strip().lower())
 
@@ -791,10 +813,32 @@ def _indicator_grounding_error(indicator_text: str, chart) -> str | None:
     aspect_type = _exact_aspect_type(fields.get("οψη", ""))
     if aspect_type is None:
         return "το πεδίο «Όψη» δεν αναφέρει αναγνωρίσιμο τύπο όψης"
-    for a in chart.aspects:
-        if {a.first, a.second} == {p1, p2} and a.aspect == aspect_type:
-            return None
-    return f"δηλώνει όψη «{aspect_type}» μεταξύ {p1} και {p2}, που δεν υπάρχει στο Παράρτημα Όψεων του χάρτη"
+    real = next((a for a in chart.aspects if {a.first, a.second} == {p1, p2} and a.aspect == aspect_type), None)
+    if real is None:
+        return f"δηλώνει όψη «{aspect_type}» μεταξύ {p1} και {p2}, που δεν υπάρχει στο Παράρτημα Όψεων του χάρτη"
+    # Fix (v18.2, εξωτερική κριτική): πριν ελέγχονταν μόνο ζεύγος και τύπος
+    # όψης -- «Orb: 99°99′ | Βαρύτητα: ΑΝΥΠΑΡΚΤΗ» σε υπαρκτή όψη εγκρινόταν.
+    # Ο Κανόνας 16 ορίζει ότι κάθε δείκτης όψης γράφει Orb και Βαρύτητα
+    # «όπως δίνεται»: τώρα είναι ΥΠΟΧΡΕΩΤΙΚΑ και πρέπει να ταιριάζουν ΑΚΡΙΒΩΣ
+    # με την ίδια πραγματική όψη. Ισχύει για ΟΛΟΥΣ τους δείκτες (ταλέντων,
+    # μοναδικού ισχυρού δείκτη, Υγείας) -- όλοι περνούν από εδώ.
+    raw_orb = fields.get("orb")
+    if not raw_orb:
+        return f"η όψη {p1}–{p2} δεν δηλώνει το υποχρεωτικό πεδίο «Orb» (αναμένεται «Orb: {real.orb_text}»)"
+    orb_value = _normalize_prime_marks(raw_orb).replace(" ", "")
+    if orb_value != real.orb_text.replace(" ", ""):
+        return f"δηλώνει «Orb: {raw_orb}» για την όψη {p1}–{p2}, ενώ το πραγματικό orb είναι {real.orb_text}"
+    raw_weight = fields.get("βαρυτητα")
+    if not raw_weight:
+        return f"η όψη {p1}–{p2} δεν δηλώνει το υποχρεωτικό πεδίο «Βαρύτητα» (αναμένεται «Βαρύτητα: {real.weight}»)"
+    weight_pattern = _WEIGHT_FORMS.get(real.weight)
+    weight_ok = (
+        re.fullmatch(weight_pattern, raw_weight.strip().rstrip("."), re.IGNORECASE) if weight_pattern
+        else _strip_greek_diacritics(raw_weight).casefold().strip() == _strip_greek_diacritics(real.weight).casefold()
+    )
+    if not weight_ok:
+        return f"δηλώνει «Βαρύτητα: {raw_weight}» για την όψη {p1}–{p2}, ενώ η πραγματική βαρύτητα είναι «{real.weight}»"
+    return None
 
 
 def _indicator_kind(indicator_text: str) -> str:
@@ -1116,6 +1160,122 @@ def _orientation_audit_errors(chart, audit_text: str, client_text: str = "") -> 
     return list(dict.fromkeys(errors))
 
 
+# ---------------------------------------------------------------- απόλυτες διατυπώσεις
+# v18.2.1 (εξωτερική κριτική): ο Κανόνας «ύφος» της δεσμευτικής εντολής
+# απαγορεύει ρητά: «είναι γεννημένο για…», «πρέπει να γίνει…», «δεν μπορεί να
+# κάνει…», «το πεπρωμένο του είναι…», «αυτό είναι το μοναδικό κατάλληλο
+# επάγγελμα», «ο χάρτης αποδεικνύει ότι…». Μέχρι τώρα δεν ελεγχόταν μηχανικά --
+# «Είσαι γεννημένος για αυτό το επάγγελμα και πρέπει να το ακολουθήσεις»
+# εγκρινόταν. Εδώ ελέγχονται αυτοί οι έξι τύποι (κάθε πρόσωπο/γένος, ΕΛ/EN)
+# και οι υποσχέσεις βεβαιότητας. Τα ρήματα είναι ΣΥΓΚΕΚΡΙΜΕΝΑ, ώστε επιτρεπτές
+# φράσεις («δεν μπορεί να θεωρηθεί τελική απόφαση», «αξίζει να διερευνηθεί»,
+# «η τελική επιλογή παραμένει δική σου») να μην απορρίπτονται.
+_ABS_CAREER_VERBS_GR = (
+    r"(?:γιν(?:ει|εις|ω|ουν|ετε|ουμε)|ακολουθ\w*|επιλεξ\w*|διαλεξ\w*|σπουδασ\w*|ασχοληθ\w*|"
+    r"δουλεψ\w*|εργαστ\w*|αφοσιωθ\w*)"
+)
+_SUCCESS_GR = r"(?:πετυχ\w*|διαπρεψ\w*|ξεχωρισ\w*|τα\s+καταφερ\w*|προκοψ\w*|γιν\w*\s+επιτυχημεν\w*)"
+_SUCCESS_EN = r"(?:succeed|excel|thrive|do\s+well|be\s+successful|make\s+it)"
+
+# (ετικέτα, μοτίβο, αναιρείται_με_άρνηση)
+#   True  -> αν η ΙΔΙΑ πρόταση περιέχει άρνηση («δεν», «κανείς», "not", "never"...),
+#            η φράση ΑΡΝΕΙΤΑΙ τον προκαθορισμό και επιτρέπεται
+#            («Δεν υπάρχει ένα μοναδικό κατάλληλο επάγγελμα» = σωστό μήνυμα).
+#   False -> η άρνηση είναι ΜΕΡΟΣ της απόλυτης διατύπωσης («δεν μπορείς να γίνεις…»,
+#            «αποκλείεται να αποτύχεις») -- απορρίπτεται πάντα.
+_ABSOLUTE_CLAIMS = (
+    ("«γεννημένος/η για…»", re.compile(
+        r"\bγεννημεν\w*(?:\s+\w+){0,2}\s+(?:για|να)\b|\bborn\s+(?:to|for)\b|\bnatural[-\s]born\b"), True),
+    ("«πρέπει να γίνει/ακολουθήσει…»", re.compile(
+        r"\b(?:(?:θα\s+)?πρεπει|οφειλ\w*|ειναι\s+(?:απαραιτητο|αναγκαιο))\s+(?:οπωσδηποτε\s+|σιγουρα\s+|απαραιτητα\s+|οπωσδηποτε\s+)?να\s+(?:το\s+|τη\s+|την\s+|τον\s+)?"
+        + _ABS_CAREER_VERBS_GR + r"\b"
+        r"|\b(?:must|has\s+to|have\s+to|needs?\s+to|is\s+obliged\s+to|are\s+obliged\s+to)\s+"
+        r"(?:become|follow|pursue|choose|study|work\s+as)\b"), True),
+    ("«δεν μπορεί να κάνει…»", re.compile(
+        r"\bδεν\s+(?:θα\s+)?(?:μπορ\w*|ειναι\s+δυνατον)\s+να\s+"
+        r"(?:γιν\w*|κανει|κανεις|πετυχ\w*|ασχοληθ\w*|σπουδασ\w*|δουλεψ\w*|εργαστ\w*|ακολουθησ\w*|ταιριαξ\w*)\b"
+        r"|\b(?:can\s*not|can't|cannot|can\s+never|will\s+never|could\s+never)\s+"
+        r"(?:be(?:come)?\s+an?|do|succeed|work\s+as|pursue)\b"), False),
+    ("«το πεπρωμένο του…»", re.compile(
+        r"\bπεπρωμεν\w*|\bμοιραι\w*|\bειναι\s+γραφτο\b|\bπροορισμεν\w*|\bγραφτο\s+του\b"
+        r"|\bdestin(?:y|ed)\b|\bfated?\b|\bmeant\s+to\s+be(?:come)?\b"), True),
+    ("«το μοναδικό κατάλληλο επάγγελμα»", re.compile(
+        r"\b(?:μοναδικ\w*|μονο|μονη)\s+(?:\w+\s+){0,2}(?:καταλληλ\w*|σωστ\w*|ιδανικ\w*|δυνατ\w*)\s+(?:\w+\s+){0,1}"
+        r"(?:επαγγελμα\w*|επιλογ\w*|κατευθυνσ\w*|δρομο\w*|τομε\w*|καριερ\w*)"
+        r"|\bτο\s+(?:ιδανικο|τελειο)\s+επαγγελμα\b"
+        r"|\bthe\s+only\s+(?:\w+\s+){0,1}(?:suitable|right|possible|true)\s+(?:career|profession|job|path|choice|field)\b"
+        r"|\bonly\s+suitable\s+(?:career|profession|job|path|choice|field)\b"
+        r"|\bthe\s+(?:perfect|ideal)\s+(?:career|profession|job)\s+for\s+(?:you|him|her|them)\b"), True),
+    ("«ο χάρτης αποδεικνύει…»", re.compile(
+        r"\b(?:χαρτ\w*|αστρ\w*|πλανητ\w*)(?:\s+\w+){0,2}\s+(?:αποδεικνυ\w*|επιβεβαιωνει\s+(?:οτι|πως)|εγγυατ\w*)"
+        r"|\b(?:chart|stars|planets)(?:\s+\w+){0,2}\s+(?:proves?|guarantees?)\b"), True),
+    ("υπόσχεση βεβαιότητας", re.compile(
+        r"\b(?:σιγουρα|σιγουρη|βεβαιως|χωρις\s+αμφιβολια|αναμφισβητητα|οπωσδηποτε)\s+(?:\w+\s+){0,1}θα\s+" + _SUCCESS_GR +
+        r"|\bθα\s+(?:πετυχ|διαπρεψ)\w*\s+(?:σιγουρα|οπωσδηποτε|χωρις\s+αμφιβολια)"
+        r"|\bεπιτυχι\w*(?:\s+\w+){0,2}\s+(?:ειναι|θα\s+ειναι|εχει)\s+(?:\w+\s+)?"
+        r"(?:βεβαιη|σιγουρη|εξασφαλισμεν\w*|εγγυημεν\w*|δεδομενη|αναποφευκτη|προδιαγεγραμμεν\w*)"
+        r"|\bειναι\s+(?:βεβαιο|σιγουρο|δεδομενο)\s+(?:οτι|πως)\s+(?:\w+\s+){0,2}θα\s+" + _SUCCESS_GR +
+        r"|\bεγγυημεν\w*\s+επιτυχ\w*|\bεγγυαται\b"
+        r"|\b(?:are|you're|is|am)\s+(?:certain|sure|bound|guaranteed|destined)\s+to\s+" + _SUCCESS_EN + r"\b"
+        r"|\bsuccess\s+is\s+(?:certain|guaranteed|assured|inevitable)\b"
+        r"|\bwill\s+(?:definitely|certainly|surely|undoubtedly)\s+(?:succeed|excel|become|thrive)\b"
+        r"|\bguaranteed\s+(?:to\s+)?succe\w*"), True),
+    ("υπόσχεση βεβαιότητας (αποκλεισμός αποτυχίας)", re.compile(
+        r"\bαποκλειεται\s+να\s+(?:αποτυχ\w*|μην\s+" + _SUCCESS_GR + r")"
+        r"|\bδεν\s+υπαρχει\s+(?:καμια\s+)?(?:περιπτωση|πιθανοτητα|τροπος|κινδυνος)\s+να\s+(?:αποτυχ\w*|μην\s+" + _SUCCESS_GR + r")"
+        r"|\bδεν\s+(?:θα\s+)?(?:μπορ\w*|γινεται)\s+να\s+αποτυχ\w*"
+        r"|\b(?:αδυνατον|αδυνατο)\s+να\s+αποτυχ\w*|\bποτε\s+δεν\s+θα\s+αποτυχ\w*|\bδεν\s+θα\s+αποτυχ\w*"
+        r"|\b(?:can\s*not|can't|cannot|could\s*not|couldn't|will\s+not|won't|will\s+never)\s+(?:possibly\s+)?fail\b"
+        r"|\bimpossible\s+(?:for\s+\w+\s+)?to\s+fail\b|\bno\s+way\s+(?:\w+\s+)?(?:will|could|can)\s+fail\b"), False),
+)
+
+# Όρια «πρότασης» για τον έλεγχο άρνησης: στίξη (και η ελληνική άνω τελεία,
+# που μετά την κανονικοποίηση γίνεται «·»), και λέξεις που ξεκινούν νέο σκέλος
+# («ότι», «αλλά», "but"...). Έτσι «Δεν υπάρχει αμφιβολία ότι είσαι γεννημένος
+# για…» ΔΕΝ θεωρείται άρνηση: η άρνηση ανήκει σε άλλο σκέλος.
+_CLAUSE_BOUNDARY_RE = re.compile(r"[.;:!?\n·,—(]|\b(?:οτι|πως|αλλα|ομως|ενω|that|but|however|while)\b")
+_ABS_NEGATION_RE = re.compile(
+    r"\b(?:δεν|μην|μη|ουτε|ουδε|κανεις|κανενας|κανενα|καμια|καμιας|κανενος|ουδεις|οχι)\b"
+    r"|\b(?:not|no|never|neither|nor|nothing|none|nobody)\b|n't\b"
+)
+
+
+def _negated(plain: str, m: re.Match) -> bool:
+    boundaries = [b.end() for b in _CLAUSE_BOUNDARY_RE.finditer(plain, 0, m.start())]
+    clause_start = boundaries[-1] if boundaries else 0
+    return bool(_ABS_NEGATION_RE.search(plain[clause_start:m.end()]))
+
+
+def _absolute_claims(text: str) -> list[str]:
+    """Μηνύματα για κάθε απαγορευμένη απόλυτη διατύπωση στο καθαρό
+    παραδοτέο, με το απόσπασμα της πρότασης ώστε το μοντέλο να ξέρει τι να
+    διορθώσει. Ελέγχεται με ισορροπημένα ζεύγη (tests/absolute_claim_pairs.py):
+    και τι πρέπει να απορρίπτεται ΚΑΙ τι πρέπει να επιτρέπεται.
+
+    Περιορισμός: μηχανικός έλεγχος γνωστών μορφών -- όχι πλήρης κατανόηση νοήματος."""
+    plain = _strip_greek_diacritics(text or "").casefold()  # η casefold κάνει «ς» -> «σ»
+    source = text if len(text or "") == len(plain) else plain
+    found = []
+    for label, pattern, negatable in _ABSOLUTE_CLAIMS:
+        rx = re.compile(pattern.pattern.replace("ς", "σ"), re.IGNORECASE)
+        for m in rx.finditer(plain):
+            if negatable and _negated(plain, m):
+                continue
+            starts = [plain.rfind(c, 0, m.start()) for c in ".\n;!?·"]
+            start = max(starts) + 1
+            ends = [i for i in (plain.find(c, m.end()) for c in ".\n;!?·") if i != -1]
+            end = min(ends) if ends else len(plain)
+            snippet = source[start:end].strip()
+            if len(snippet) > 160:
+                snippet = snippet[:157] + "…"
+            found.append(
+                f"Απαγορευμένη απόλυτη διατύπωση ({label}): «{snippet}». Ξαναδιατύπωσέ την ως δυνατότητα "
+                "προς διερεύνηση (π.χ. «φαίνεται να διαθέτει…», «αξίζει να διερευνηθεί…», «θα μπορούσε να δοκιμάσει…»)."
+            )
+            break  # ένα μήνυμα ανά τύπο αρκεί
+    return found
+
+
 def _simple_presentation_technical_terms(text: str) -> list[str]:
     """Η απλή έκδοση πελάτη δεν πρέπει να εκθέτει τεχνική αστρολογική γλώσσα."""
     # Fix (English mode, κριτική): οι λίστες πιάνουν πλέον και τα αγγλικά
@@ -1190,15 +1350,58 @@ def _name_consistency_issue(personal: dict | None, text: str) -> str | None:
 # Fix (deep review κριτική #3, σοβαρό): πριν το μοτίβο ήταν αμιγώς ελληνικό
 # -- ένα αγγλικό παραδοτέο που πρότεινε "doctor" ή "surgeon" περνούσε χωρίς
 # να ενεργοποιήσει καθόλου τον αυστηρό έλεγχο τεκμηρίωσης Υγείας.
-_HEALTH_CAREER_RE = re.compile(
-    r"\b(?:ιατρ(?:ός|ού|ική|ικής)|γιατρ(?:ός|ού)|νοσηλευτ\w*|φαρμακοποι\w*|"
-    r"ψυχολόγ\w*|εργοθεραπευτ\w*|διατροφολόγ\w*|φυσικοθεραπευτ\w*|"
-    r"οδοντίατρ\w*|κτηνίατρ\w*|μαία|μαιευτ\w*"
-    r"|doctors?|physicians?|surgeons?|nurses?|pharmacists?|psychologists?|"
-    r"dietitians?|nutritionists?|occupational\s+therapists?|physiotherapists?|"
-    r"dentists?|veterinarians?|midwi(?:fe|ves))\b",
+# Fix (v18.1, εξωτερική κριτική #1): το παλιό μοτίβο έπιανε «ιατρός/γιατρός»
+# αλλά ΟΧΙ τις ιατρικές ειδικότητες («Καρδιολόγος», «Παιδίατρος», «Ψυχίατρος»,
+# «Ακτινολόγος»...) -- ένα επάγγελμα υγείας περνούσε χωρίς τη χωριστή
+# τεκμηρίωση. Επίσης έψαχνε με τόνους, οπότε «ΙΑΤΡΟΣ» (κεφαλαία, χωρίς
+# τόνο) ή «Ιατρος» δεν ενεργοποιούσαν τον φραγμό.
+# Τώρα η αναζήτηση γίνεται σε κείμενο ΧΩΡΙΣ τόνους, και καλύπτει:
+#   - κάθε λέξη με ρίζα «-ιατρ-» (ιατρός, γιατρός, παιδίατρος, ψυχίατρος,
+#     οφθαλμίατρος, οδοντίατρος, κτηνίατρος, γηρίατρος, ιατρική...)
+#   - τις ιατρικές ειδικότητες σε «-λόγος» ΡΗΤΑ (όχι γενικό «-λογ-», που θα
+#     έπιανε φιλόλογο, γεωλόγο, βιολόγο)
+#   - θεραπευτές ΜΟΝΟ ως ουσιαστικό με πρόθημα (φυσικοθεραπευτής,
+#     λογοθεραπευτής...) -- όχι το επίθετο «θεραπευτικός»
+#   - ψυχολόγο/παθολόγο ΜΟΝΟ ως πρόσωπο -- όχι «ψυχολογική ανθεκτικότητα»,
+#     «παθολογική ανησυχία», που θα απέρριπταν άδικα το κείμενο.
+_GR_PERSON_SUFFIX = r"(?:ος|ου|ο|οι|ων|ους|ε|α|ας)"
+_HEALTH_CAREER_GR_RE = re.compile(
+    # v18.2: ΟΧΙ πια γενική ρίζα «\w*ιατρ\w*» -- έπιανε και τη «Βιοϊατρική
+    # τεχνολογία» / «Μηχανικό βιοϊατρικής» (τεχνολογία υγείας, όχι κλινικό
+    # επάγγελμα). Τώρα μόνο συγκεκριμένα κλινικά πρόσωπα/ειδικότητες και η
+    # αυτοτελής λέξη «Ιατρική».
+    r"\b(?:γ?ιατρ(?:ος|ου|ο|οι|ων|ους|ε|ισσα|ισσες|ισσας)\b|ιατρικ\w*"
+    r"|(?:παιδ|ψυχ|παιδοψυχ|οφθαλμ|οδοντ|κτην|γηρ|φυσ)ιατρ\w*"
+    r"|(?:καρδιο|νευρο|ογκο|δερματο|ακτινο|αναισθησιο|γυναικο|ενδοκρινο|γαστρεντερο|πνευμονο|"
+    r"νεφρο|ουρο|αιματο|ρευματο|ωτορινολαρυγγο|νεογνο|αλλεργιο|τοξικο|επιδημιο|διατροφο|διαιτο|"
+    # v18.2: «ακουολο»+«λογ» έδινε «ακουολολογ» -- ο «Ακουολόγος» δεν πιανόταν.
+    r"ακουο|ακτινοτεχνο)λογ\w*"
+    r"|(?:ψυχο|παθο)λογ" + _GR_PERSON_SUFFIX + r"\b"
+    r"|χειρουργ\w*|ορθοπ[αε]ιδικ(?:ος|ου|οι|ων|ους)\b|νοσηλευτ\w*|φαρμακοποι\w*"
+    r"|\w+θεραπευτ(?:ης|η|ες|ων|ρια|ριες|ριας)\b|μαια|μαιες|μαιευτ\w*|διασωστ\w*|τραυματιοφορ\w*"
+    r"|ακτινοφυσικ\w*|οπτομετρ\w*|χειροπρακτ\w*|οστεοπαθ\w*|ακτινολογ\w*)",
     re.IGNORECASE,
 )
+_HEALTH_CAREER_EN_RE = re.compile(
+    r"\b(?:doctors?|physicians?|surgeons?|nurses?|pharmacists?|psychologists?|psychiatrists?|"
+    r"dietitians?|dieticians?|nutritionists?|\w*therapists?|dentists?|orthodontists?|veterinarians?|"
+    r"midwi(?:fe|ves)|paramedics?|emts?|pediatricians?|paediatricians?|obstetricians?|geriatricians?|"
+    r"(?:cardio|neuro|onco|dermato|radio|anesthesio|anaesthesio|gyneco|gynaeco|endocrino|gastroentero|"
+    r"pulmono|nephro|uro|hemato|haemato|rheumato|patho|ophthalmo|otolaryngo|neonato|immuno|allergo|audio)logists?|"
+    r"anaesthetists?|anesthetists?|optometrists?|radiographers?|sonographers?|chiropractors?|osteopaths?|"
+    r"medical\s+physicists?)\b",
+    re.IGNORECASE,
+)
+# Συμβατότητα: κάποιος κώδικας/tests μπορεί να χρησιμοποιεί ακόμη το παλιό όνομα.
+_HEALTH_CAREER_RE = _HEALTH_CAREER_EN_RE
+
+
+def _health_career_mentioned(text: str) -> bool:
+    plain = _strip_greek_diacritics(text or "").replace("ς", "σ").replace("Σ", "σ")
+    # Τα ελληνικά μοτίβα είναι γραμμένα με τελικό «ς»· επαναφέρεται το τελικό
+    # σίγμα στο τέλος κάθε λέξης ώστε να ταιριάζει ανεξάρτητα από κεφαλαία.
+    plain_gr = re.sub(r"σ\b", "ς", plain)
+    return bool(_HEALTH_CAREER_GR_RE.search(plain_gr) or _HEALTH_CAREER_EN_RE.search(plain))
 
 
 def _career_norm(value: str) -> str:
@@ -1250,7 +1453,7 @@ def _between_headings(text: str, start: str, ends: tuple[str, ...]) -> str:
     return tail[:min(end_positions)] if end_positions else tail
 
 
-def _career_consistency_errors(client_text: str, audit_text: str) -> list[str]:
+def _career_consistency_errors(client_text: str, audit_text: str, chart=None) -> list[str]:
     """Cross-check the client career choices against an explicit audit manifest.
 
     This is deliberately lexical, not an astrological interpretation engine: the
@@ -1370,7 +1573,7 @@ def _career_consistency_errors(client_text: str, audit_text: str) -> list[str]:
             if len(base) >= 3 and _career_norm(base) not in approved_jobs_norm:
                 errors.append(f"Το επάγγελμα «{job}» δεν έχει εγκριθεί στο τεχνικό δελτίο.")
 
-    if _HEALTH_CAREER_RE.search(client_text):
+    if _health_career_mentioned(client_text):
         health_block = _between_headings(
             audit_text,
             r"ΡΗΤΗ\s+ΤΕΚΜΗΡΙΩΣΗ\s+ΤΟΜΕΑ\s+ΥΓΕΙΑΣ",
@@ -1413,10 +1616,34 @@ def _career_consistency_errors(client_text: str, audit_text: str) -> list[str]:
                     "Ο «Δείκτης 1» και ο «Δείκτης 2» της τεκμηρίωσης Υγείας είναι ουσιαστικά "
                     "ο ίδιος δείκτης γραμμένος δύο φορές — χρειάζονται δύο πραγματικά διαφορετικοί δείκτες."
                 )
-            if appendix_norm:
-                # Κάθε δείκτης πρέπει να έχει ουσιαστική αντιστοιχία (τουλάχιστον ένα
-                # κοινό ζεύγος λέξεων 4+ χαρακτήρων, π.χ. τα δύο ονόματα πλανητών/σημείων
-                # και τον τύπο όψης) μέσα στο πραγματικό Παράρτημα Όψεων.
+            if chart is not None:
+                # Fix (v18.1, εξωτερική κριτική #2): πριν αρκούσαν δύο κοινές
+                # λέξεις 4+ γραμμάτων με το Παράρτημα -- δύο ονόματα πλανητών
+                # περνούσαν ακόμη κι αν ο δείκτης έλεγε «Τρίγωνο» ενώ η πραγματική
+                # όψη ήταν «Τετράγωνο». Τώρα, όπως οι δείκτες των ταλέντων (και όπως
+                # ορίζει ήδη ο Κανόνας 15: «στη δομημένη μορφή του Κανόνα 16»),
+                # κάθε δείκτης Υγείας ελέγχεται ΑΚΡΙΒΩΣ πάνω στον πραγματικό χάρτη:
+                # σημείο, ζώδιο, Οίκος, τύπος όψης. Καμία εικασία από λέξεις.
+                for label, indicator in (("1", indicator_1), ("2", indicator_2)):
+                    problem = _indicator_grounding_error(indicator, chart)
+                    if problem:
+                        errors.append(
+                            f"Ο «Δείκτης {label}» της τεκμηρίωσης Υγείας («{indicator}») {problem}."
+                        )
+                if norm_1 != norm_2:
+                    fp_1 = _indicator_fingerprint(indicator_1, chart)
+                    if fp_1 is not None and fp_1 == _indicator_fingerprint(indicator_2, chart):
+                        errors.append(
+                            "Ο «Δείκτης 1» και ο «Δείκτης 2» της τεκμηρίωσης Υγείας είναι ουσιαστικά "
+                            "ο ίδιος δείκτης γραμμένος δύο φορές — χρειάζονται δύο πραγματικά διαφορετικοί δείκτες."
+                        )
+                if not appendix_norm:
+                    errors.append(
+                        "Δεν βρέθηκε «Παράρτημα Επιβεβαιωμένων Όψεων» στο τεχνικό δελτίο, οπότε οι "
+                        "δείκτες Υγείας δεν μπορούν να επαληθευτούν έναντι πραγματικών όψεων."
+                    )
+            elif appendix_norm:
+                # Χωρίς χάρτη (μόνο σε μεμονωμένα tests): παλιός, χαλαρός έλεγχος.
                 def _grounded(indicator_norm: str) -> bool:
                     tokens = [t for t in indicator_norm.split() if len(t) >= 4]
                     hits = sum(1 for t in tokens if t in appendix_norm)
@@ -1754,10 +1981,11 @@ def validate_orientation(chart, text: str, personal: dict | None = None,
         exposed = _simple_presentation_technical_terms(text)
         if exposed:
             technical.append("Η απλή παρουσίαση περιέχει τεχνικά αστρολογικά δεδομένα: " + ", ".join(exposed) + ".")
+        technical.extend(_absolute_claims(text))
         _audit = _orientation_audit_errors(chart, audit_text or "", text)
         technical.extend(_audit)
         breakdown["audit"] += len(_audit)
-        _career = _career_consistency_errors(text, audit_text or "")
+        _career = _career_consistency_errors(text, audit_text or "", chart)
         technical.extend(_career)
         breakdown["career"] += len(_career)
         if short_simple:
