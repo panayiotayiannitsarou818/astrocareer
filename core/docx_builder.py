@@ -169,6 +169,28 @@ def _render_markdown_body(d, text, numbered_headings_as_bullets=False):
 # λείψανο του "AstroCheck Analysis" sibling app.
 
 
+def _strip_repeated_heading(analysis, doc_title, subtitle_name):
+    """v18.6: το εργαλείο βάζει ΗΔΗ τίτλο υπηρεσίας και όνομα στην κορυφή.
+    Το μοντέλο (σωστά, κατά τον Κανόνα 3) τα γράφει κι αυτό στην αρχή του
+    κειμένου του -- στην αυτόματη ροή εμφανίζονταν ΔΥΟ φορές. Αφαιρούνται
+    μόνο ΑΡΧΙΚΕΣ γραμμές που είναι ακριβώς ο τίτλος ή το όνομα (αγνοώντας
+    #, **, κενά και κεφαλαία/τόνους)· τίποτε άλλο δεν αγγίζεται."""
+    import re as _re
+    import unicodedata as _ud
+
+    def norm(x):
+        x = _re.sub(r"[#*_]+", "", x or "").strip().rstrip(":")
+        x = "".join(c for c in _ud.normalize("NFD", x) if _ud.category(c) != "Mn")
+        return _re.sub(r"\s+", " ", x).casefold()
+
+    targets = {norm(doc_title), norm(subtitle_name)} - {""}
+    lines = (analysis or "").splitlines()
+    i = 0
+    while i < len(lines) and (not lines[i].strip() or norm(lines[i]) in targets):
+        i += 1
+    return "\n".join(lines[i:])
+
+
 def build_orientation_client_docx(doc_title, subtitle_name, analysis):
     """Καθαρό Word για τον ΠΕΛΑΤΗ της υπηρεσίας προσανατολισμού.
 
@@ -210,16 +232,19 @@ def build_orientation_client_docx(doc_title, subtitle_name, analysis):
 
     # Δεύτερη γραμμή του ίδιου κεντρικού τίτλου (το όνομα) -- ίδιο μέγεθος
     # 18pt όπως ζητήθηκε, με αρκετό λευκό κενό μετά πριν ξεκινήσει το σώμα.
-    s=d.add_paragraph(); s.paragraph_format.space_after=Pt(18); s.alignment=WD_ALIGN_PARAGRAPH.CENTER
-    name_run=s.add_run(subtitle_name); name_run.bold=True; name_run.font.name='Aptos Display'
-    name_run.font.size=Pt(18); name_run.font.color.rgb=RGBColor(0,0,0)
+    if (subtitle_name or "").strip():
+        s=d.add_paragraph(); s.paragraph_format.space_after=Pt(18); s.alignment=WD_ALIGN_PARAGRAPH.CENTER
+        name_run=s.add_run(subtitle_name); name_run.bold=True; name_run.font.name='Aptos Display'
+        name_run.font.size=Pt(18); name_run.font.color.rgb=RGBColor(0,0,0)
+    else:  # χωρίς όνομα: μόνο ο τίτλος, με το ίδιο κενό πριν το σώμα
+        p.paragraph_format.space_after=Pt(18)
 
     # Αρίθμηση σελίδας στο footer (π.χ. "1 / 2") -- ζητήθηκε ρητά να ξαναμπεί.
     footer_p = sec.footer.paragraphs[0] if sec.footer.paragraphs else sec.footer.add_paragraph()
     footer_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     _add_page_number_field(footer_p)
 
-    _render_markdown_body(d, analysis)
+    _render_markdown_body(d, _strip_repeated_heading(analysis, doc_title, subtitle_name))
     bio=BytesIO(); d.save(bio); return bio.getvalue()
 
 

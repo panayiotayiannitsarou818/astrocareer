@@ -147,3 +147,61 @@ class CostTracker:
     def format(self) -> str:
         star = " *" if self.unknown_price else ""
         return f"€{self.total_eur:.2f} / ${self.total_usd:.2f}{star} ({len(self.calls)} κλήσεις)"
+
+
+# ---------------------------------------------------------------- εκτίμηση ΠΡΙΝ την ανάλυση (v18.7)
+import tempfile as _tempfile
+from pathlib import Path as _Path
+
+# Τυπική έξοδος μιας απάντησης (παραδοτέο + τεχνικό δελτίο), μέχρι να
+# υπάρξουν πραγματικές μετρήσεις.
+DEFAULT_OUTPUT_TOKENS_ESTIMATE = 14000
+_HISTORY_FILE = _Path(_tempfile.gettempdir()) / "astrocheck_career_costs.json"
+_HISTORY_KEEP = 50
+
+
+def _load_history(path: _Path = _HISTORY_FILE) -> list[dict]:
+    try:
+        data = json.loads(path.read_text())
+        return [d for d in data if isinstance(d, dict)][-_HISTORY_KEEP:]
+    except (OSError, ValueError, TypeError):
+        return []
+
+
+def record_report_cost(usd: float, calls: int, avg_output_tokens: float, path: _Path = _HISTORY_FILE) -> None:
+    """Κρατά το πραγματικό κόστος κάθε εγκεκριμένης αναφοράς (μόνο αριθμοί --
+    κανένα προσωπικό στοιχείο). Στο Streamlit Cloud σβήνεται σε επανεκκίνηση."""
+    data = _load_history(path) + [{"usd": round(usd, 4), "calls": calls, "out": round(avg_output_tokens)}]
+    try:
+        path.write_text(json.dumps(data[-_HISTORY_KEEP:]))
+    except OSError:
+        pass
+
+
+def cost_history_summary(path: _Path = _HISTORY_FILE) -> dict | None:
+    data = _load_history(path)
+    if not data:
+        return None
+    usd = sorted(d["usd"] for d in data)
+    return {
+        "n": len(data),
+        "avg_usd": sum(usd) / len(usd),
+        "min_usd": usd[0],
+        "max_usd": usd[-1],
+        "avg_calls": sum(d["calls"] for d in data) / len(data),
+        "avg_out": sum(d["out"] for d in data) / len(data),
+    }
+
+
+def estimate_report_cost(model: str, prompt: str, counted_tokens: int | None = None,
+                         output_tokens: float | None = None) -> dict:
+    """Εκτίμηση κόστους ΠΡΙΝ την ανάλυση: από 1 κλήση (εγκρίνεται αμέσως)
+    έως 3 κλήσεις (2 διορθώσεις). Κάθε διόρθωση στέλνει πίσω και την
+    προηγούμενη απάντηση, άρα έχει μεγαλύτερη είσοδο."""
+    in_tok = counted_tokens or int(len(prompt or "") / 2)  # ~2 χαρακτήρες/token για ελληνικά
+    out_tok = output_tokens or DEFAULT_OUTPUT_TOKENS_ESTIMATE
+    (p_in, p_out), known = price_for(model)
+    first = in_tok / 1e6 * p_in + out_tok / 1e6 * p_out
+    correction = (in_tok + out_tok) / 1e6 * p_in + out_tok / 1e6 * p_out
+    return {"low_usd": first, "high_usd": first + 2 * correction, "input_tokens": in_tok,
+            "output_tokens": int(out_tok), "counted": bool(counted_tokens), "known_price": known}

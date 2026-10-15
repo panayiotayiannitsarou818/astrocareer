@@ -71,7 +71,10 @@ def _point(code, name, sign_code, d, m, s, house=None, retro=False, kind="planet
 
 def _metadata(text: str, filename: str):
     first = text.splitlines()[:14]
-    name = filename.rsplit(".", 1)[0]
+    # v18.8: αν το PDF δεν έχει όνομα (χάρτης χωρίς όνομα στο Astrodienst), το
+    # όνομα μένει ΚΕΝΟ -- πριν έμπαινε το όνομα του αρχείου (π.χ. «astro_w_809135»)
+    # και γινόταν τίτλος της αναφοράς.
+    name = ""
     date = time = place = ""
     for line in first:
         if "Time" in line and not time:

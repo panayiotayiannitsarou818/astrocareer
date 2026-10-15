@@ -286,3 +286,56 @@ def test_validator_has_no_duplicate_top_level_names():
             names += [t.id for t in node.targets if isinstance(t, ast.Name)]
     dups = [n for n, c in Counter(names).items() if c > 1]
     assert not dups, dups
+
+
+# ---------------------------------------------------------------- v18.6: πρώτη πραγματική αναφορά
+def test_title_and_name_not_duplicated_when_model_repeats_them():
+    """Στην πρώτη πραγματική αναφορά τίτλος+όνομα εμφανίζονταν δύο φορές."""
+    from core.docx_builder import build_orientation_client_docx
+    from core.reference_loader import docx_text_in_order
+    title = "Ανάδειξη Ταλέντων και Διερεύνηση Επαγγελματικών Επιλογών"
+    body = f"# {title}\n**Panayiota**\n\nΣύντομο προφίλ\nΚείμενο.\n"
+    text = docx_text_in_order(build_orientation_client_docx(title, "Panayiota", body))
+    assert text.count(title) == 1 and text.count("Panayiota") == 1
+    assert "Σύντομο προφίλ" in text and "Κείμενο." in text
+
+
+def test_name_inside_body_is_kept():
+    from core.docx_builder import build_orientation_client_docx
+    from core.reference_loader import docx_text_in_order
+    body = "Σύντομο προφίλ\nΗ Μαρία φαίνεται να διαθέτει δυνατότητα.\nΜαρία\n"
+    text = docx_text_in_order(build_orientation_client_docx("Τίτλος", "Μαρία", body))
+    assert text.count("Μαρία") == 3   # τίτλος + 2 μέσα στο σώμα (μόνο οι ΑΡΧΙΚΕΣ γραμμές αφαιρούνται)
+
+
+def test_report_with_repeated_heading_still_approved():
+    raw = GOOD.replace("===CLIENT_DELIVERABLE===\n",
+                       "===CLIENT_DELIVERABLE===\n# Ανάδειξη Ταλέντων και Διερεύνηση Επαγγελματικών Επιλογών\n**Test**\n", 1)
+    assert _check(raw).ok
+
+
+# ---------------------------------------------------------------- v18.8: χωρίς πεδίο ονόματος
+def test_pdf_without_name_gives_empty_name_not_filename():
+    from core.parser import parse_astrodienst_pdf
+    data = open("tests/fixtures/astro_paradeigma_2.pdf", "rb").read()
+    assert parse_astrodienst_pdf(data, "astro_w_809135.pdf").name == ""
+
+
+def test_pdf_with_name_keeps_it():
+    from core.parser import parse_astrodienst_pdf
+    data = open("tests/fixtures/astro_paradeigma.pdf", "rb").read()
+    assert parse_astrodienst_pdf(data, "x.pdf").name == "Paradeigma"
+
+
+def test_report_without_name_is_approved_and_has_no_name_line():
+    from core.reference_loader import docx_text_in_order
+    check, _, _, client_docx, _ = pipeline.evaluate_response(CHART, "", GOOD)
+    assert check.ok, check.details_lines()
+    first_lines = docx_text_in_order(client_docx).splitlines()[:2]
+    assert first_lines[0] == pipeline.SERVICE_TITLE and first_lines[1] == "Σύντομο προφίλ"
+
+
+def test_prompt_tells_model_not_to_invent_a_name():
+    assert "Μη γράψεις κανένα όνομα" in pipeline.build_auto_prompt(CHART, "", "el")
+    assert "Do not write or invent any name" in pipeline.build_auto_prompt(CHART, "", "en")
+    assert pipeline.client_docx_filename("") == "AstroCheck_Anadeixi_Talenton.docx"

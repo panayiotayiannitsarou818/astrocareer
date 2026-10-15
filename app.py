@@ -23,13 +23,13 @@ import streamlit as st
 
 from core import eta
 from core.case_state import reset_case_state
-from core.costs import CostTracker, eur_per_usd
+from core.costs import CostTracker, cost_history_summary, estimate_report_cost, eur_per_usd, record_report_cost
 from core.docx_builder import build_orientation_docx
 from core.generator import API_KEY_NAMES, DEFAULT_PROVIDER, PROVIDER_LABELS, PROVIDERS, default_model
 from core.i18n import TR
 from core.parser import parse_astrodienst_pdf
 from core.pipeline import (
-    CLIENT_OUTPUT_NAME, PRESENTATION, SERVICE_TITLE, RunState, Settings, audit_docx_filename, build_context,
+    CLIENT_OUTPUT_NAME, PRESENTATION, SERVICE_TITLE, RunState, Settings, build_auto_prompt, audit_docx_filename, build_context,
     client_docx_filename, language_clause, make_generate_fn, reinforcement_instructions, run_pipeline,
 )
 from core.prompts import build_orientation_source
@@ -138,6 +138,52 @@ with st.sidebar:
                         st.caption(t["admin_unknown_price"])
                     st.caption(t["admin_cost_note"].format(rate=eur_per_usd()))
 
+def _parse_cached(uploaded):
+    """Διαβάζει το PDF ΜΙΑ φορά ανά αρχείο (κλειδί: αποτύπωμα περιεχομένου)."""
+    data = uploaded.getvalue()
+    digest = hashlib.sha256(data).hexdigest()
+    cache = ss.setdefault("parsed_pdfs", {})
+    if digest not in cache:
+        try:
+            cache[digest] = (parse_astrodienst_pdf(data, uploaded.name), None)
+        except Exception as err:  # noqa: BLE001
+            cache[digest] = (None, err)
+    return (digest,) + cache[digest]
+
+
+def _show_cost_estimate(chart, display_name):
+    """Διαχείριση: εκτίμηση κόστους ΠΡΙΝ πατηθεί το κουμπί. Υπολογίζεται μία
+    φορά ανά χάρτη/όνομα/γλώσσα/μοντέλο (η καταμέτρηση tokens είναι αίτημα
+    στην Anthropic -- δεν επαναλαμβάνεται σε κάθε ανανέωση της σελίδας)."""
+    model = default_model(provider)
+    prompt = build_auto_prompt(chart, display_name, lang)
+    key = (hashlib.sha256(prompt.encode("utf-8")).hexdigest(), model)
+    cache = ss.setdefault("cost_estimates", {})
+    if key not in cache:
+        counter = getattr(make_generate_fn(provider, api_key), "count_tokens", None)
+        try:
+            counted = counter(prompt) if counter else None
+        except Exception:  # noqa: BLE001
+            counted = None
+        hist = cost_history_summary()
+        cache[key] = (estimate_report_cost(model, prompt, counted, hist["avg_out"] if hist else None), hist)
+    est, hist = cache[key]
+    rate = eur_per_usd()
+    lines = [t["estimate_line"].format(
+        lo_eur=est["low_usd"] * rate, hi_eur=est["high_usd"] * rate,
+        lo_usd=est["low_usd"], hi_usd=est["high_usd"], model=model)]
+    lines.append(t["estimate_basis"].format(
+        tin=est["input_tokens"], how=t["estimate_counted"] if est["counted"] else t["estimate_approx"],
+        tout=est["output_tokens"]))
+    if hist:
+        lines.append(t["estimate_history"].format(
+            avg_eur=hist["avg_usd"] * rate, min_eur=hist["min_usd"] * rate, max_eur=hist["max_usd"] * rate,
+            n=hist["n"], calls=hist["avg_calls"]))
+    if not est["known_price"]:
+        lines.append(t["admin_unknown_price"])
+    st.info("\n\n".join(lines))
+
+
 def _auto_tab():
     """🤖 Αυτόματη: PDF -> ένα κουμπί -> εγκεκριμένο έντυπο."""
     # ---------------------------------------------------------------- σελίδα πελάτη
@@ -151,7 +197,16 @@ def _auto_tab():
     st.subheader(t["step1_title"])
     st.caption(t["typical_time"].format(lo=lo, hi=hi))
     pdf = st.file_uploader(t["pdf_uploader"], type=['pdf'], key=f"pdf_{ss.uploader_gen}")
-    name_input = st.text_input(t["name_label"], key=f"name_input_{ss.uploader_gen}", placeholder=t["name_placeholder"])
+    preview, preview_err = None, None
+    if pdf is not None:
+        _, preview, preview_err = _parse_cached(pdf)
+        if preview_err is not None:
+            st.error(t["pdf_error"])
+            if is_admin:
+                with st.expander(t["technical_detail"]): st.code(str(preview_err))
+    # Όνομα: μόνο από το PDF. Αν το PDF δεν έχει όνομα, η αναφορά βγαίνει χωρίς όνομα.
+    if is_admin and preview is not None and api_key:
+        _show_cost_estimate(preview, preview.name)
 
     STEPS = {1: "step_read", 2: "step_write", 3: "step_check", 4: "step_final"}
 
@@ -206,6 +261,7 @@ def _auto_tab():
 
         # Το αντικείμενο προόδου υπάρχει στη συνεδρία ΠΡΙΝ την πρώτη κλήση, ώστε
         # κάθε βελτίωση να σώζεται αμέσως -- ακόμη κι αν η εκτέλεση κοπεί απότομα.
+        calls_before = len(case["cost"].calls)
         if case.get("state") is None:
             case["state"] = RunState(fingerprint="")
         case["name"] = display_name
@@ -224,6 +280,11 @@ def _auto_tab():
         show_minutes = (time.time() - started) / 60
         if result.ok and not resume:
             eta.record_duration(show_minutes)
+        run_calls = case["cost"].calls[calls_before:]
+        if result.ok and run_calls:
+            # Πραγματικό κόστος αυτής της αναφοράς -> μέσος όρος για τις επόμενες εκτιμήσεις.
+            record_report_cost(sum(c["cost_usd"] for c in run_calls), len(run_calls),
+                               sum(c["output_tokens"] for c in run_calls) / len(run_calls))
         ss.auto_result = {
             "ok": result.ok, "reason": result.stopped_reason, "attempts": result.attempts,
             "resumable": result.resumable, "error_key": result.error_key, "error_detail": result.error_detail,
@@ -235,7 +296,8 @@ def _auto_tab():
             log.update(state="complete", expanded=False)
 
 
-    run_clicked = st.button(t["run_button"], type="primary", use_container_width=True, disabled=not pdf or not api_key)
+    ready = pdf is not None and preview is not None
+    run_clicked = st.button(t["run_button"], type="primary", use_container_width=True, disabled=not ready or not api_key)
 
     if run_clicked:
         ss.pop("auto_result", None)
@@ -244,21 +306,13 @@ def _auto_tab():
         case = ss.cases.get(case_key)
         step1 = st.progress(0.0, text=t["progress_line"].format(step=1, label=t["step_read"], lo=lo, hi=hi, tlo=lo, thi=hi))
         if case is None:
-            try:
-                chart = parse_astrodienst_pdf(pdf_bytes, pdf.name)
-            except Exception as err:  # noqa: BLE001
-                step1.empty()
-                st.error(t["pdf_error"])
-                if is_admin:
-                    with st.expander(t["technical_detail"]): st.code(str(err))
-                return
             # Ίδιο PDF ξανά -> ίδιο case: ο μετρητής και η πρόοδος ΔΕΝ μηδενίζονται.
-            case = {"chart": chart, "cost": CostTracker(), "state": None, "name": None}
+            case = {"chart": preview, "cost": CostTracker(), "state": None, "name": None}
             ss.cases[case_key] = case
         step1.empty()
         ss.current_case = case_key
         ss.chart = case["chart"]
-        _run(case_key, case, (name_input or "").strip() or case["chart"].name)
+        _run(case_key, case, case["chart"].name)
         st.rerun()
 
     # ---------------------------------------------------------------- αποτέλεσμα
@@ -288,7 +342,7 @@ def _auto_tab():
                 st.write("")
                 if st.button(t["resume_button"], type="primary", use_container_width=True):
                     ss.pop("auto_result", None)
-                    display_name = (name_input or "").strip() or case.get("name") or case["chart"].name
+                    display_name = case["chart"].name
                     _run(ss.current_case, case, display_name, resume=True)
                     st.rerun()
             if is_admin:
@@ -316,7 +370,7 @@ def _auto_tab():
         st.markdown(f'<div class="warn">{t["customer_interrupted"]}</div>', unsafe_allow_html=True)
         st.write("")
         if st.button(t["resume_button"], type="primary", use_container_width=True, key="resume_after_cut"):
-            _run(ss.current_case, case, (name_input or "").strip() or case.get("name") or case["chart"].name, resume=True)
+            _run(ss.current_case, case, case["chart"].name, resume=True)
             st.rerun()
 
 
@@ -341,9 +395,8 @@ def _manual_tab():
     if not chart:
         st.info(t["manual_need_pdf"])
         return
-    st.success(t["manual_chart_loaded"].format(name=chart.name))
-    manual_name = st.text_input(t["name_label"], key=f"manual_name_{ss.uploader_gen}", placeholder=t["name_placeholder"])
-    display_name = (manual_name or "").strip() or chart.name
+    st.success(t["manual_chart_loaded"].format(name=chart.name or "—"))
+    display_name = chart.name  # μόνο από το PDF· κενό = αναφορά χωρίς όνομα
 
     st.markdown(t["manual_step1"])
     context = build_context(display_name, lang)

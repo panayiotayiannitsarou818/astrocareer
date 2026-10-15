@@ -103,8 +103,9 @@ def main(argv=None) -> int:
             total_cost.calls.extend(chart_cost.calls)
         print(f"  κόστος: {chart_cost.format()}")
 
-        client_name = client_docx_filename(chart.name)
-        audit_name = audit_docx_filename(chart.name)
+        file_label = chart.name or pdf.stem  # χωρίς όνομα στο PDF: το όνομα του αρχείου, ΜΟΝΟ για τα αρχεία εξόδου
+        client_name = client_docx_filename(file_label)
+        audit_name = audit_docx_filename(file_label)
         if result.raw is None:
             print(f"  ✗ Καμία απόπειρα ({result.stopped_reason}: {result.error_key}) {result.error_detail or ''}")
             if result.stopped_reason == "permanent_error":

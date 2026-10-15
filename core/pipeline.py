@@ -101,6 +101,12 @@ def language_clause(lang: str) -> str:
 
 
 def reinforcement_instructions(name: str, lang: str) -> str:
+    if not (name or "").strip():
+        if lang == "el":
+            return ("Δεν δόθηκε όνομα πελάτη. Μη γράψεις κανένα όνομα και μην επινοήσεις όνομα· "
+                    "απευθύνσου στον αναγνώστη απευθείας, χωρίς όνομα.")
+        return ("No client name was given. Do not write or invent any name; "
+                "address the reader directly, without a name.")
     if lang == "el":
         return (f"Όνομα πελάτη: «{name}». Γράψε το ακριβώς όπως δόθηκε από τον χρήστη, διατηρώντας τους ίδιους "
                 "χαρακτήρες, τόνους, ορθογραφία και κενά. Μην το μεταγράψεις, μην το μεταφράσεις και μην το "
