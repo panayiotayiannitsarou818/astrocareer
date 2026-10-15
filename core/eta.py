@@ -15,7 +15,7 @@ import os
 import tempfile
 from pathlib import Path
 
-DEFAULT_RANGE = (10.0, 25.0)
+DEFAULT_RANGE = (5.0, 10.0)  # πρώτη πραγματική αναφορά: 7–8 λεπτά
 _FILE = Path(tempfile.gettempdir()) / "astrocheck_career_durations.json"
 _KEEP = 30
 

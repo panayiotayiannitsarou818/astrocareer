@@ -195,7 +195,6 @@ def _auto_tab():
     lo, hi = eta.typical_range()
     st.caption(t["service_note"])
     st.subheader(t["step1_title"])
-    st.caption(t["typical_time"].format(lo=lo, hi=hi))
     pdf = st.file_uploader(t["pdf_uploader"], type=['pdf'], key=f"pdf_{ss.uploader_gen}")
     preview, preview_err = None, None
     if pdf is not None:
