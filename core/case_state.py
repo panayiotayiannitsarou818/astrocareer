@@ -36,7 +36,7 @@ CASE_STATE_KEYS = (
     'orientation_validation', 'orientation_service', 'orientation_presentation',
     'orientation_cyprus_school', 'orientation_docx_bytes', 'orientation_docx_name',
     'orientation_audit_docx_bytes', 'orientation_audit_docx_name',
-    'auto_result', 'cases', 'current_case',
+    'auto_result', 'cases', 'current_case', 'manual_chart', 'manual_pdf_hash',
 )
 
 
