@@ -239,3 +239,38 @@ def movement_text(point: Point) -> str:
     if point.kind == "node":
         return "Ανάδρομη κίνηση" if point.retrograde else "Ορθόδρομη κίνηση"
     return "Ανάδρομος" if point.retrograde else "Ορθόδρομος"
+
+
+# ---------------------------------------------------------------------------
+# v19 -- Συγκεντρώσεις πλανητών (Κανόνας 6, «Συγκεντρώσεις»).
+# Υπολογίζονται ΕΔΩ, σε Python, και δίνονται στο μοντέλο ως ελεγμένο δεδομένο.
+# Αφορμή: σε πραγματική ανάλυση χάθηκε η «αίσθηση του δίκαιου», παρότι τρεις
+# πλανήτες βρίσκονταν στον Ζυγό -- η εντολή εξέταζε κάθε πλανήτη χωριστά και
+# τα τέσσερα στοιχεία συνολικά, αλλά όχι τη συγκέντρωση σε ένα ζώδιο/Οίκο.
+# ---------------------------------------------------------------------------
+CONCENTRATION_PLANETS = (
+    "Ήλιος", "Σελήνη", "Ερμής", "Αφροδίτη", "Άρης",
+    "Δίας", "Κρόνος", "Ουρανός", "Ποσειδώνας", "Πλούτωνας",
+)
+CONCENTRATION_MIN = 3
+
+
+def planet_concentrations(points, min_count: int = CONCENTRATION_MIN) -> list[tuple[str, list[str]]]:
+    """Ζώδια και Οίκοι με τουλάχιστον `min_count` από τους δέκα πλανήτες.
+
+    Επιστρέφει λίστα (ετικέτα, ονόματα πλανητών), π.χ.
+    [("Ζώδιο Ζυγός", ["Άρης", "Κρόνος", "Πλούτωνας"]), ("Οίκος 11", [...])],
+    πρώτα τα ζώδια (με τη σειρά του ζωδιακού) και μετά οι Οίκοι (1-12).
+    Δεσμοί, Χείρωνας και γωνίες δεν μετρούν."""
+    planets = [p for p in points if p.name in CONCENTRATION_PLANETS]
+    order = {name: i for i, name in enumerate(CONCENTRATION_PLANETS)}
+    result: list[tuple[str, list[str]]] = []
+    for sign in SIGNS:
+        names = sorted((p.name for p in planets if p.sign == sign), key=order.get)
+        if len(names) >= min_count:
+            result.append((f"Ζώδιο {sign}", names))
+    for house in range(1, 13):
+        names = sorted((p.name for p in planets if p.house == house), key=order.get)
+        if len(names) >= min_count:
+            result.append((f"Οίκος {house}", names))
+    return result

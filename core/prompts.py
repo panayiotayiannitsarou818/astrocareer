@@ -1,4 +1,4 @@
-from .astrology import movement_text
+from .astrology import CONCENTRATION_MIN, movement_text, planet_concentrations
 
 def fmt(p):
     rx = " ανάδρομος" if p.retrograde else ""
@@ -94,6 +94,10 @@ def build_orientation_source(chart):
         f"- {a.first}–{a.second} | {a.aspect} | orb {a.orb_text} | {a.weight} | πηγή: {a.source}"
         for a in chart.aspects
     ) or "- Δεν αναγνωρίστηκαν όψεις. Σταμάτησε και ζήτησε τεχνικό έλεγχο."
+    # v19: συγκεντρώσεις (Κανόνας 6) -- υπολογισμός Python, όχι εκτίμηση του μοντέλου.
+    concentrations = "\n".join(
+        f"- {label}: {', '.join(names)}" for label, names in planet_concentrations(chart.points)
+    ) or f"- Καμία (κανένα ζώδιο ή Οίκος με {CONCENTRATION_MIN} ή περισσότερους πλανήτες)."
     return f"""ΕΛΕΓΜΕΝΑ ΑΣΤΡΟΛΟΓΙΚΑ ΔΕΔΟΜΕΝΑ
 
 ΠΛΑΝΗΤΕΣ ΚΑΙ ΣΗΜΕΙΑ
@@ -104,4 +108,7 @@ def build_orientation_source(chart):
 
 ΠΑΡΑΡΤΗΜΑ ΕΠΙΒΕΒΑΙΩΜΕΝΩΝ ΟΨΕΩΝ — ΜΟΝΑΔΙΚΗ ΠΗΓΗ ORB ΚΑΙ ΒΑΡΥΤΗΤΑΣ
 {aspects}
+
+ΣΥΓΚΕΝΤΡΩΣΕΙΣ ΠΛΑΝΗΤΩΝ — ΥΠΟΛΟΓΙΣΜΟΣ ΤΟΥ ΛΟΓΙΣΜΙΚΟΥ (ζώδιο ή Οίκος με {CONCENTRATION_MIN}+ πλανήτες)
+{concentrations}
 """

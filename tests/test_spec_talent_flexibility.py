@@ -25,6 +25,7 @@ from core.validator import (
     _talent_paragraph_length_issues,
     validate_orientation,
 )
+from tests.coverage_helper import validate_orientation_legacy as validate_orientation
 
 CHART = Chart(
     name="Gavriela Doe", date="1 Jan 2000", time="12:00", place="Nicosia",

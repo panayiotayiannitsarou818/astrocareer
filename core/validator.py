@@ -42,7 +42,7 @@ import re
 import unicodedata
 from dataclasses import dataclass, field
 
-from .astrology import SIGNS
+from .astrology import SIGNS, planet_concentrations
 
 # Κανονικοποίηση των συνηθέστερων ελληνικών πτώσεων. Ο παλιός validator
 # έψαχνε μόνο την ονομαστική (π.χ. «Πλούτωνας») και απέρριπτε σωστές φράσεις
@@ -1160,6 +1160,356 @@ def _orientation_audit_errors(chart, audit_text: str, client_text: str = "") -> 
     return list(dict.fromkeys(errors))
 
 
+# ---------------------------------------------------------------- v19: παραρτήματα κάλυψης
+# Αφορμή (πραγματική ανάλυση, Οκτ. 2026): (α) χάθηκε ο τομέας «Νομική και
+# δικαιοσύνη», επειδή οι τομείς επιλέγονταν «με το μάτι» -- τίποτα δεν
+# υποχρέωνε ρητή απόφαση για κάθε τομέα του καταλόγου· (β) υποτιμήθηκε η
+# «αίσθηση του δίκαιου», παρότι τρεις πλανήτες ήταν στον Ζυγό -- οι θέσεις
+# και οι συγκεντρώσεις δεν είχαν υποχρεωτικό έλεγχο κάλυψης, όπως οι όψεις.
+# Ο validator ΔΕΝ κρίνει αν μια απόφαση είναι αστρολογικά σωστή· ελέγχει ότι
+# υπάρχει ρητή απόφαση για ΚΑΘΕ στοιχείο και ότι είναι συνεπής με τα υπόλοιπα.
+POSITIONS_APPENDIX = r"Παράρτημα\s+Κάλυψης\s+Θέσεων"
+SECTORS_APPENDIX = r"Παράρτημα\s+Κάλυψης\s+Τομέων"
+_APPENDIX_ENDS = (r"Παράρτημα", r"Τελικός\s+έλεγχος", r"ΑΥΤΟΕΛΕΓΧΟΣ", r"ΤΑΛΕΝΤΟ\s*:")
+_SELECT_RE = re.compile(r"ΕΠΙΛΕΓΕΤΑΙ")
+_REJECT_RE = re.compile(r"ΑΠΟΡΡΙΠΤΕΤΑΙ")
+_USE_RE = re.compile(r"ΧΡΗΣΙΜΟΠΟΙΕΙΤΑΙ")
+_EXCL_RE = re.compile(r"ΕΞΑΙΡΕΙΤΑΙ")
+_QUOTED_RE = re.compile(r"«([^»]+)»")
+
+
+def _key_fields(line: str) -> dict[str, str]:
+    """«Κλειδί: τιμή | Κλειδί: τιμή» -> dict (κλειδιά πεζά, χωρίς τόνους).
+    Το πεδίο «Απόφαση» κρατά ΟΛΟ το υπόλοιπο της γραμμής (μπορεί να περιέχει
+    «|» ή «:» μέσα στην αιτιολόγηση)."""
+    fields: dict[str, str] = {}
+    head, sep, decision = line.partition("Απόφαση:")
+    if not sep:
+        head, sep, decision = line.partition("Αποφαση:")
+    for segment in head.split("|"):
+        if ":" in segment:
+            key, _, value = segment.partition(":")
+            if value.strip():
+                fields[_strip_greek_diacritics(key.strip().lower())] = value.strip()
+    if sep:
+        fields["αποφαση"] = decision.strip()
+    fields["_line"] = head
+    return fields
+
+
+def _talent_blocks(audit_text: str) -> dict[str, str]:
+    """{κανονικοποιημένος τίτλος: κείμενο μπλοκ} για κάθε «ΤΑΛΕΝΤΟ:» του δελτίου."""
+    markers = list(re.finditer(r"^\s*ΤΑΛΕΝΤΟ\s*:\s*(?P<title>[^\r\n]+)", audit_text, re.IGNORECASE | re.MULTILINE))
+    boundary = re.compile(r"^\s*(?:Ιεράρχηση|Τελικός\s+έλεγχος|ΕΓΚΕΚΡΙΜΕΝ|Παράρτημα)", re.IGNORECASE)
+    blocks = {}
+    for i, m in enumerate(markers):
+        end = markers[i + 1].start() if i + 1 < len(markers) else len(audit_text)
+        lines = []
+        for line in audit_text[m.end():end].splitlines():
+            if boundary.match(line):
+                break
+            lines.append(line)
+        blocks[_norm_title(m.group("title"))] = "\n".join(lines)
+    return blocks
+
+
+def _indicator_lines(block: str) -> list[str]:
+    return [
+        line.split(":", 1)[1] for line in block.splitlines()
+        if re.match(r"\s*(?:Δείκτης\s*\d+|Μοναδικός\s+ισχυρός\s+δείκτης)\s*:", line, re.IGNORECASE)
+    ]
+
+
+def _points_in_block(block: str) -> tuple[set[str], set[str]]:
+    """(σημεία σε οποιονδήποτε δείκτη του μπλοκ, σημεία σε δείκτη ΘΕΣΗΣ)."""
+    anywhere, positions = set(), set()
+    for ind in _indicator_lines(block):
+        fields = _parse_indicator_fields(ind)
+        kind = _indicator_kind(ind)
+        if kind == "θεση":
+            name = _exact_point_name(fields.get("σημειο", ""))
+            if name:
+                anywhere.add(name)
+                positions.add(name)
+        else:
+            anywhere |= _indicator_points(ind)
+    return anywhere, positions
+
+
+def _decision_errors(label: str, decision: str, use_re, excl_re, use_word: str, excl_word: str) -> tuple[str | None, str]:
+    """Επιστρέφει (σφάλμα ή None, 'use'/'excl')."""
+    has_use, has_excl = bool(use_re.search(decision)), bool(excl_re.search(decision))
+    if has_use == has_excl:
+        return (f"{label}: η απόφαση πρέπει να περιέχει ΑΚΡΙΒΩΣ μία από τις λέξεις «{use_word}» ή «{excl_word}».", "")
+    if has_excl:
+        trailing = decision[excl_re.search(decision).end():]
+        if not _has_real_justification(trailing):
+            return (f"{label}: το «{excl_word}» χρειάζεται ρητή αιτιολόγηση στην ίδια γραμμή.", "excl")
+        return (None, "excl")
+    return (None, "use")
+
+
+def _positions_coverage_errors(chart, audit_text: str, talent_titles: list[str]) -> list[str]:
+    section = _between_headings(audit_text, POSITIONS_APPENDIX, _APPENDIX_ENDS)
+    if not section.strip():
+        return [
+            "Λείπει το «Παράρτημα Κάλυψης Θέσεων»: κάθε σημείο του χάρτη και κάθε συγκέντρωση "
+            "πλανητών χρειάζεται μία γραμμή με ρητή απόφαση (Κανόνας 16.3)."
+        ]
+    errors: list[str] = []
+    approved = {_norm_title(t) for t in talent_titles}
+    blocks = _talent_blocks(audit_text)
+    lines = [l.strip() for l in section.splitlines() if l.strip()]
+
+    def talent_target(decision: str, label: str):
+        quoted = [_norm_title(q) for q in _QUOTED_RE.findall(decision)]
+        target = next((q for q in quoted if q in approved), None)
+        if target is None:
+            errors.append(f"{label}: το «ΧΡΗΣΙΜΟΠΟΙΕΙΤΑΙ» πρέπει να κατονομάζει σε «» ένα εγκεκριμένο ταλέντο.")
+        return target
+
+    # --- θέσεις
+    position_lines: dict[str, list[dict]] = {}
+    for line in lines:
+        f = _key_fields(line)
+        name = _exact_point_name(f.get("σημειο", "")) if "σημειο" in f and "συγκεντρωση" not in f else None
+        if name:
+            position_lines.setdefault(name, []).append(f)
+    used_as_position = set()
+    for block in blocks.values():
+        used_as_position |= _points_in_block(block)[1]
+    for point in chart.points:
+        if point.kind == "cusp":
+            continue
+        label = f"Θέση «{point.name}»"
+        found = position_lines.get(point.name, [])
+        if not found:
+            errors.append(f"{label}: λείπει γραμμή στο «Παράρτημα Κάλυψης Θέσεων».")
+            continue
+        if len(found) > 1:
+            errors.append(f"{label}: εμφανίζεται {len(found)} φορές στο «Παράρτημα Κάλυψης Θέσεων» -- μία γραμμή ανά σημείο.")
+        f = found[0]
+        dups = _duplicate_indicator_fields(f.get("_line", ""))
+        if dups:
+            errors.append(f"{label}: η γραμμή επαναλαμβάνει το πεδίο «{dups[0]}» -- κάθε πεδίο μία φορά.")
+        sign = _exact_sign(f.get("ζωδιο", ""))
+        if sign != point.sign:
+            errors.append(f"{label}: το ζώδιο πρέπει να είναι «{point.sign}» όπως στα ελεγμένα δεδομένα.")
+        house_raw = f.get("οικος", "")
+        if point.house is not None and re.fullmatch(r"\d{1,2}", house_raw or "") and int(house_raw) != point.house:
+            errors.append(f"{label}: ο Οίκος πρέπει να είναι {point.house} όπως στα ελεγμένα δεδομένα.")
+        decision = f.get("αποφαση", "")
+        err, kind = _decision_errors(label, decision, _USE_RE, _EXCL_RE, "ΧΡΗΣΙΜΟΠΟΙΕΙΤΑΙ", "ΕΞΑΙΡΕΙΤΑΙ")
+        if err:
+            errors.append(err)
+            continue
+        if kind == "excl" and point.name in used_as_position:
+            errors.append(f"{label}: δηλώνεται «ΕΞΑΙΡΕΙΤΑΙ», αλλά χρησιμοποιείται ως δείκτης Θέσης σε μπλοκ ταλέντου.")
+        if kind == "use":
+            target = talent_target(decision, label)
+            if target is not None and point.name not in _points_in_block(blocks.get(target, ""))[0]:
+                errors.append(
+                    f"{label}: δηλώνεται ότι χρησιμοποιείται στο ταλέντο «{_QUOTED_RE.findall(decision)[0]}», "
+                    "αλλά το σημείο δεν εμφανίζεται σε κανέναν δείκτη αυτού του μπλοκ."
+                )
+
+    # --- συγκεντρώσεις (υπολογισμός Python)
+    conc_lines = {}
+    for line in lines:
+        f = _key_fields(line)
+        if "συγκεντρωση" in f:
+            key = _career_norm(f["συγκεντρωση"])
+            conc_lines.setdefault(key, []).append(f)
+    expected = planet_concentrations(chart.points)
+    expected_keys = {_career_norm(label) for label, _ in expected}
+    for label_text, names in expected:
+        label = f"Συγκέντρωση «{label_text}» ({', '.join(names)})"
+        found = conc_lines.get(_career_norm(label_text), [])
+        if not found:
+            errors.append(f"{label}: λείπει γραμμή «Συγκέντρωση:» στο «Παράρτημα Κάλυψης Θέσεων».")
+            continue
+        decision = found[0].get("αποφαση", "")
+        err, kind = _decision_errors(label, decision, _USE_RE, _EXCL_RE, "ΧΡΗΣΙΜΟΠΟΙΕΙΤΑΙ", "ΕΞΑΙΡΕΙΤΑΙ")
+        if err:
+            errors.append(err)
+            continue
+        if kind == "use":
+            target = talent_target(decision, label)
+            if target is not None and not set(names) & _points_in_block(blocks.get(target, ""))[0]:
+                errors.append(
+                    f"{label}: δηλώνεται ότι χρησιμοποιείται, αλλά κανένας από αυτούς τους πλανήτες "
+                    "δεν εμφανίζεται σε δείκτη του συγκεκριμένου ταλέντου."
+                )
+    for key in conc_lines:
+        if key not in expected_keys:
+            errors.append(
+                f"Το δελτίο δηλώνει συγκέντρωση «{conc_lines[key][0]['συγκεντρωση']}» που δεν υπάρχει "
+                "στις συγκεντρώσεις που υπολόγισε το λογισμικό."
+            )
+    return errors
+
+
+BRIEF_FIELDS_LABEL = r"(?:Άλλες\s+κατευθύνσεις\s+που\s+μπορείς\s+επίσης\s+να\s+εξερευνήσεις|Other\s+directions\s+you\s+may\s+also\s+explore)\s*:"
+_BRIEF_RE = re.compile(r"ΣΥΝΤΟΜΗ\s+ΑΝΑΦΟΡΑ")
+_GUARANTEE_RE = re.compile(r"εγγύηση|εγγυηση|guarantee", re.IGNORECASE)
+
+
+def _client_fields_block(client_text: str) -> str:
+    return _between_headings(
+        client_text,
+        r"Επαγγελματικ(?:οί|ούς)\s+Τομ(?:είς|έα)(?:\s+προς\s+Διερεύνηση)?|Career\s+Fields(?:\s+to\s+Explore)?",
+        (r"Τελική\s+Σύνθεση", r"Σύνοψη", r"Final\s+Synthesis"),
+    )
+
+
+def _is_brief_line(line: str) -> bool:
+    return bool(re.match(r"\s*" + BRIEF_FIELDS_LABEL, re.sub(r"[*#]+", "", line).strip(), re.IGNORECASE))
+
+
+def _client_brief_fields(client_text: str) -> tuple[list[str], int]:
+    """(ονόματα τομέων της σύντομης αναφοράς, πόσες τέτοιες γραμμές βρέθηκαν)."""
+    names, count = [], 0
+    for line in _client_fields_block(client_text).splitlines():
+        if _is_brief_line(line):
+            count += 1
+            body = re.split(BRIEF_FIELDS_LABEL, re.sub(r"[*#]+", "", line), maxsplit=1, flags=re.IGNORECASE)[-1]
+            names += [n.strip().rstrip(".") for n in re.split(r"[,;·]", body) if n.strip().rstrip(".")]
+    return names, count
+
+
+def _sectors_coverage_errors(audit_text: str, talent_titles: list[str], catalogue: list[str],
+                             client_text: str = "") -> list[str]:
+    """v19.1 -- κάθε τομέας του καταλόγου παίρνει μία από τρεις αποφάσεις:
+    ΕΠΙΛΕΓΕΤΑΙ (κύριος τομέας: 2+ ταλέντα, ή 1 ταλέντο με ρητή «εγγύηση»),
+    ΣΥΝΤΟΜΗ ΑΝΑΦΟΡΑ (1 ταλέντο: μόνο το όνομα, στη γραμμή «Άλλες κατευθύνσεις…»),
+    ΑΠΟΡΡΙΠΤΕΤΑΙ (με αιτιολόγηση). Εγγύηση: κάθε ταλέντο έχει ≥1 κύριο τομέα."""
+    section = _between_headings(audit_text, SECTORS_APPENDIX, _APPENDIX_ENDS)
+    if not section.strip():
+        return [
+            "Λείπει το «Παράρτημα Κάλυψης Τομέων»: κάθε τομέας του καταλόγου χρειάζεται μία γραμμή "
+            "με «ΕΠΙΛΕΓΕΤΑΙ», «ΣΥΝΤΟΜΗ ΑΝΑΦΟΡΑ» ή «ΑΠΟΡΡΙΠΤΕΤΑΙ» (Κανόνας 16.4)."
+        ]
+    errors: list[str] = []
+    approved_fields_block = _between_headings(
+        audit_text, r"ΕΓΚΕΚΡΙΜΕΝΟΙ\s+ΕΠΑΓΓΕΛΜΑΤΙΚΟΙ\s+ΤΟΜΕΙΣ",
+        (r"ΕΓΚΕΚΡΙΜΕΝΑ\s+ΕΠΑΓΓΕΛΜΑΤΑ", r"ΡΗΤΗ\s+ΤΕΚΜΗΡΙΩΣΗ\s+ΤΟΜΕΑ\s+ΥΓΕΙΑΣ"),
+    )
+    approved_fields = {
+        _career_norm(re.sub(r"^\s*(?:[-•*]|\d+[.)])\s*", "", l)): re.sub(r"^\s*(?:[-•*]|\d+[.)])\s*", "", l).strip()
+        for l in approved_fields_block.splitlines() if l.strip()
+    }
+    approved_fields.pop("", None)
+    approved_talents = {_norm_title(t): t for t in talent_titles}
+    catalogue_norm = {_career_norm(c): c for c in catalogue}
+    client_brief, brief_lines = _client_brief_fields(client_text) if client_text else ([], 0)
+    client_brief_norm = {_career_norm(n): n for n in client_brief}
+    if brief_lines > 1:
+        errors.append("Η γραμμή «Άλλες κατευθύνσεις που μπορείς επίσης να εξερευνήσεις:» πρέπει να εμφανίζεται μία μόνο φορά.")
+    seen: dict[str, int] = {}
+    targeted: set[str] = set()
+    brief_targets: dict[str, str] = {}
+    main_talents: set[str] = set()
+    for raw in section.splitlines():
+        f = _key_fields(raw.strip())
+        if "τομεας" not in f:
+            continue
+        name = f["τομεας"]
+        key = _career_norm(name)
+        # _career_norm κάνει casefold: «ΝΕΟΣ» -> «νεοσ» (όχι τελικό «ς»).
+        is_new = key.replace("ς", "σ") in ("νεοσ", "νεοσ τομεασ", "new", "new field")
+        label = f"Τομέας «{name}»"
+        if not is_new:
+            if key not in catalogue_norm:
+                errors.append(f"{label}: δεν υπάρχει στον κατάλογο· για νέο τομέα γράψε «Τομέας: ΝΕΟΣ».")
+                continue
+            seen[key] = seen.get(key, 0) + 1
+        decision = f.get("αποφαση", "")
+        kinds = [k for k, rx in (("main", _SELECT_RE), ("brief", _BRIEF_RE), ("reject", _REJECT_RE)) if rx.search(decision)]
+        if len(kinds) != 1:
+            errors.append(f"{label}: η απόφαση πρέπει να περιέχει ΑΚΡΙΒΩΣ μία από τις «ΕΠΙΛΕΓΕΤΑΙ», "
+                          "«ΣΥΝΤΟΜΗ ΑΝΑΦΟΡΑ» ή «ΑΠΟΡΡΙΠΤΕΤΑΙ».")
+            continue
+        kind = kinds[0]
+        if kind == "reject":
+            if is_new:
+                errors.append(f"{label}: ένας νέος τομέας γράφεται μόνο όταν επιλέγεται.")
+            elif not _has_real_justification(decision[_REJECT_RE.search(decision).end():]):
+                errors.append(f"{label}: το «ΑΠΟΡΡΙΠΤΕΤΑΙ» χρειάζεται ρητή αιτιολόγηση στην ίδια γραμμή.")
+            continue
+        word = "ΕΠΙΛΕΓΕΤΑΙ" if kind == "main" else r"ΣΥΝΤΟΜΗ\s+ΑΝΑΦΟΡΑ"
+        m = re.search(word + r"\s+ως\s+«([^»]+)»", decision)
+        if not m:
+            shown = "ΕΠΙΛΕΓΕΤΑΙ" if kind == "main" else "ΣΥΝΤΟΜΗ ΑΝΑΦΟΡΑ"
+            errors.append(f"{label}: γράψε «{shown} ως «<τίτλος τομέα όπως στο παραδοτέο>»».")
+            continue
+        target = _career_norm(m.group(1))
+        named = {q_norm for q_norm in (_norm_title(q) for q in _QUOTED_RE.findall(decision[m.end():]))
+                 if q_norm in approved_talents}
+        if approved_talents and not named:
+            errors.append(f"{label}: κατονόμασε σε «» τουλάχιστον ένα εγκεκριμένο ταλέντο που αξιοποιεί.")
+        if kind == "main":
+            if target not in approved_fields:
+                errors.append(
+                    f"{label}: επιλέγεται ως «{m.group(1)}», αλλά αυτός ο τίτλος δεν υπάρχει στους "
+                    "ΕΓΚΕΚΡΙΜΕΝΟΥΣ ΕΠΑΓΓΕΛΜΑΤΙΚΟΥΣ ΤΟΜΕΙΣ."
+                )
+            if len(named) == 1 and not _GUARANTEE_RE.search(decision):
+                errors.append(
+                    f"{label}: κύριος τομέας με ένα μόνο ταλέντο επιτρέπεται μόνο ως «εγγύηση» για ταλέντο "
+                    "χωρίς άλλον κύριο τομέα· αλλιώς γράψε «ΣΥΝΤΟΜΗ ΑΝΑΦΟΡΑ»."
+                )
+            targeted.add(target)
+            main_talents |= named
+        else:
+            if target in approved_fields:
+                errors.append(f"{label}: ο τίτλος «{m.group(1)}» δεν μπορεί να είναι ταυτόχρονα κύριος τομέας και σύντομη αναφορά.")
+            brief_targets[target] = m.group(1)
+    for key, original in catalogue_norm.items():
+        count = seen.get(key, 0)
+        if count == 0:
+            errors.append(f"Τομέας καταλόγου «{original}»: λείπει γραμμή στο «Παράρτημα Κάλυψης Τομέων».")
+        elif count > 1:
+            errors.append(f"Τομέας καταλόγου «{original}»: εμφανίζεται {count} φορές -- μία γραμμή ανά τομέα.")
+    for key, original in approved_fields.items():
+        if key not in targeted:
+            errors.append(
+                f"Ο εγκεκριμένος τομέας «{original}» δεν προκύπτει από καμία γραμμή «ΕΠΙΛΕΓΕΤΑΙ ως «…»» "
+                "του «Παραρτήματος Κάλυψης Τομέων»."
+            )
+    if client_text:
+        for key, original in brief_targets.items():
+            if key not in client_brief_norm:
+                errors.append(
+                    f"Ο τομέας «{original}» έχει «ΣΥΝΤΟΜΗ ΑΝΑΦΟΡΑ» στο δελτίο, αλλά λείπει από τη γραμμή "
+                    "«Άλλες κατευθύνσεις που μπορείς επίσης να εξερευνήσεις:» του παραδοτέου."
+                )
+        for key, original in client_brief_norm.items():
+            if key not in brief_targets:
+                errors.append(
+                    f"Ο τομέας «{original}» της σύντομης αναφοράς δεν έχει απόφαση «ΣΥΝΤΟΜΗ ΑΝΑΦΟΡΑ» "
+                    "στο «Παράρτημα Κάλυψης Τομέων»."
+                )
+    for key, title in approved_talents.items():
+        if key not in main_talents:
+            errors.append(
+                f"Το ταλέντο «{title}» δεν συνδέεται με κανέναν κύριο τομέα (ΕΠΙΛΕΓΕΤΑΙ). Κάθε ταλέντο "
+                "χρειάζεται τουλάχιστον έναν κύριο τομέα· αν όλοι οι τομείς του έχουν ένα μόνο ταλέντο, "
+                "ο πιο ταιριαστός γίνεται κύριος με την ένδειξη «εγγύηση»."
+            )
+    return errors
+
+
+def _coverage_appendix_errors(chart, audit_text: str, client_text: str,
+                              sector_catalogue: list[str] | None = None) -> list[str]:
+    talent_titles = _extract_talent_titles(client_text) if client_text else []
+    errors = _positions_coverage_errors(chart, audit_text, talent_titles)
+    if sector_catalogue is None:
+        from .catalogue import sector_catalogue as _load_catalogue
+        sector_catalogue = _load_catalogue()
+    errors += _sectors_coverage_errors(audit_text, talent_titles, sector_catalogue, client_text)
+    return errors
+
+
 # ---------------------------------------------------------------- απόλυτες διατυπώσεις
 # v18.2.1 (εξωτερική κριτική): ο Κανόνας «ύφος» της δεσμευτικής εντολής
 # απαγορεύει ρητά: «είναι γεννημένο για…», «πρέπει να γίνει…», «δεν μπορεί να
@@ -1273,6 +1623,61 @@ def _absolute_claims(text: str) -> list[str]:
                 "προς διερεύνηση (π.χ. «φαίνεται να διαθέτει…», «αξίζει να διερευνηθεί…», «θα μπορούσε να δοκιμάσει…»)."
             )
             break  # ένα μήνυμα ανά τύπο αρκεί
+    return found
+
+
+# ---------------------------------------------------------------- v19.2: ισχυρισμοί για το παρελθόν
+# Κανόνας 17 (εντολή v13): το κείμενο δεν ισχυρίζεται τι έχει ζήσει ή νιώσει ο
+# άνθρωπος -- το λογισμικό ξέρει μόνο τον χάρτη. Οι λέξεις «πόνος», «πληγή»,
+# «δυσκολία» ΕΠΙΤΡΕΠΟΝΤΑΙ όταν λέγονται γενικά ή υποθετικά («οι δυσκολίες που
+# συναντά κάθε άνθρωπος…», «όταν βρεθείς μπροστά σε έναν πόνο…»). Εδώ πιάνονται
+# ΜΟΝΟ ξεκάθαροι ισχυρισμοί για το παρελθόν του συγκεκριμένου ανθρώπου (β' ή γ'
+# πρόσωπο + παρελθόν/κτητικό). Τα μοτίβα είναι χωρίς τόνους και με «σ» αντί «ς».
+# Κτητικό μόνο σε β' πρόσωπο (το παραδοτέο απευθύνεται στον αναγνώστη): «η πληγή
+# σου» ναι, «μια δυσκολία του ταλέντου» όχι. Μόνο λέξεις τραύματος/πόνου/απώλειας
+# -- «τις δυσκολίες σου» σε ενεστώτα είναι ουδέτερο. Μόνο β' πρόσωπο στα ρήματα:
+# «ο χρόνος που έχει περάσει» δεν είναι ισχυρισμός για τον άνθρωπο. Μόνο αόριστος
+# στο «σε πλήγωσαν»: το υποθετικό «αν κάτι σε πληγώσει» επιτρέπεται.
+_PAST_HARDSHIP = r"(?:πληγ(?:η|εσ|ων)|τραυμ(?:α|ατα|ατων)|πον(?:οσ|ο|ου|οι|ουσ)|απωλει(?:α|εσ|ων))"
+_PAST_VERBS = (r"(?:εχεισ|εχετε)\s+(?:ηδη\s+)?(?:περασει|βιωσει|ζησει|υποφερει|δοκιμασει|"
+               r"πληγωθει|τραυματιστει|πονεσει)"
+               r"|περασεσ|βιωσεσ|εζησεσ|υπεφερεσ|πληγωθηκεσ|τραυματιστηκεσ|πονεσεσ")
+_PAST_CLAIMS = [
+    re.compile(r"\b(?:" + _PAST_VERBS + r")\b"),
+    re.compile(r"\b" + _PAST_HARDSHIP + r"\s+(?:σου|σασ)\b"),
+    re.compile(r"\b(?:σου|σασ)\s+" + _PAST_HARDSHIP + r"\b"),
+    re.compile(r"\bσε\s+(?:πληγωσαν|πληγωσε|τραυματισαν|τραυματισε|πονεσαν|πονεσε|σημαδεψαν|σημαδεψε)\b"),
+    re.compile(r"\bδυσκολ\w*\s+παιδικ\w*\s+χρονι\w*"),
+    re.compile(r"\bwhat\s+you(?:'ve|\s+have)?\s+(?:been|gone)\s+through\b"),
+    re.compile(r"\byour\s+(?:wounds?|traumas?|pain|suffering|losses)\b"),
+    re.compile(r"\byou(?:'ve|\s+have)\s+(?:been\s+hurt|suffered|been\s+traumati[sz]ed|endured)\b"),
+    re.compile(r"\bthe\s+(?:pain|hardships?|losses|wounds?)\s+you(?:'ve|\s+have)?\s+(?:experienced|felt|lived|endured|been\s+through)\b"),
+    re.compile(r"\b(?:difficult|hard|painful)\s+childhood\b"),
+]
+
+
+def _past_experience_claims(text: str) -> list[str]:
+    """Μηνύματα για διατυπώσεις που υποθέτουν τι έχει ζήσει ο πελάτης."""
+    plain = _strip_greek_diacritics(text or "").casefold()
+    source = text if len(text or "") == len(plain) else plain
+    found, seen = [], set()
+    for rx in _PAST_CLAIMS:
+        for m in rx.finditer(plain):
+            starts = [plain.rfind(c, 0, m.start()) for c in ".\n;!?·"]
+            start = max(starts) + 1
+            ends = [i for i in (plain.find(c, m.end()) for c in ".\n;!?·") if i != -1]
+            end = min(ends) if ends else len(plain)
+            if (start, end) in seen:
+                continue
+            seen.add((start, end))
+            snippet = source[start:end].strip()
+            if len(snippet) > 160:
+                snippet = snippet[:157] + "…"
+            found.append(
+                f"Η διατύπωση «{snippet}» υποθέτει τι έχει ζήσει ή νιώσει ο άνθρωπος (Κανόνας 17). "
+                "Το λογισμικό ξέρει μόνο τον χάρτη: γράψε το γενικά ή υποθετικά, π.χ. «οι δυσκολίες που "
+                "συναντά κάθε άνθρωπος μπορεί…» ή «όταν βρεθείς μπροστά σε…»."
+            )
     return found
 
 
@@ -1513,6 +1918,9 @@ def _career_consistency_errors(client_text: str, audit_text: str, chart=None) ->
         m = re.match(r"\d+[.)]\s*(.+)", line) or re.match(r"[-•*]\s*(.+)", raw_line.strip())
         field = m.group(1) if m else line
         if re.match(r"Γιατί\s+μπορεί\s+να\s+ταιριάζει|Ενδεικτικά\s+επαγγέλματα|Why\s+it\s+may\s+fit|Example\s+Careers", field, re.IGNORECASE):
+            continue
+        # v19.1: η γραμμή σύντομης αναφοράς ελέγχεται στο _sectors_coverage_errors.
+        if _is_brief_line(raw_line):
             continue
         field = re.sub(r"\*+", "", field).strip()
         if field and _career_norm(field) not in approved_fields_norm:
@@ -1895,7 +2303,8 @@ def validate_orientation(chart, text: str, personal: dict | None = None,
                          # μένει εδώ μόνο για να μη σπάσουν clients που ακόμα το περνούν ρητά (π.χ. το entry-point
                          # πριν ενημερωθεί) -- δεν επηρεάζει πλέον καμία λογική ελέγχου. Αφαίρεσέ την εντελώς
                          # μόλις κανένας caller δεν την περνάει πια.
-                         format_issues: list[str] | None = None) -> OrientationValidationResult:
+                         format_issues: list[str] | None = None,
+                         sector_catalogue: list[str] | None = None) -> OrientationValidationResult:
     # Ίδια κανονικοποίηση ' -> ′ με τα validate_analysis()/validate_rewrite()
     # -- βλ. docstring της _normalize_prime_marks.
     text = _normalize_prime_marks(text)
@@ -1982,12 +2391,18 @@ def validate_orientation(chart, text: str, personal: dict | None = None,
         if exposed:
             technical.append("Η απλή παρουσίαση περιέχει τεχνικά αστρολογικά δεδομένα: " + ", ".join(exposed) + ".")
         technical.extend(_absolute_claims(text))
+        technical.extend(_past_experience_claims(text))
         _audit = _orientation_audit_errors(chart, audit_text or "", text)
         technical.extend(_audit)
         breakdown["audit"] += len(_audit)
         _career = _career_consistency_errors(text, audit_text or "", chart)
         technical.extend(_career)
         breakdown["career"] += len(_career)
+        # v19: υποχρεωτικά παραρτήματα κάλυψης θέσεων/συγκεντρώσεων και τομέων.
+        if (audit_text or "").strip():
+            _coverage = _coverage_appendix_errors(chart, audit_text, text, sector_catalogue)
+            technical.extend(_coverage)
+            breakdown["audit"] += len(_coverage)
         if short_simple:
             # Fix (spec, νέα λογική έκτασης): αφαιρέθηκε η αυτόματη απόρριψη
             # πάνω από 1.800 λέξεις -- ο αριθμός τεκμηριωμένων ταλέντων δεν

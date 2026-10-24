@@ -15,9 +15,9 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 REFERENCE_DIR = REPO_ROOT / "references"
 DEFAULT_STYLE = REFERENCE_DIR / "Elena_style_guide_v2.docx"
 ROOT_STYLE = REPO_ROOT / "Elena_style_guide_v2.docx"
-COMMON_ORIENTATION = REFERENCE_DIR / "Desmeftiki_Entoli_Epaggelmatikou_Prosanatolismou_Koini_v11_UNIFIED.docx"
+COMMON_ORIENTATION = REFERENCE_DIR / "Desmeftiki_Entoli_Epaggelmatikou_Prosanatolismou_Koini_v13.docx"
 UNIFIED_SHORT_EXAMPLE = REFERENCE_DIR / "Protypo_Syntomis_Ekdosis_ENOPOIIMENO.docx"
-_ROOT_COMMON_ORIENTATION = REPO_ROOT / "Desmeftiki_Entoli_Epaggelmatikou_Prosanatolismou_Koini_v11_UNIFIED.docx"
+_ROOT_COMMON_ORIENTATION = REPO_ROOT / "Desmeftiki_Entoli_Epaggelmatikou_Prosanatolismou_Koini_v13.docx"
 _ROOT_UNIFIED_SHORT_EXAMPLE = REPO_ROOT / "Protypo_Syntomis_Ekdosis_ENOPOIIMENO.docx"
 
 

@@ -22,7 +22,7 @@ upload-and-check flow), το κείμενο πρώτα γίνεται πραγμ
 from core.docx_builder import build_orientation_audit_docx, build_orientation_client_docx
 from core.models import Aspect, Chart, Point
 from core.reference_loader import docx_text
-from core.validator import validate_orientation
+from tests.coverage_helper import add_coverage, validate_orientation_legacy as validate_orientation
 
 CHART = Chart(
     name="Test", date="1 Jan 2000", time="12:00", place="Nicosia",
@@ -61,7 +61,7 @@ def _build_client_text(n_talents=3):
     )
 
 
-def _build_audit_text(n_talents=3):
+def _build_audit_text_base(n_talents=3):
     fields_list = "\n".join(f"- Τομέας {i}" for i in range(1, n_talents + 1))
     jobs_list = "\n".join(f"- επάγγελμα {i}α, επάγγελμα {i}β" for i in range(1, n_talents + 1))
     talents_docs = "".join(
@@ -78,6 +78,11 @@ def _build_audit_text(n_talents=3):
         f"ΕΓΚΕΚΡΙΜΕΝΑ ΕΠΑΓΓΕΛΜΑΤΑ\n{jobs_list}\n"
         "Τελικός έλεγχος: ολοκληρώθηκε.\n"
     )
+
+
+def _build_audit_text(n_talents=3):
+    """v19: το έγκυρο δείγμα περιλαμβάνει και τα υποχρεωτικά παραρτήματα κάλυψης."""
+    return add_coverage(CHART, _build_audit_text_base(n_talents), _build_client_text(n_talents))
 
 
 def test_valid_deliverable_survives_the_real_docx_round_trip():
