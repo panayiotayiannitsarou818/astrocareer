@@ -274,3 +274,37 @@ def planet_concentrations(points, min_count: int = CONCENTRATION_MIN) -> list[tu
         if len(names) >= min_count:
             result.append((f"Οίκος {house}", names))
     return result
+
+
+# ---------------------------------------------------------------------------
+# v19.3 -- Συνδυασμοί πλατιών όψεων με κοινό σημείο (Κανόνας 10, εξαίρεση).
+# Αφορμή: σε πραγματική εκτέλεση το μοντέλο απέρριψε την όψη Ήλιου–Πλούτωνα
+# γράφοντας «χωρίς δεύτερη πλατιά όψη με κοινό σημείο», ενώ υπήρχε η
+# Ερμή–Πλούτωνα. Ο υπολογισμός γίνεται εδώ, ώστε το μοντέλο να τους βλέπει
+# γραμμένους και να μη χρειάζεται να τους «θυμηθεί».
+# ---------------------------------------------------------------------------
+WIDE_VALID = "Πλατιά αλλά έγκυρη"
+PERSONAL_OR_ANGLE = ("Ήλιος", "Σελήνη", "Ερμής", "Αφροδίτη", "Άρης", "Ωροσκόπος", "Μεσουράνημα")
+_NODES = ("Βόρειος Δεσμός", "Νότιος Δεσμός")
+_POINT_ORDER = CONCENTRATION_PLANETS + ("Χείρωνας", "Ωροσκόπος", "Μεσουράνημα")
+
+
+def wide_aspect_clusters(aspects) -> list[tuple[str, list[str]]]:
+    """Σημεία που συμμετέχουν σε 2+ όψεις «Πλατιά αλλά έγκυρη».
+
+    Μετρούν μόνο όψεις με προσωπικό πλανήτη ή γωνία (Κανόνας 5) και χωρίς
+    Δεσμούς (Κανόνας 10). Επιστρέφει [(κοινό σημείο, ["Α–Β", ...]), ...]."""
+    qualifying = [
+        a for a in aspects
+        if a.weight == WIDE_VALID
+        and a.first not in _NODES and a.second not in _NODES
+        and (a.first in PERSONAL_OR_ANGLE or a.second in PERSONAL_OR_ANGLE)
+    ]
+    order = {name: i for i, name in enumerate(_POINT_ORDER)}
+    points = sorted({p for a in qualifying for p in (a.first, a.second)}, key=lambda n: order.get(n, 99))
+    result = []
+    for point in points:
+        members = [f"{a.first}–{a.second}" for a in qualifying if point in (a.first, a.second)]
+        if len(members) >= 2:
+            result.append((point, members))
+    return result

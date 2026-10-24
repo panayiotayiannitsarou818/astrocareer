@@ -10,7 +10,7 @@ round-trip, δείκτες...) με ελάχιστα τεχνικά δελτία
 """
 import re
 
-from core.astrology import planet_concentrations
+from core.astrology import planet_concentrations, wide_aspect_clusters
 from core.catalogue import sector_catalogue
 from core.validator import (
     _extract_talent_titles, _points_in_block, _talent_blocks, validate_orientation,
@@ -39,6 +39,9 @@ def add_coverage(chart, audit_text: str, client_text: str) -> str:
         lines.append(f"Σημείο: {p.name} | Ζώδιο: {p.sign} | Οίκος: {house} | Απόφαση: {decision}")
     for label, names in planet_concentrations(chart.points):
         lines.append(f"Συγκέντρωση: {label} | Σημεία: {', '.join(names)} | Απόφαση: "
+                     "ΕΞΑΙΡΕΙΤΑΙ — δοκιμαστικό σενάριο χωρίς σχετικό ταλέντο")
+    for point, members in wide_aspect_clusters(chart.aspects):
+        lines.append(f"Κοινό σημείο: {point} | Όψεις: {', '.join(members)} | Απόφαση: "
                      "ΕΞΑΙΡΕΙΤΑΙ — δοκιμαστικό σενάριο χωρίς σχετικό ταλέντο")
     lines.append("Παράρτημα Κάλυψης Τομέων")
     for name in sector_catalogue():

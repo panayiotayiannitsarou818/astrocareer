@@ -42,7 +42,7 @@ import re
 import unicodedata
 from dataclasses import dataclass, field
 
-from .astrology import SIGNS, planet_concentrations
+from .astrology import SIGNS, planet_concentrations, wide_aspect_clusters
 
 # Κανονικοποίηση των συνηθέστερων ελληνικών πτώσεων. Ο παλιός validator
 # έψαχνε μόνο την ονομαστική (π.χ. «Πλούτωνας») και απέρριπτε σωστές φράσεις
@@ -1340,12 +1340,79 @@ def _positions_coverage_errors(chart, audit_text: str, talent_titles: list[str])
                     f"{label}: δηλώνεται ότι χρησιμοποιείται, αλλά κανένας από αυτούς τους πλανήτες "
                     "δεν εμφανίζεται σε δείκτη του συγκεκριμένου ταλέντου."
                 )
+    # --- v19.3: συνδυασμοί πλατιών όψεων με κοινό σημείο (υπολογισμός Python)
+    errors += _wide_cluster_errors(chart, audit_text, lines, blocks, approved, talent_target)
     for key in conc_lines:
         if key not in expected_keys:
             errors.append(
                 f"Το δελτίο δηλώνει συγκέντρωση «{conc_lines[key][0]['συγκεντρωση']}» που δεν υπάρχει "
                 "στις συγκεντρώσεις που υπολόγισε το λογισμικό."
             )
+    return errors
+
+
+# Ψευδής αιτιολόγηση που εμφανίστηκε σε πραγματική εκτέλεση: «χωρίς δεύτερη
+# πλατιά όψη με κοινό σημείο», ενώ το λογισμικό είχε βρει τέτοια όψη.
+_FALSE_NO_PAIR_RE = re.compile(
+    r"(?:χωρίς|χωρις|δεν\s+υπ[άα]ρχει|καμία|καμια|λείπει|λειπει)\s+(?:\w+\s+){0,2}"
+    r"(?:δεύτερ\w*|δευτερ\w*|άλλ\w*|αλλ\w*|συνοδευτικ\w*)\s+(?:\w+\s+){0,2}(?:όψ\w*|οψ\w*)"
+    r"|(?:χωρίς|χωρις|δεν\s+υπ[άα]ρχει)\s+κοιν\w*\s+σημε\w*",
+    re.IGNORECASE,
+)
+
+
+def _wide_cluster_errors(chart, audit_text, lines, blocks, approved, talent_target) -> list[str]:
+    errors: list[str] = []
+    clusters = wide_aspect_clusters(chart.aspects)
+    found: dict[str, list[dict]] = {}
+    for line in lines:
+        f = _key_fields(line)
+        if "κοινο σημειο" in f:
+            name = _exact_point_name(f["κοινο σημειο"])
+            if name:
+                found.setdefault(name, []).append(f)
+    for point, members in clusters:
+        label = f"Συνδυασμός πλατιών όψεων με κοινό σημείο «{point}» ({', '.join(members)})"
+        rows = found.get(point, [])
+        if not rows:
+            errors.append(f"{label}: λείπει γραμμή «Κοινό σημείο:» στο «Παράρτημα Κάλυψης Θέσεων».")
+            continue
+        decision = rows[0].get("αποφαση", "")
+        err, kind = _decision_errors(label, decision, _USE_RE, _EXCL_RE, "ΧΡΗΣΙΜΟΠΟΙΕΙΤΑΙ", "ΕΞΑΙΡΕΙΤΑΙ")
+        if err:
+            errors.append(err)
+            continue
+        if kind == "excl" and _FALSE_NO_PAIR_RE.search(decision):
+            errors.append(f"{label}: η αιτιολόγηση λέει ότι δεν υπάρχει δεύτερη όψη ή κοινό σημείο, "
+                          "αλλά το λογισμικό βρήκε αυτόν τον συνδυασμό. Χρησιμοποίησέ τον ή δώσε άλλο, αληθινό λόγο.")
+        if kind == "use":
+            target = talent_target(decision, label)
+            if target is not None:
+                block_aspects = {
+                    frozenset(_indicator_points(ind)) for ind in _indicator_lines(blocks.get(target, ""))
+                    if _indicator_kind(ind) == "οψη"
+                }
+                if not any(frozenset(m.split("–")) in block_aspects for m in members):
+                    errors.append(f"{label}: δηλώνεται ότι χρησιμοποιείται, αλλά καμία από αυτές τις όψεις "
+                                  "δεν είναι δείκτης του συγκεκριμένου ταλέντου.")
+    for point in found:
+        if point not in {p for p, _ in clusters}:
+            errors.append(f"Το δελτίο δηλώνει συνδυασμό με κοινό σημείο «{point}» που δεν υπάρχει "
+                          "στους συνδυασμούς που υπολόγισε το λογισμικό.")
+    # Η ίδια ψευδής αιτιολόγηση σε οποιαδήποτε γραμμή εξαίρεσης όψης του δελτίου.
+    in_cluster = {m for _, members in clusters for m in members}
+    for raw in audit_text.splitlines():
+        if not _EXCL_RE.search(raw) or not _FALSE_NO_PAIR_RE.search(raw):
+            continue
+        for m in in_cluster:
+            a, b = m.split("–")
+            if re.search(rf"{re.escape(a)}\s*[–-]\s*{re.escape(b)}|{re.escape(b)}\s*[–-]\s*{re.escape(a)}", raw):
+                partners = sorted({x for _, ms in clusters if m in ms for x in ms if x != m})
+                errors.append(
+                    f"Η εξαίρεση της όψης {m} αιτιολογείται με «δεν υπάρχει δεύτερη όψη/κοινό σημείο», αλλά το "
+                    f"λογισμικό βρήκε: {', '.join(partners)}. Η αιτιολόγηση είναι λάθος (Κανόνας 10)."
+                )
+                break
     return errors
 
 

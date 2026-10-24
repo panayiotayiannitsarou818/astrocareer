@@ -1,4 +1,4 @@
-from .astrology import CONCENTRATION_MIN, movement_text, planet_concentrations
+from .astrology import CONCENTRATION_MIN, movement_text, planet_concentrations, wide_aspect_clusters
 
 def fmt(p):
     rx = " ανάδρομος" if p.retrograde else ""
@@ -98,6 +98,10 @@ def build_orientation_source(chart):
     concentrations = "\n".join(
         f"- {label}: {', '.join(names)}" for label, names in planet_concentrations(chart.points)
     ) or f"- Καμία (κανένα ζώδιο ή Οίκος με {CONCENTRATION_MIN} ή περισσότερους πλανήτες)."
+    # v19.3: συνδυασμοί πλατιών όψεων με κοινό σημείο (Κανόνας 10, εξαίρεση).
+    clusters = "\n".join(
+        f"- Κοινό σημείο {point}: {', '.join(members)}" for point, members in wide_aspect_clusters(chart.aspects)
+    ) or "- Κανένας."
     return f"""ΕΛΕΓΜΕΝΑ ΑΣΤΡΟΛΟΓΙΚΑ ΔΕΔΟΜΕΝΑ
 
 ΠΛΑΝΗΤΕΣ ΚΑΙ ΣΗΜΕΙΑ
@@ -111,4 +115,7 @@ def build_orientation_source(chart):
 
 ΣΥΓΚΕΝΤΡΩΣΕΙΣ ΠΛΑΝΗΤΩΝ — ΥΠΟΛΟΓΙΣΜΟΣ ΤΟΥ ΛΟΓΙΣΜΙΚΟΥ (ζώδιο ή Οίκος με {CONCENTRATION_MIN}+ πλανήτες)
 {concentrations}
+
+ΣΥΝΔΥΑΣΜΟΙ ΠΛΑΤΙΩΝ ΟΨΕΩΝ ΜΕ ΚΟΙΝΟ ΣΗΜΕΙΟ — ΥΠΟΛΟΓΙΣΜΟΣ ΤΟΥ ΛΟΓΙΣΜΙΚΟΥ (Κανόνας 10: δύο όψεις «Πλατιά αλλά έγκυρη» με κοινό σημείο μπορούν μαζί να αρκούν)
+{clusters}
 """
