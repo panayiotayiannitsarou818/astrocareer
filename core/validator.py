@@ -461,22 +461,33 @@ class OrientationValidationResult:
     # αμετάβλητο (όλα τα μηνύματα), για συμβατότητα με όσους το διαβάζουν.
     technical_breakdown: dict = field(default_factory=dict)
 
-    def summary(self):
+    def summary(self, lang: str = "el"):
+        """v19.7: η περίληψη ακολουθεί τη γλώσσα της σελίδας. Οι αναλυτικές γραμμές
+        (details_lines) μένουν ελληνικές -- είναι τεχνικές και στέλνονται και στο μοντέλο."""
+        en = lang == "en"
         if self.ok:
             if self.warnings:
+                if en:
+                    return f"✓ The deliverable was approved with {len(self.warnings)} non-binding notes (see details)."
                 return (
                     f"✓ Το παραδοτέο εγκρίθηκε με {len(self.warnings)} μη δεσμευτικές παρατηρήσεις "
                     "(δες τις λεπτομέρειες)."
                 )
+            if en:
+                return "✓ The career orientation passed the basic check of sources and fixed chart data."
             return "✓ Ο προαιρετικός επαγγελματικός προσανατολισμός πέρασε τον βασικό έλεγχο πηγών και αμετάβλητων δεδομένων."
         parts=[]
-        if self.wrong_house_claims: parts.append(f"{len(self.wrong_house_claims)} λανθασμένες τοποθετήσεις")
-        if self.unauthorized_personal_claims: parts.append(f"{len(self.unauthorized_personal_claims)} μη δηλωμένα προσωπικά στοιχεία")
-        if self.missing_core_topics: parts.append("λείπουν: " + ", ".join(self.missing_core_topics))
+        if self.wrong_house_claims:
+            parts.append(f"{len(self.wrong_house_claims)} " + ("wrong house placements" if en else "λανθασμένες τοποθετήσεις"))
+        if self.unauthorized_personal_claims:
+            parts.append(f"{len(self.unauthorized_personal_claims)} " + ("undeclared personal details" if en else "μη δηλωμένα προσωπικά στοιχεία"))
+        if self.missing_core_topics:
+            parts.append(("missing: " if en else "λείπουν: ") + ", ".join(self.missing_core_topics))
         if self.technical_mismatches:
             breakdown = {k: v for k, v in (self.technical_breakdown or {}).items() if v}
+            labels = _TECHNICAL_CATEGORY_LABELS_EN if en else _TECHNICAL_CATEGORY_LABELS
             if breakdown:
-                for key, (singular, plural) in _TECHNICAL_CATEGORY_LABELS:
+                for key, (singular, plural) in labels:
                     n = breakdown.get(key)
                     if n:
                         parts.append(f"{n} {singular if n == 1 else plural}")
@@ -484,8 +495,14 @@ class OrientationValidationResult:
                 # Χωρίς ανάλυση (π.χ. αποτέλεσμα φτιαγμένο αλλού): ουδέτερη
                 # διατύπωση αντί για τον παραπλανητικό χαρακτηρισμό «όψης/orb».
                 n = len(self.technical_mismatches)
-                parts.append(f"{n} τεχνικό ζήτημα" if n == 1 else f"{n} τεχνικά ζητήματα")
-        if self.name_issues: parts.append(f"{len(self.name_issues)} πρόβλημα/προβλήματα ονόματος")
+                if en:
+                    parts.append(f"{n} technical issue" if n == 1 else f"{n} technical issues")
+                else:
+                    parts.append(f"{n} τεχνικό ζήτημα" if n == 1 else f"{n} τεχνικά ζητήματα")
+        if self.name_issues:
+            parts.append(f"{len(self.name_issues)} " + ("name issue(s)" if en else "πρόβλημα/προβλήματα ονόματος"))
+        if en:
+            return "The orientation was rejected: " + "; ".join(parts) + "."
         return "Ο προσανατολισμός απορρίφθηκε: " + "· ".join(parts) + "."
 
     def details_lines(self):
@@ -507,6 +524,12 @@ _TECHNICAL_CATEGORY_LABELS = (
     ("audit", ("σφάλμα στο τεχνικό δελτίο", "σφάλματα στο τεχνικό δελτίο")),
     ("career", ("ασυμφωνία τομέων/επαγγελμάτων με το τεχνικό δελτίο", "ασυμφωνίες τομέων/επαγγελμάτων με το τεχνικό δελτίο")),
     ("structure", ("ζήτημα δομής/μορφής/περιεχομένου", "ζητήματα δομής/μορφής/περιεχομένου")),
+)
+_TECHNICAL_CATEGORY_LABELS_EN = (
+    ("aspect", ("aspect/orb/weight mismatch", "aspect/orb/weight mismatches")),
+    ("audit", ("error in the technical audit sheet", "errors in the technical audit sheet")),
+    ("career", ("field/career mismatch with the audit sheet", "field/career mismatches with the audit sheet")),
+    ("structure", ("structure/format/content issue", "structure/format/content issues")),
 )
 
 
@@ -1249,6 +1272,31 @@ def _decision_errors(label: str, decision: str, use_re, excl_re, use_word: str, 
     return (None, "use")
 
 
+def _duplicate_field_errors(lines: list[str]) -> list[str]:
+    """v19.8 (εξωτερικός έλεγχος): «Σημεία: Ήλιος | Σημεία: Άρης, Κρόνος» εγκρινόταν, γιατί η
+    _key_fields κρατά την τελευταία τιμή. Κάθε πεδίο επιτρέπεται μία φορά ανά γραμμή
+    (εκτός από την «Απόφαση», που κρατά ελεύθερα το υπόλοιπο της γραμμής)."""
+    errors = []
+    for line in lines:
+        head = re.split(r"Απ[οό]φαση\s*:", line, maxsplit=1)[0]
+        dups = _duplicate_indicator_fields(head)
+        if dups:
+            short = line if len(line) <= 90 else line[:87] + "…"
+            errors.append(f"Η γραμμή «{short}» επαναλαμβάνει το πεδίο «{dups[0]}» -- κάθε πεδίο μία φορά.")
+    return errors
+
+
+def _listed_points(value: str) -> set[str]:
+    """«Άρης, Κρόνος, Πλούτωνας» -> {"Άρης", "Κρόνος", "Πλούτωνας"}· άγνωστα ονόματα κρατιούνται
+    αυτούσια ώστε να μη συμπίπτει ποτέ λάθος λίστα με τη σωστή."""
+    names = set()
+    for part in re.split(r"[,;·]|\s+και\s+", value or ""):
+        part = part.strip().rstrip(".")
+        if part:
+            names.add(_exact_point_name(part) or part)
+    return names
+
+
 def _positions_coverage_errors(chart, audit_text: str, talent_titles: list[str]) -> list[str]:
     section = _between_headings(audit_text, POSITIONS_APPENDIX, _APPENDIX_ENDS)
     if not section.strip():
@@ -1260,6 +1308,7 @@ def _positions_coverage_errors(chart, audit_text: str, talent_titles: list[str])
     approved = {_norm_title(t) for t in talent_titles}
     blocks = _talent_blocks(audit_text)
     lines = [l.strip() for l in section.splitlines() if l.strip()]
+    errors += _duplicate_field_errors(lines)
 
     def talent_target(decision: str, label: str):
         quoted = [_norm_title(q) for q in _QUOTED_RE.findall(decision)]
@@ -1289,15 +1338,14 @@ def _positions_coverage_errors(chart, audit_text: str, talent_titles: list[str])
         if len(found) > 1:
             errors.append(f"{label}: εμφανίζεται {len(found)} φορές στο «Παράρτημα Κάλυψης Θέσεων» -- μία γραμμή ανά σημείο.")
         f = found[0]
-        dups = _duplicate_indicator_fields(f.get("_line", ""))
-        if dups:
-            errors.append(f"{label}: η γραμμή επαναλαμβάνει το πεδίο «{dups[0]}» -- κάθε πεδίο μία φορά.")
         sign = _exact_sign(f.get("ζωδιο", ""))
         if sign != point.sign:
             errors.append(f"{label}: το ζώδιο πρέπει να είναι «{point.sign}» όπως στα ελεγμένα δεδομένα.")
-        house_raw = f.get("οικος", "")
-        if point.house is not None and re.fullmatch(r"\d{1,2}", house_raw or "") and int(house_raw) != point.house:
-            errors.append(f"{label}: ο Οίκος πρέπει να είναι {point.house} όπως στα ελεγμένα δεδομένα.")
+        house_raw = (f.get("οικος", "") or "").strip()
+        if point.house is not None:
+            # v19.5 (εξωτερικός έλεγχος): κενό ή μη αριθμητικό «Οίκος:» εγκρινόταν σιωπηλά.
+            if not re.fullmatch(r"\d{1,2}", house_raw) or int(house_raw) != point.house:
+                errors.append(f"{label}: ο Οίκος πρέπει να είναι {point.house} όπως στα ελεγμένα δεδομένα.")
         decision = f.get("αποφαση", "")
         err, kind = _decision_errors(label, decision, _USE_RE, _EXCL_RE, "ΧΡΗΣΙΜΟΠΟΙΕΙΤΑΙ", "ΕΞΑΙΡΕΙΤΑΙ")
         if err:
@@ -1328,6 +1376,11 @@ def _positions_coverage_errors(chart, audit_text: str, talent_titles: list[str])
         if not found:
             errors.append(f"{label}: λείπει γραμμή «Συγκέντρωση:» στο «Παράρτημα Κάλυψης Θέσεων».")
             continue
+        # v19.6 (εξωτερικός έλεγχος): μία γραμμή ανά συγκέντρωση και ακριβή μέλη.
+        if len(found) > 1:
+            errors.append(f"{label}: εμφανίζεται {len(found)} φορές -- μία γραμμή ανά συγκέντρωση.")
+        if _listed_points(found[0].get("σημεια", "")) != set(names):
+            errors.append(f"{label}: το πεδίο «Σημεία:» πρέπει να γράφει ακριβώς: {', '.join(names)}.")
         decision = found[0].get("αποφαση", "")
         err, kind = _decision_errors(label, decision, _USE_RE, _EXCL_RE, "ΧΡΗΣΙΜΟΠΟΙΕΙΤΑΙ", "ΕΞΑΙΡΕΙΤΑΙ")
         if err:
@@ -1377,6 +1430,12 @@ def _wide_cluster_errors(chart, audit_text, lines, blocks, approved, talent_targ
         if not rows:
             errors.append(f"{label}: λείπει γραμμή «Κοινό σημείο:» στο «Παράρτημα Κάλυψης Θέσεων».")
             continue
+        if len(rows) > 1:
+            errors.append(f"{label}: εμφανίζεται {len(rows)} φορές -- μία γραμμή ανά συνδυασμό.")
+        declared = {frozenset(_listed_points(re.sub(r"\s*[–-]\s*", ",", pair)))
+                    for pair in re.split(r"[,;·]", rows[0].get("οψεις", "")) if pair.strip()}
+        if declared != {frozenset(m.split("–")) for m in members}:
+            errors.append(f"{label}: το πεδίο «Όψεις:» πρέπει να γράφει ακριβώς: {', '.join(members)}.")
         decision = rows[0].get("αποφαση", "")
         err, kind = _decision_errors(label, decision, _USE_RE, _EXCL_RE, "ΧΡΗΣΙΜΟΠΟΙΕΙΤΑΙ", "ΕΞΑΙΡΕΙΤΑΙ")
         if err:
@@ -1472,6 +1531,7 @@ def _sectors_coverage_errors(audit_text: str, talent_titles: list[str], catalogu
     client_brief_norm = {_career_norm(n): n for n in client_brief}
     if brief_lines > 1:
         errors.append("Η γραμμή «Άλλες κατευθύνσεις που μπορείς επίσης να εξερευνήσεις:» πρέπει να εμφανίζεται μία μόνο φορά.")
+    errors += _duplicate_field_errors([l.strip() for l in section.splitlines() if l.strip()])
     seen: dict[str, int] = {}
     targeted: set[str] = set()
     brief_targets: dict[str, str] = {}
@@ -1706,32 +1766,48 @@ def _absolute_claims(text: str) -> list[str]:
 # «ο χρόνος που έχει περάσει» δεν είναι ισχυρισμός για τον άνθρωπο. Μόνο αόριστος
 # στο «σε πλήγωσαν»: το υποθετικό «αν κάτι σε πληγώσει» επιτρέπεται.
 _PAST_HARDSHIP = r"(?:πληγ(?:η|εσ|ων)|τραυμ(?:α|ατα|ατων)|πον(?:οσ|ο|ου|οι|ουσ)|απωλει(?:α|εσ|ων))"
-_PAST_VERBS = (r"(?:εχεισ|εχετε)\s+(?:ηδη\s+)?(?:περασει|βιωσει|ζησει|υποφερει|δοκιμασει|"
-               r"πληγωθει|τραυματιστει|πονεσει)"
-               r"|περασεσ|βιωσεσ|εζησεσ|υπεφερεσ|πληγωθηκεσ|τραυματιστηκεσ|πονεσεσ")
+_PAST_VERBS = (r"(?:εχεισ|εχετε)\s+(?:ηδη\s+)?(?:περασει|βιωσει|ζησει|υποφερει|υποστει|δοκιμασει|"
+               r"πληγωθει|τραυματιστει|πονεσει|χασει)"
+               r"|περασεσ|βιωσεσ|εζησεσ|υπεφερεσ|υπεστησ|πληγωθηκεσ|τραυματιστηκεσ|πονεσεσ")
+# Υποθετικό: «Αν έχεις βιώσει πόνο, …» δεν ισχυρίζεται τίποτα -- επιτρέπεται.
+# v19.6 (εξωτερικός έλεγχος): η εξαίρεση ισχύει μόνο όταν ο ισχυρισμός είναι ΜΕΣΑ στην ίδια
+# την υποθετική πρόταση («Αν έχεις βιώσει πόνο, …»), όχι στην κύρια πρόταση μετά από κόμμα
+# («Αν σου αρέσει η έρευνα, έχεις βιώσει απώλειες» -> απορρίπτεται).
+_HYPOTHETICAL_BEFORE_RE = re.compile(r"\b(?:αν|εαν|οταν|if|whenever)\b[^,;:.!?\n—–]{0,40}$")
+_APOSTROPHES = str.maketrans({"\u2019": "'", "\u2018": "'", "\u02bc": "'", "\u2032": "'"})
 _PAST_CLAIMS = [
-    re.compile(r"\b(?:" + _PAST_VERBS + r")\b"),
+    re.compile(r"\b(?:" + _PAST_VERBS + r")\b"),  # 0: ελληνικό ρηματικό (μπορεί να είναι υποθετικό)
     re.compile(r"\b" + _PAST_HARDSHIP + r"\s+(?:σου|σασ)\b"),
     re.compile(r"\b(?:σου|σασ)\s+" + _PAST_HARDSHIP + r"\b"),
     re.compile(r"\bσε\s+(?:πληγωσαν|πληγωσε|τραυματισαν|τραυματισε|πονεσαν|πονεσε|σημαδεψαν|σημαδεψε)\b"),
     re.compile(r"\bδυσκολ\w*\s+παιδικ\w*\s+χρονι\w*"),
     re.compile(r"\bwhat\s+you(?:'ve|\s+have)?\s+(?:been|gone)\s+through\b"),
     re.compile(r"\byour\s+(?:wounds?|traumas?|pain|suffering|losses)\b"),
-    re.compile(r"\byou(?:'ve|\s+have)\s+(?:been\s+hurt|suffered|been\s+traumati[sz]ed|endured)\b"),
+    re.compile(r"\byou(?:'ve|\s+have)\s+(?:been\s+hurt|suffered|been\s+traumati[sz]ed|endured)\b"),  # 7: αγγλικό ρηματικό
     re.compile(r"\bthe\s+(?:pain|hardships?|losses|wounds?)\s+you(?:'ve|\s+have)?\s+(?:experienced|felt|lived|endured|been\s+through)\b"),
     re.compile(r"\b(?:difficult|hard|painful)\s+childhood\b"),
 ]
 
 
+# v19.8: η υποθετική εξαίρεση ισχύει ισότιμα για τα ρηματικά μοτίβα ΚΑΙ των δύο γλωσσών
+# («Αν έχεις βιώσει…» / «If you have suffered…»). Τα κτητικά δεν εξαιρούνται ποτέ.
+_VERB_PATTERNS = {0, 7}
+
+
 def _past_experience_claims(text: str) -> list[str]:
     """Μηνύματα για διατυπώσεις που υποθέτουν τι έχει ζήσει ο πελάτης."""
-    plain = _strip_greek_diacritics(text or "").casefold()
-    source = text if len(text or "") == len(plain) else plain
+    text = (text or "").translate(_APOSTROPHES)  # «You’ve» -> «You've» (ίδιο μήκος)
+    plain = _strip_greek_diacritics(text).casefold()
+    source = text if len(text) == len(plain) else plain
     found, seen = [], set()
-    for rx in _PAST_CLAIMS:
+    for idx, rx in enumerate(_PAST_CLAIMS):
         for m in rx.finditer(plain):
             starts = [plain.rfind(c, 0, m.start()) for c in ".\n;!?·"]
             start = max(starts) + 1
+            # Μόνο το ρηματικό μοτίβο (idx 0) μπορεί να είναι υποθετικό· το κτητικό
+            # («οι πληγές σου») προϋποθέτει την πληγή όπου κι αν βρίσκεται.
+            if idx in _VERB_PATTERNS and _HYPOTHETICAL_BEFORE_RE.search(plain[start:m.start()]):
+                continue
             ends = [i for i in (plain.find(c, m.end()) for c in ".\n;!?·") if i != -1]
             end = min(ends) if ends else len(plain)
             if (start, end) in seen:
@@ -1746,6 +1822,48 @@ def _past_experience_claims(text: str) -> list[str]:
                 "συναντά κάθε άνθρωπος μπορεί…» ή «όταν βρεθείς μπροστά σε…»."
             )
     return found
+
+
+_HEADINGS = {
+    "el": ("Σύντομο προφίλ", "Ταλέντα προς διερεύνηση", "Επαγγελματικοί Τομείς προς Διερεύνηση", "Τελική Σύνθεση"),
+    "en": ("Brief Profile", "Talents to Explore", "Career Fields to Explore", "Final Synthesis"),
+}
+# Ανοχή για ξένους όρους/ονόματα μέσα στο κείμενο (π.χ. «project manager» σε ελληνικό παραδοτέο).
+_FOREIGN_LETTER_TOLERANCE = {"el": 0.15, "en": 0.05}
+
+
+def _language_errors(text: str, expected_lang: str | None, name: str = "") -> list[str]:
+    """v19.9 (εξωτερικός έλεγχος): με επιλεγμένα English, ένα ελληνικό παραδοτέο εγκρινόταν
+    (οι επικεφαλίδες γίνονταν δεκτές και στις δύο γλώσσες). Ελέγχονται (α) οι τέσσερις
+    επικεφαλίδες της ζητούμενης γλώσσας και (β) η αναλογία ελληνικών/λατινικών γραμμάτων στο
+    κείμενο, χωρίς το όνομα του πελάτη (που μπορεί να είναι σε οποιοδήποτε αλφάβητο)."""
+    if expected_lang not in _HEADINGS:
+        return []
+    errors = []
+    other = "en" if expected_lang == "el" else "el"
+    label = "αγγλικά" if expected_lang == "en" else "ελληνικά"
+    plain = _strip_greek_diacritics(text or "")
+    missing = [h for h in _HEADINGS[expected_lang]
+               if not re.search(r"(?:^|\n)\W*" + _strip_greek_diacritics(h).replace(" ", r"\s+"), plain, re.IGNORECASE)]
+    if missing:
+        errors.append(
+            f"Το παραδοτέο πρέπει να είναι στα {label}: λείπουν οι επικεφαλίδες " + ", ".join(f"«{h}»" for h in missing) + "."
+        )
+    body = text or ""
+    for part in [name] + (name.split() if name else []):
+        if part and len(part) > 1:
+            body = body.replace(part, " ")
+    greek = len(re.findall(r"[Α-Ωα-ωΆ-Ώά-ώϊϋΐΰ]", body))
+    latin = len(re.findall(r"[A-Za-z]", body))
+    total = greek + latin
+    if total:
+        foreign = (latin if expected_lang == "el" else greek) / total
+        if foreign > _FOREIGN_LETTER_TOLERANCE[expected_lang]:
+            errors.append(
+                f"Το παραδοτέο πρέπει να είναι εξ ολοκλήρου στα {label}, αλλά περίπου {foreign:.0%} του "
+                f"κειμένου είναι σε άλλο αλφάβητο."
+            )
+    return errors
 
 
 def _simple_presentation_technical_terms(text: str) -> list[str]:
@@ -2371,7 +2489,8 @@ def validate_orientation(chart, text: str, personal: dict | None = None,
                          # πριν ενημερωθεί) -- δεν επηρεάζει πλέον καμία λογική ελέγχου. Αφαίρεσέ την εντελώς
                          # μόλις κανένας caller δεν την περνάει πια.
                          format_issues: list[str] | None = None,
-                         sector_catalogue: list[str] | None = None) -> OrientationValidationResult:
+                         sector_catalogue: list[str] | None = None,
+                         expected_lang: str | None = None) -> OrientationValidationResult:
     # Ίδια κανονικοποίηση ' -> ′ με τα validate_analysis()/validate_rewrite()
     # -- βλ. docstring της _normalize_prime_marks.
     text = _normalize_prime_marks(text)
@@ -2459,6 +2578,14 @@ def validate_orientation(chart, text: str, personal: dict | None = None,
             technical.append("Η απλή παρουσίαση περιέχει τεχνικά αστρολογικά δεδομένα: " + ", ".join(exposed) + ".")
         technical.extend(_absolute_claims(text))
         technical.extend(_past_experience_claims(text))
+        # v19.9 (εξωτερικός έλεγχος): η γλώσσα του παραδοτέου πρέπει να είναι η ζητούμενη.
+        technical.extend(_language_errors(text, expected_lang, (personal or {}).get("Όνομα", "")))
+        # v19.4: η σημείωση πυκνού χάρτη καταργήθηκε από το καθαρό παραδοτέο (Κανόνας 11).
+        if re.search(r"Σημείωση\s+πριν\s+διαβάσεις\s+τις\s+κάρτες|Note\s+before\s+reading\s+the\s+cards", text, re.IGNORECASE):
+            technical.append(
+                "Το καθαρό παραδοτέο περιέχει τη σημείωση πυκνού χάρτη («Σημείωση πριν διαβάσεις τις κάρτες»). "
+                "Καταργήθηκε (Κανόνας 11): ο έλεγχος πυκνότητας γράφεται μόνο στο τεχνικό δελτίο· αφαίρεσέ την."
+            )
         _audit = _orientation_audit_errors(chart, audit_text or "", text)
         technical.extend(_audit)
         breakdown["audit"] += len(_audit)

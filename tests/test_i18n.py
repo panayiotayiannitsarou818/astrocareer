@@ -28,3 +28,22 @@ def test_tr_values_are_non_empty_strings():
     for lang in ("el", "en"):
         for key, value in TR[lang].items():
             assert isinstance(value, str) and value.strip(), f"{lang}.{key} is empty or not a string"
+
+
+def test_validator_summary_follows_the_page_language():
+    """v19.7: στα αγγλικά το μήνυμα έγκρισης/απόρριψης ήταν ελληνικό."""
+    from core.validator import OrientationValidationResult
+    import dataclasses
+    fields = {f.name: ([] if f.type.startswith("list") else None) for f in dataclasses.fields(OrientationValidationResult)}
+    ok = OrientationValidationResult(**{**fields, "ok": True})
+    assert ok.summary("en").startswith("✓ The career orientation passed")
+    assert ok.summary().startswith("✓ Ο προαιρετικός")
+    bad = OrientationValidationResult(**{**fields, "ok": False, "technical_mismatches": ["x"],
+                                         "technical_breakdown": {"audit": 1}})
+    assert bad.summary("en") == "The orientation was rejected: 1 error in the technical audit sheet."
+    assert "απορρίφθηκε" in bad.summary()
+
+
+def test_every_language_has_the_details_note_key():
+    from core.i18n import TR
+    assert all("details_in_greek" in TR[lang] for lang in TR)

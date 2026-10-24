@@ -48,6 +48,13 @@ from .reference_loader import (
 from .validator import _between_headings, _career_norm, _extract_talent_titles, validate_orientation
 
 SERVICE_TITLE = "Ανάδειξη Ταλέντων και Διερεύνηση Επαγγελματικών Επιλογών"
+# v19.10 (εξωτερικός έλεγχος): το αγγλικό Word έπαιρνε ελληνικό τίτλο, που ο έλεγχος γλώσσας
+# μετρούσε μετά ως λάθος γλώσσα. Ο τίτλος του παραδοτέου ακολουθεί πλέον τη γλώσσα.
+SERVICE_TITLES = {"el": SERVICE_TITLE, "en": "Talent Discovery and Career Exploration"}
+
+
+def service_title(lang: str) -> str:
+    return SERVICE_TITLES.get(lang, SERVICE_TITLE)
 CLIENT_OUTPUT_NAME = "AstroCheck_Anadeixi_Talenton.docx"
 AUDIT_TITLE = "Εσωτερικό Τεχνικό Δελτίο Ελέγχου"
 PRESENTATION = "Απλή και πρακτική"
@@ -120,7 +127,7 @@ The binding command is written in Greek. Apply all of its rules, but write the c
 - Right after the last talent, the bold sentence "In summary, the talents to explore are:" followed by a bulleted list of all talent titles, written exactly as in their headings.
 - Inside "Career Fields to Explore", each field has only three kinds of lines: the field title (Heading 2); one paragraph starting "Why it may fit:"; and one line starting "Example Careers per Field:" listing all of the field's careers comma-separated, with any explanation in parentheses right after the career name. A career name itself never contains parentheses. No other paragraphs or bullets in that section, except the optional brief-mention line described next.
 - Optional, only for fields with the decision ΣΥΝΤΟΜΗ ΑΝΑΦΟΡΑ (Rule 12): after the last main field, ONE paragraph starting exactly with "Other directions you may also explore:" followed only by those field names, comma-separated, with no careers and no explanation.
-- The dense-chart note (Rule 11), only when triggered: the first paragraph of "Talents to Explore", starting exactly with "Note before reading the cards:".
+- Do not write any dense-chart note or any other paragraph before the first talent title (Rule 11: the density check stays only in the technical audit).
 - The closing paragraph of "Final Synthesis" starts with the bold words "What to Remember:" (not a separate heading) and states that these directions are not a final decision, that the subjects and activities the person enjoys and their actual performance can confirm or revise them, and above all that the final choice always remains theirs, as an expression of their free will.
 - Never claim what the person has lived through or felt (e.g. "what you've been through", "your wound", "you have suffered"): the software knows only the chart. Words like pain, wound or hardship are fine only in general ("the difficulties everyone meets...") or hypothetical ("when you face...") form.
 - Never use in the client deliverable: planet or point names, zodiac signs, the words "House" or "ruler", orb values, weight categories, or the words conjunction, trine, sextile, square, opposition, quincunx -- not even in their everyday sense.
@@ -271,17 +278,18 @@ class PipelineResult:
 
 # ---------------------------------------------------------------- έλεγχοι
 
-def evaluate_response(chart, name: str, raw: str):
+def evaluate_response(chart, name: str, raw: str, lang: str = "el"):
     """Πλήρης έλεγχος μιας απάντησης όπως θα τη δει ο πελάτης:
     .docx -> ξαναδιάβασμα -> validator (+ μορφή Word)."""
     client_text, audit_text = split_orientation_response(raw)
-    client_docx = build_orientation_client_docx(SERVICE_TITLE, name, client_text)
+    client_docx = build_orientation_client_docx(service_title(lang), name, client_text)
     audit_docx = build_orientation_audit_docx(AUDIT_TITLE, name, audit_text) if audit_text else None
     check = validate_orientation(
         chart, docx_text(client_docx), {"Όνομα": name},
         presentation_mode=PRESENTATION,
         audit_text=docx_text(audit_docx) if audit_docx else None,
         format_issues=simple_docx_format_issues(client_docx),
+        expected_lang=lang,
     )
     return check, client_text, audit_text, client_docx, audit_docx
 
@@ -479,7 +487,7 @@ def run_pipeline(chart, name: str, lang: str = "el", *,
                 prompt_extra = truncation_note(lang)
                 state.rounds_without_improvement += 1
             else:
-                check = evaluate_response(chart, name, res.text)[0]
+                check = evaluate_response(chart, name, res.text, lang)[0]
                 issues = [] if check.ok else list(check.details_lines())
                 state.history.append(AttemptRecord(state.attempts, kind, check.ok, issues))
                 notify("checked", attempt=state.attempts, count=len(issues))
@@ -506,7 +514,7 @@ def run_pipeline(chart, name: str, lang: str = "el", *,
                     state.history.append(AttemptRecord(state.attempts, "fresh", False, ["κομμένη απάντηση"], True))
                     prompt_extra = truncation_note(lang)
                     continue
-                check = evaluate_response(chart, name, fresh.text)[0]
+                check = evaluate_response(chart, name, fresh.text, lang)[0]
                 issues = [] if check.ok else list(check.details_lines())
                 state.history.append(AttemptRecord(state.attempts, "fresh", check.ok, issues))
                 notify("checked", attempt=state.attempts, count=len(issues))
@@ -527,7 +535,7 @@ def run_pipeline(chart, name: str, lang: str = "el", *,
                 res = call(base_prompt + quality_note(state.best_raw, lang), "quality")
                 if not res.truncated:
                     old_client = split_orientation_response(state.best_raw)[0]
-                    new_check, new_client, *_ = evaluate_response(chart, name, res.text)
+                    new_check, new_client, *_ = evaluate_response(chart, name, res.text, lang)
                     if quality_is_acceptable(old_client, new_client, new_check):
                         state.best_raw = res.text
                         quality_applied = True
@@ -543,7 +551,7 @@ def run_pipeline(chart, name: str, lang: str = "el", *,
     if state.best_raw is None:
         return PipelineResult(False, state.attempts, None, None, None, None, None, None, reason, state, cost,
                               stop.key if stop else None, stop.detail if stop else None)
-    check, client_text, audit_text, client_docx, audit_docx = evaluate_response(chart, name, state.best_raw)
+    check, client_text, audit_text, client_docx, audit_docx = evaluate_response(chart, name, state.best_raw, lang)
     return PipelineResult(
         ok=check.ok, attempts=state.attempts, check=check, raw=state.best_raw,
         client_text=client_text, audit_text=audit_text, client_docx=client_docx, audit_docx=audit_docx,

@@ -150,3 +150,24 @@ def test_binding_command_explains_clusters_and_chiron():
     assert "ΣΥΝΔΥΑΣΜΟΙ ΠΛΑΤΙΩΝ ΟΨΕΩΝ ΜΕ ΚΟΙΝΟ ΣΗΜΕΙΟ" in cmd
     assert "Κοινό σημείο: Πλούτωνας | Όψεις:" in cmd
     assert "ο Χείρωνας δεν υποβαθμίζεται" in cmd
+
+
+
+def test_cluster_aspects_must_match_the_software():
+    bad = CLUSTER_USED.replace("Όψεις: Ήλιος–Πλούτωνας, Ερμής–Πλούτωνας", "Όψεις: Ήλιος–Πλούτωνας")
+    _, errors = _errors(_audit(cluster=bad))
+    assert "το πεδίο «Όψεις:» πρέπει να γράφει ακριβώς" in errors
+
+
+def test_duplicate_cluster_lines_are_rejected():
+    extra = CLUSTER_USED + "\n" + CLUSTER_USED.replace("ΧΡΗΣΙΜΟΠΟΙΕΙΤΑΙ — Ταλέντο «Ταλέντο 2»", "ΕΞΑΙΡΕΙΤΑΙ — δεν ταιριάζει")
+    _, errors = _errors(_audit(cluster=extra))
+    assert "εμφανίζεται 2 φορές" in errors
+
+
+
+def test_repeated_field_inside_one_cluster_line_is_rejected():
+    bad = CLUSTER_USED.replace("Όψεις: Ήλιος–Πλούτωνας, Ερμής–Πλούτωνας",
+                               "Όψεις: Ήλιος–Σελήνη | Όψεις: Ήλιος–Πλούτωνας, Ερμής–Πλούτωνας")
+    _, errors = _errors(_audit(cluster=bad))
+    assert "επαναλαμβάνει το πεδίο «Όψεις»" in errors

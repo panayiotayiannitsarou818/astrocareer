@@ -24,7 +24,6 @@ def test_mandatory_labels_reach_the_model():
         "ΕΓΚΕΚΡΙΜΕΝΟΙ ΕΠΑΓΓΕΛΜΑΤΙΚΟΙ ΤΟΜΕΙΣ",
         "ΕΓΚΕΚΡΙΜΕΝΑ ΕΠΑΓΓΕΛΜΑΤΑ",
         "ΡΗΤΗ ΤΕΚΜΗΡΙΩΣΗ ΤΟΜΕΑ ΥΓΕΙΑΣ",
-        "Σημείωση πριν διαβάσεις τις κάρτες",
         "Συνοπτικά, τα ταλέντα προς διερεύνηση είναι:",
     ):
         assert label in command, label
@@ -66,7 +65,7 @@ def test_anonymous_template_agrees_with_v12():
     να δείχνει μορφή που ο validator απορρίπτει."""
     from core.reference_loader import load_unified_short_example
     example = load_unified_short_example()
-    assert "Σημείωση πριν διαβάσεις τις κάρτες:" in example
+    assert "Σημείωση πριν διαβάσεις τις κάρτες" not in example  # v19.4: καταργήθηκε
     assert "Συνοπτικά, τα ταλέντα προς διερεύνηση είναι:" in example
     assert "κουκκίδες" not in example            # προφίλ: μία παράγραφος
     assert "λιγότερο από μία πρόταση" not in example  # λίστα: μόνο τίτλοι
@@ -83,3 +82,11 @@ def test_command_examples_never_mix_usage_and_exclusion():
     for line in load_orientation_command().split("\n"):
         if "ΕΞΑΙΡΕΙΤΑΙ" in line:
             assert not re.search(r"χρησιμοποι", line, re.IGNORECASE), line
+
+
+def test_dense_chart_note_is_removed_from_the_client_rules():
+    """v19.4: ο Κανόνας 11 έγινε έλεγχος μόνο για το τεχνικό δελτίο."""
+    command = load_orientation_command()
+    assert "Κανόνας 11. Έλεγχος πυκνής διασύνδεσης (μόνο στο τεχνικό δελτίο)" in command
+    assert "Υποχρεωτικό δείγμα διατύπωσης" not in command
+    assert "Αν ενεργοποιείται ο Κανόνας 11" not in command

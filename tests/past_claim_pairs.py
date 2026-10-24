@@ -12,6 +12,17 @@ FORBIDDEN = [
     "What you've been through made you stronger.",
     "Your trauma shaped you.",
     "You have suffered a lot.",
+    # v19.5 (εξωτερικός έλεγχος)
+    "Έχεις υποστεί σοβαρές απώλειες.",
+    "Έχεις χάσει πολλά στη ζωή σου.",
+    # Και η άρνηση είναι ισχυρισμός για το παρελθόν: το λογισμικό δεν ξέρει ούτε αυτό.
+    "Δεν έχεις βιώσει πόνο.",
+    # v19.6 (εξωτερικός έλεγχος): η υπόθεση δεν «καλύπτει» την κύρια πρόταση
+    "Αν σου αρέσει η έρευνα, έχεις βιώσει μεγάλες απώλειες.",
+    "Όταν συνεργάζεσαι, οι πληγές σου σε κάνουν δυνατό.",
+    "You’ve suffered significant losses.",
+    "What you’ve been through made you stronger.",
+    "If you like research, you have suffered great losses.",
 ]
 ALLOWED = [
     "Οι δυσκολίες που συναντά κάθε άνθρωπος μπορεί, με τον χρόνο, να γίνουν πηγή δύναμης.",
@@ -26,4 +37,12 @@ ALLOWED = [
     "Θα μπορούσες να ξεπερνάς τις δυσκολίες σου με υπομονή.",
     "You may understand other people's pain naturally.",
     "Difficulties that everyone meets can become a source of strength.",
+    # v19.5 (εξωτερικός έλεγχος): υποθετικό, δεν ισχυρίζεται τίποτα
+    "Αν έχεις βιώσει πόνο, μπορείς να το συζητήσεις.",
+    "Όταν έχεις περάσει μια δύσκολη μέρα, ίσως σε βοηθά η δημιουργία.",
+    "If you have been through a hard time, creativity may help.",
+    "If you’ve been through a hard time, creativity may help.",
+    # v19.8 (εξωτερικός έλεγχος): ισότιμη υποθετική εξαίρεση στα αγγλικά
+    "If you have suffered losses, you can talk about them.",
+    "If you’ve been hurt, creativity can help you express it.",
 ]

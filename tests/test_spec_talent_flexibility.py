@@ -435,7 +435,7 @@ def test_english_word_boundary_false_positives_fixed():
 
 # --- Πραγματικά bugs, εντοπίστηκαν από πραγματικό ανέβασμα .docx ---
 
-def test_dense_chart_note_is_not_misread_as_a_talent():
+def test_dense_chart_note_is_now_rejected_in_the_client_text():
     """Η υποχρεωτική σημείωση πριν τις κάρτες ταλέντων (Κανόνας 8Α, για
     πυκνά διασυνδεδεμένους χάρτες) είναι μία μακριά παράγραφος που
     εμφανίζεται ΠΡΩΤΗ στην ενότητα -- πριν το fix, μετρούνταν σαν να ήταν
@@ -455,7 +455,12 @@ def test_dense_chart_note_is_not_misread_as_a_talent():
         CHART, client, {"Όνομα": "Gavriela Doe"},
         presentation_mode="Απλή και πρακτική", audit_text=audit, format_issues=[],
     )
-    assert result.ok, result.details_lines()
+    # v19.4: η σημείωση καταργήθηκε από το καθαρό παραδοτέο -- απορρίπτεται ρητά,
+    # αλλά με ΕΝΑ σαφές μήνυμα, όχι ως ψευδές «ταλέντο» ή ασυμφωνία λίστας.
+    lines = result.details_lines()
+    assert not result.ok
+    assert any("σημείωση πυκνού χάρτη" in l for l in lines), lines
+    assert not any("συνοπτική λίστα" in l or "δεν έχει εγκριθεί" in l for l in lines), lines
 
 
 def test_narrative_orb_restating_with_adjective_form_does_not_cause_false_mismatch():

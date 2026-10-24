@@ -373,3 +373,39 @@ def test_brief_line_survives_the_real_docx_round_trip():
     result = validate_orientation(CHART, c, {"Όνομα": "Test"}, presentation_mode="Απλή και πρακτική",
                                   audit_text=a, format_issues=[], sector_catalogue=CATALOGUE)
     assert result.ok, result.details_lines()
+
+
+
+@pytest.mark.parametrize("value", ["Οίκος:", "Οίκος: λάθος", "Οίκος: —"])
+def test_empty_or_non_numeric_house_is_rejected(value):
+    """v19.5 (εξωτερικός έλεγχος): κενό/μη αριθμητικό «Οίκος:» εγκρινόταν σιωπηλά."""
+    bad = POSITIONS["Χείρωνας"].replace("Οίκος: 2", value)
+    assert "ο Οίκος πρέπει να είναι 2" in _errors(_audit(positions={"Χείρωνας": bad}))
+
+
+
+@pytest.mark.parametrize("members", ["Σημεία: Ήλιος, Σελήνη", "", "Σημεία: Άρης, Κρόνος"])
+def test_concentration_members_must_match_the_software(members):
+    """v19.6 (εξωτερικός έλεγχος): λάθος/ελλιπή μέλη εγκρίνονταν."""
+    line = CONCENTRATIONS["Ζώδιο Ζυγός"].replace("Σημεία: Άρης, Κρόνος, Πλούτωνας", members).replace("|  |", "|")
+    assert "το πεδίο «Σημεία:» πρέπει να γράφει ακριβώς" in _errors(_audit(concentrations={"Ζώδιο Ζυγός": line}))
+
+
+def test_conflicting_duplicate_concentration_lines_are_rejected():
+    """v19.6 (εξωτερικός έλεγχος): ΧΡΗΣΙΜΟΠΟΙΕΙΤΑΙ + ΕΞΑΙΡΕΙΤΑΙ για την ίδια συγκέντρωση εγκρινόταν."""
+    second = "Συγκέντρωση: Ζώδιο Ζυγός | Σημεία: Άρης, Κρόνος, Πλούτωνας | Απόφαση: ΕΞΑΙΡΕΙΤΑΙ — δεν σχετίζεται"
+    line = CONCENTRATIONS["Ζώδιο Ζυγός"] + "\n" + second
+    assert "εμφανίζεται 2 φορές" in _errors(_audit(concentrations={"Ζώδιο Ζυγός": line}))
+
+
+
+def test_repeated_field_inside_one_concentration_line_is_rejected():
+    """v19.8 (εξωτερικός έλεγχος): «Σημεία: Ήλιος, Σελήνη | Σημεία: Άρης, …» εγκρινόταν."""
+    line = CONCENTRATIONS["Ζώδιο Ζυγός"].replace(
+        "Σημεία: Άρης, Κρόνος, Πλούτωνας", "Σημεία: Ήλιος, Σελήνη | Σημεία: Άρης, Κρόνος, Πλούτωνας")
+    assert "επαναλαμβάνει το πεδίο «Σημεία»" in _errors(_audit(concentrations={"Ζώδιο Ζυγός": line}))
+
+
+def test_repeated_field_inside_one_sector_line_is_rejected():
+    bad = "Τομέας: Εκπαίδευση και μάθηση | Τομέας: Νομική και δικαιοσύνη | Απόφαση: ΑΠΟΡΡΙΠΤΕΤΑΙ — δεν σχετίζεται"
+    assert "επαναλαμβάνει το πεδίο «Τομέας»" in _errors(_audit(sectors=[SECTORS[0], bad, SECTORS[2]]))

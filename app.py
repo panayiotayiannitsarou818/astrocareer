@@ -285,6 +285,8 @@ def _auto_tab():
             record_report_cost(sum(c["cost_usd"] for c in run_calls), len(run_calls),
                                sum(c["output_tokens"] for c in run_calls) / len(run_calls))
         ss.auto_result = {
+            # v19.5: το αποτέλεσμα ανήκει σε συγκεκριμένο PDF + γλώσσα.
+            "case_key": case_key, "lang": lang,
             "ok": result.ok, "reason": result.stopped_reason, "attempts": result.attempts,
             "resumable": result.resumable, "error_key": result.error_key, "error_detail": result.error_detail,
             "client_docx": result.client_docx, "audit_docx": result.audit_docx,
@@ -316,6 +318,15 @@ def _auto_tab():
 
     # ---------------------------------------------------------------- αποτέλεσμα
     res = ss.get("auto_result")
+    if res and pdf is not None:
+        # v19.5 (εξωτερικός έλεγχος): με νέο PDF ή άλλη γλώσσα, το παλιό αποτέλεσμα δεν
+        # εμφανίζεται -- αλλιώς φαινόταν «νέο PDF + κουμπί λήψης της προηγούμενης αναφοράς».
+        if res.get("case_key") != hashlib.sha256(pdf.getvalue()).hexdigest() or res.get("lang") != lang:
+            ss.pop("auto_result", None)
+            res = None
+    elif res and pdf is None:
+        ss.pop("auto_result", None)
+        res = None
     case = ss.cases.get(ss.current_case)
     if res:
         if res["ok"]:
@@ -432,24 +443,41 @@ def _manual_tab():
     st.markdown(t["manual_step3"])
     orientation_result = st.file_uploader(t["result_uploader"], type=['docx'], key=f"orientation_result_{ss.uploader_gen}")
     orientation_audit = st.file_uploader(t["audit_uploader"], type=['docx'], key=f"orientation_audit_{ss.uploader_gen}")
+    # v19.9 (εξωτερικός έλεγχος): η έγκριση ανήκει σε συγκεκριμένα αρχεία. Αν αλλάξει το PDF,
+    # οποιοδήποτε από τα δύο Word ή η γλώσσα, το παλιό αποτέλεσμα ελέγχου δεν εμφανίζεται.
+    def _manual_fingerprint():
+        if not (orientation_result and orientation_audit):
+            return None
+        h = hashlib.sha256()
+        for part in (orientation_result.getvalue(), orientation_audit.getvalue(),
+                     repr(chart.to_dict()).encode("utf-8"), lang.encode("utf-8")):
+            h.update(hashlib.sha256(part).digest())
+        return h.hexdigest()
+
     if st.button(t["check_button"], disabled=not (orientation_result and orientation_audit), use_container_width=True):
         result_bytes = orientation_result.getvalue()
         ss.orientation_validation = validate_orientation(
             chart, docx_text(result_bytes), {"Όνομα": display_name},
             presentation_mode=PRESENTATION, audit_text=docx_text(orientation_audit.getvalue()),
-            format_issues=simple_docx_format_issues(result_bytes),
+            format_issues=simple_docx_format_issues(result_bytes), expected_lang=lang,
         )
         ss.orientation_docx_bytes = result_bytes
         ss.orientation_docx_name = orientation_result.name
+        ss.orientation_fingerprint = _manual_fingerprint()
+    if ss.get("orientation_validation") is not None and ss.get("orientation_fingerprint") != _manual_fingerprint():
+        for key in ("orientation_validation", "orientation_docx_bytes", "orientation_docx_name", "orientation_fingerprint"):
+            ss.pop(key, None)
     check = ss.get('orientation_validation')
     if check:
         if check.ok:
-            st.markdown(f'<div class="ok">{check.summary()}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="ok">{check.summary(lang)}</div>', unsafe_allow_html=True)
+            if check.warnings and lang == "en": st.caption(t["details_in_greek"])
             for line in check.warnings: st.write("•", line)
             st.download_button(t["download_checked"], ss.orientation_docx_bytes,
                                file_name=ss.orientation_docx_name, type="primary", use_container_width=True)
         else:
-            st.markdown(f'<div class="warn">⚠ {check.summary()}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="warn">⚠ {check.summary(lang)}</div>', unsafe_allow_html=True)
+            if lang == "en": st.caption(t["details_in_greek"])
             for line in check.details_lines(): st.write("•", line)
 
 

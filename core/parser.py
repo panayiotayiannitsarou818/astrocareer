@@ -79,7 +79,9 @@ def _metadata(text: str, filename: str):
     for line in first:
         if "Time" in line and not time:
             left, right = line.split("Time", 1)
-            name = re.sub(r"^[D\s]+", "", left).strip() or name
+            # v19.8 (εξωτερικός έλεγχος): πριν αφαιρούνταν ΚΑΘΕ αρχικό «D» («David» -> «avid»).
+            # Αφαιρείται μόνο ένα αποκομμένο «D» που ακολουθείται από κενό διάταξης (2+ κενά).
+            name = re.sub(r"^\s*(?:D\s{2,})?", "", left).strip() or name
             mt = re.search(r"(\d{1,2}:\d{2}\s*[ap]\.m\.)", right)
             time = mt.group(1) if mt else ""
         if "born on" in line:

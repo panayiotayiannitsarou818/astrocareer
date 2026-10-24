@@ -105,3 +105,20 @@ def test_angle_conjunction_detected(chart):
         and (a.first in ("Ωροσκόπος", "Μεσουράνημα") or a.second in ("Ωροσκόπος", "Μεσουράνημα"))
     ]
     assert len(angle_conjunctions) >= 1
+
+
+
+import pytest as _pytest
+
+
+@_pytest.mark.parametrize("raw, expected", [
+    ("David Smith           Time", "David Smith"),
+    ("Diana Doe   Time", "Diana Doe"),
+    ("Δημήτρης   Time", "Δημήτρης"),
+    ("D      Maria Papa    Time", "Maria Papa"),   # αποκομμένο «D» της διάταξης
+])
+def test_names_starting_with_latin_d_are_kept(raw, expected):
+    """v19.8 (εξωτερικός έλεγχος): «David Smith» γινόταν «avid Smith»."""
+    from core.parser import _metadata
+    name, *_ = _metadata(raw + " 12:00 p.m.\n", "x.pdf")
+    assert name == expected
