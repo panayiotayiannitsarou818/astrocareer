@@ -53,6 +53,16 @@ SERVICE_TITLE = "Ανάδειξη Ταλέντων και Διερεύνηση �
 SERVICE_TITLES = {"el": SERVICE_TITLE, "en": "Talent Discovery and Career Exploration"}
 
 
+_GLUED_SENTENCE_RE = re.compile(r"(?<=[a-zα-ωάέήίόύώϊϋΐΰ\)»])([.;!?·])(?=[A-ZΑ-ΩΆΈΉΊΌΎΏ«])")
+
+
+def fix_sentence_spacing(text: str) -> str:
+    """v19.12: «…να αλλάξει.Πρώτα εμφανίζονται…» -> «…να αλλάξει. Πρώτα εμφανίζονται…».
+    Μόνο τελεία/ερωτηματικό κολλημένα ανάμεσα σε πεζό γράμμα και κεφαλαίο (όχι αριθμοί,
+    όχι συντομογραφίες με κεφαλαία)."""
+    return _GLUED_SENTENCE_RE.sub(r"\1 ", text or "")
+
+
 def service_title(lang: str) -> str:
     return SERVICE_TITLES.get(lang, SERVICE_TITLE)
 CLIENT_OUTPUT_NAME = "AstroCheck_Anadeixi_Talenton.docx"
@@ -124,6 +134,8 @@ def reinforcement_instructions(name: str, lang: str) -> str:
 
 The binding command is written in Greek. Apply all of its rules, but write the clean client deliverable in English, using these exact English equivalents, because the automated check looks for them literally:
 - The four section headings (Heading 1), in this order: "Brief Profile", "Talents to Explore", "Career Fields to Explore", "Final Synthesis".
+- The Brief Profile paragraph ends with this exact sentence, unchanged (it does not count toward the word limit; do not write another sentence with the same message — trying things out, experience, choice — right before it): "The talents that the chart shows most strongly come first. The order sets no limit on any of them: how far each one develops depends on experience and practice. They are all worth trying; the choice of which ones to cultivate is yours."
+- Write the talents in the order of the internal ranking (Rule 10): first «κυρίαρχο», then «βασικό», then «αναδυόμενο»; every ΤΑΛΕΝΤΟ: block in the audit has a line «Εσωτερική κατάταξη: κυρίαρχο/βασικό/αναδυόμενο».
 - Right after the last talent, the bold sentence "In summary, the talents to explore are:" followed by a bulleted list of all talent titles, written exactly as in their headings.
 - Inside "Career Fields to Explore", each field has only three kinds of lines: the field title (Heading 2); one paragraph starting "Why it may fit:"; and one line starting "Example Careers per Field:" listing all of the field's careers comma-separated, with any explanation in parentheses right after the career name. A career name itself never contains parentheses. No other paragraphs or bullets in that section, except the optional brief-mention line described next.
 - Optional, only for fields with the decision ΣΥΝΤΟΜΗ ΑΝΑΦΟΡΑ (Rule 12): after the last main field, ONE paragraph starting exactly with "Other directions you may also explore:" followed only by those field names, comma-separated, with no careers and no explanation.
@@ -282,6 +294,7 @@ def evaluate_response(chart, name: str, raw: str, lang: str = "el"):
     """Πλήρης έλεγχος μιας απάντησης όπως θα τη δει ο πελάτης:
     .docx -> ξαναδιάβασμα -> validator (+ μορφή Word)."""
     client_text, audit_text = split_orientation_response(raw)
+    client_text = fix_sentence_spacing(client_text)
     client_docx = build_orientation_client_docx(service_title(lang), name, client_text)
     audit_docx = build_orientation_audit_docx(AUDIT_TITLE, name, audit_text) if audit_text else None
     check = validate_orientation(

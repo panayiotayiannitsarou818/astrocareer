@@ -48,8 +48,10 @@ def test_full_english_report_is_approved_through_the_real_pipeline():
     import io
     from core.reference_loader import docx_text
     from tests.coverage_helper import add_coverage
+    from core.validator import ORDER_SENTENCE
     client = (
         _build_client_text(2)
+        .replace(ORDER_SENTENCE["el"], ORDER_SENTENCE["en"])
         .replace("Σύντομο προφίλ", "Brief Profile")
         .replace("Ταλέντα προς διερεύνηση", "Talents to Explore")
         .replace("Συνοπτικά, τα ταλέντα προς διερεύνηση είναι:", "In summary, the talents to explore are:")
@@ -65,7 +67,7 @@ def test_full_english_report_is_approved_through_the_real_pipeline():
                  "directions, and the final choice always remains yours, as an expression of your free will.")
     )
     audit = (_build_audit_text(2).split("Παράρτημα Κάλυψης")[0]
-             .replace("Ταλέντο", "Talent").replace("Τομέας", "Field").replace("επάγγελμα", "career")
+             .replace("ΤΑΛΕΝΤΟ: Ταλέντο", "ΤΑΛΕΝΤΟ: Talent").replace("Τομέας", "Field").replace("επάγγελμα", "career")
              + "Τελικός έλεγχος: ολοκληρώθηκε.\n")
     audit = add_coverage(CHART, audit, client)
     check, _, _, client_docx, _ = pipeline.evaluate_response(CHART, "Test", _raw(client, audit), "en")

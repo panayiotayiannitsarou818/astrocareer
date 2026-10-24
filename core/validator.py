@@ -1866,6 +1866,62 @@ def _language_errors(text: str, expected_lang: str | None, name: str = "") -> li
     return errors
 
 
+# ---------------------------------------------------------------- v19.11: σειρά ταλέντων
+# Απόφαση ιδιοκτήτριας: το Σύντομο προφίλ κλείνει με σταθερή πρόταση που εξηγεί τη σειρά,
+# και η σειρά είναι ΠΡΑΓΜΑΤΙΚΑ αυτή που λέει η πρόταση (κυρίαρχα -> βασικά -> αναδυόμενα).
+ORDER_SENTENCE = {
+    "el": ("Πρώτα εμφανίζονται τα ταλέντα που ο χάρτης δείχνει πιο έντονα. Η σειρά δεν βάζει όριο σε "
+           "κανένα: το πόσο θα αναπτυχθεί το καθένα εξαρτάται από την εμπειρία και την εξάσκηση. Αξίζει "
+           "να τα δοκιμάσεις όλα· η επιλογή για το ποια θα καλλιεργήσεις είναι δική σου."),
+    "en": ("The talents that the chart shows most strongly come first. The order sets no limit on any of "
+           "them: how far each one develops depends on experience and practice. They are all worth trying; "
+           "the choice of which ones to cultivate is yours."),
+}
+_RANKS = {"κυριαρχο": 0, "βασικο": 1, "αναδυομενο": 2}
+
+
+def _loose(text: str) -> str:
+    plain = _strip_greek_diacritics(text or "").casefold().translate(_APOSTROPHES)
+    return re.sub(r"[^\w]+", " ", plain).strip()
+
+
+def _talent_ranks(audit_text: str) -> dict[str, int | None]:
+    ranks = {}
+    for title, block in _talent_blocks(audit_text).items():
+        m = re.search(r"^\s*Εσωτερική\s+κατάταξη\s*:\s*(\S+)", block, re.MULTILINE | re.IGNORECASE)
+        word = _strip_greek_diacritics(m.group(1)).casefold().strip(".,·;—-") if m else ""
+        ranks[title] = _RANKS.get(word)
+    return ranks
+
+
+def _order_errors(client_text: str, audit_text: str, expected_lang: str | None) -> list[str]:
+    if expected_lang not in ORDER_SENTENCE:
+        return []
+    errors = []
+    profile = _between_headings(client_text, r"Σύντομο\s+προφίλ|Brief\s+Profile",
+                                (r"Ταλέντα\s+προς\s+διερεύνηση", r"Talents\s+to\s+Explore"))
+    if _loose(ORDER_SENTENCE[expected_lang]) not in _loose(profile):
+        errors.append("Το Σύντομο προφίλ πρέπει να κλείνει αυτούσια με την πρόταση για τη σειρά των ταλέντων "
+                      f"(Κανόνας 3.1): «{ORDER_SENTENCE[expected_lang]}»")
+    titles = _extract_talent_titles(client_text)
+    ranks = _talent_ranks(audit_text)
+    sequence = []
+    for title in titles:
+        rank = ranks.get(_norm_title(title))
+        if rank is None:
+            errors.append(f"Το μπλοκ «ΤΑΛΕΝΤΟ: {title}» χρειάζεται γραμμή «Εσωτερική κατάταξη: κυρίαρχο/βασικό/"
+                          "αναδυόμενο» (Κανόνας 16.1).")
+        else:
+            sequence.append((rank, title))
+    for (r1, t1), (r2, t2) in zip(sequence, sequence[1:]):
+        if r2 < r1:
+            names = {0: "κυρίαρχο", 1: "βασικό", 2: "αναδυόμενο"}
+            errors.append(f"Λάθος σειρά ταλέντων: το «{t2}» ({names[r2]}) γράφεται μετά το «{t1}» ({names[r1]}). "
+                          "Τα ταλέντα γράφονται με τη σειρά κυρίαρχα → βασικά → αναδυόμενα (Κανόνας 3.2).")
+            break
+    return errors
+
+
 def _simple_presentation_technical_terms(text: str) -> list[str]:
     """Η απλή έκδοση πελάτη δεν πρέπει να εκθέτει τεχνική αστρολογική γλώσσα."""
     # Fix (English mode, κριτική): οι λίστες πιάνουν πλέον και τα αγγλικά
@@ -2580,6 +2636,7 @@ def validate_orientation(chart, text: str, personal: dict | None = None,
         technical.extend(_past_experience_claims(text))
         # v19.9 (εξωτερικός έλεγχος): η γλώσσα του παραδοτέου πρέπει να είναι η ζητούμενη.
         technical.extend(_language_errors(text, expected_lang, (personal or {}).get("Όνομα", "")))
+        technical.extend(_order_errors(text, audit_text or "", expected_lang))
         # v19.4: η σημείωση πυκνού χάρτη καταργήθηκε από το καθαρό παραδοτέο (Κανόνας 11).
         if re.search(r"Σημείωση\s+πριν\s+διαβάσεις\s+τις\s+κάρτες|Note\s+before\s+reading\s+the\s+cards", text, re.IGNORECASE):
             technical.append(

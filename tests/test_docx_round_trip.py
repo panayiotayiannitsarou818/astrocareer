@@ -22,6 +22,7 @@ upload-and-check flow), το κείμενο πρώτα γίνεται πραγμ
 from core.docx_builder import build_orientation_audit_docx, build_orientation_client_docx
 from core.models import Aspect, Chart, Point
 from core.reference_loader import docx_text
+from core.validator import ORDER_SENTENCE
 from tests.coverage_helper import add_coverage, validate_orientation_legacy as validate_orientation
 
 CHART = Chart(
@@ -51,7 +52,7 @@ def _build_client_text(n_talents=3):
         for i in range(1, n_talents + 1)
     )
     return (
-        f"Σύντομο προφίλ\nTest. {' '.join(['λέξη'] * 100)}\n\n"
+        f"Σύντομο προφίλ\nTest. {' '.join(['λέξη'] * 100)} {ORDER_SENTENCE['el']}\n\n"
         f"Ταλέντα προς διερεύνηση\n{talents}"
         f"Συνοπτικά, τα ταλέντα προς διερεύνηση είναι:\n{titles}\n\n"
         f"Επαγγελματικοί Τομείς προς Διερεύνηση\n{fields}"
@@ -68,6 +69,7 @@ def _build_audit_text_base(n_talents=3):
         f"ΤΑΛΕΝΤΟ: Ταλέντο {i}\n"
         f"Δείκτης 1: Τύπος: Θέση | Σημείο: Κρόνος | Οίκος: 6\n"
         f"Δείκτης 2: Τύπος: Όψη | Σημείο 1: Κρόνος | Όψη: Τρίγωνο | Σημείο 2: Ήλιος | Orb: 1°00′ | Βαρύτητα: Στενή/ισχυρή\n"
+        f"Εσωτερική κατάταξη: κυρίαρχο\n"
         for i in range(1, n_talents + 1)
     )
     return (
