@@ -122,3 +122,28 @@ def test_english_instructions_kept_without_name():
     for marker in ("Brief Profile", "Talents to Explore", "Career Fields to Explore", "What to Remember:"):
         assert marker in no_name and marker in with_name
     assert with_name.split("\n", 1)[1] == no_name.split("\n", 1)[1]
+
+
+
+@pytest.mark.parametrize("query,lang,code", [
+    ("Κύπρος", "el", "CY"), ("κυπρος", "el", "CY"), ("ΚΥΠΡΟΣ", "el", "CY"), ("Cyprus", "el", "CY"),
+    ("κυπ", "el", "CY"), ("ελλαδα", "el", "GR"), ("ΕΛΛΑΔΑ", "en", "GR"), ("Greece", "en", "GR"),
+    ("ηπα", "el", "US"), ("USA", "en", "US"), ("αγγλια", "el", "GB"), ("νορβηγια", "el", "NO"),
+])
+def test_country_search_ignores_accents_case_and_language(query, lang, code):
+    # v20.7: η λίστα του Streamlit έβρισκε την Κύπρο μόνο με ακριβή τόνο «Κύπρος».
+    from core.places import search_countries
+    found = search_countries(query, lang)
+    assert found and found[0][0] == code, (query, found[:3])
+
+
+
+def test_places_in_country_for_dropdown():
+    from core.places import DROPDOWN_MAX_PLACES, normalize, places_in_country
+    cy = places_in_country("CY", "el")
+    assert 50 < len(cy) <= DROPDOWN_MAX_PLACES
+    assert all(p.country_code == "CY" for p in cy)
+    names = [normalize(p.name_el or p.name) for p in cy]
+    assert names == sorted(names)
+    assert any(p.name == "Paphos" for p in cy) and any(p.name == "Limassol" for p in cy)
+    assert len(places_in_country("GR", "el")) > DROPDOWN_MAX_PLACES  # Ελλάδα: αναζήτηση, όχι λίστα

@@ -47,6 +47,12 @@ class Place:
             coords = f"{_fmt_coord(self.lat, 'N', 'S')} {_fmt_coord(self.lon, 'E', 'W')}"
         return f"{main}{extra}, {country} — {coords}"
 
+    def name_only(self, lang: str = "el") -> str:
+        """Μόνο το όνομα (για τη λίστα τόπων μιας χώρας -- η χώρα έχει ήδη επιλεγεί)."""
+        if lang == "el" and self.name_el:
+            return self.name_el + (f" ({self.name})" if self.name_el != self.name else "")
+        return self.name
+
     def short(self, lang: str = "el") -> str:
         if lang == "el":
             return f"{self.name_el or self.name}, {COUNTRY_EL.get(self.country_code, self.country)}"
@@ -62,15 +68,36 @@ def _fmt_coord(v: float, pos: str, neg: str) -> str:
     return f"{deg}°{minutes:02d}′{pos if v >= 0 else neg}"
 
 
+# v20.9: διορθώσεις ελληνικών ονομάτων (GeoNames) για τη λίστα της Κύπρου.
+NAME_FIXES = {
+    ("CY", "Kolossi"): "Κολόσσι",
+    ("CY", "Kórnos"): "Κόρνος",          # είχε λατινικό «K»
+    ("CY", "Parekklisha"): "Πάρεκκλησιά",
+    ("CY", "Pyrgos"): "Πύργος",
+    ("CY", "Geroskipou"): "Γεροσκήπου",  # ήταν «Δήμος Γεροσκήπου»
+    ("CY", "Pégeia"): "Πέγεια",          # ήταν «Δήμος Πέγειας»
+}
+# Διπλές/άχρηστες εγγραφές.
+DROP = {
+    ("CY", "Tsada - Tremithousa - Tala (Borders)"),
+    ("CY", "Geroskípou (quarter)"),       # διπλή της Γεροσκήπου
+}
+
+
 @lru_cache(maxsize=1)
 def _index():
     rows = []
     with gzip.open(DATA, "rt", encoding="utf-8") as f:
         for line in f:
             name, el, cc, country, lat, lon, tz, pop, keys = line.rstrip("\n").split("\t")
-            rows.append(
-                (Place(name, el, cc, country, float(lat), float(lon), tz, int(pop)), keys.split("|"))
-            )
+            if (cc, name) in DROP:
+                continue
+            fixed = NAME_FIXES.get((cc, name))
+            keys = keys.split("|")
+            if fixed:
+                el = fixed
+                keys = sorted(set(keys) | {normalize(fixed)})
+            rows.append((Place(name, el, cc, country, float(lat), float(lon), tz, int(pop)), keys))
     return rows
 
 
@@ -119,3 +146,50 @@ def country_label(code: str, name: str, lang: str = "el") -> str:
     if lang == "el":
         return COUNTRY_EL.get(code, name)
     return name
+
+
+# Συνηθισμένα «καθημερινά» ονόματα χωρών που δεν ταιριάζουν με το επίσημο όνομα.
+COUNTRY_ALIASES = {
+    "US": ["ΗΠΑ", "Αμερική", "USA", "America", "United States of America"],
+    "GB": ["Αγγλία", "Βρετανία", "Μεγάλη Βρετανία", "UK", "England", "Britain", "Great Britain"],
+    "DE": ["Γερμανία", "Germany"],
+    "AE": ["Εμιράτα", "UAE", "Ντουμπάι", "Dubai"],
+    "RU": ["Ρωσία", "Russia"],
+    "NL": ["Ολλανδία", "Holland"],
+    "CZ": ["Τσεχία", "Czech Republic"],
+}
+
+
+def search_countries(query: str, lang: str = "el", limit: int = 12) -> list[tuple[str, str]]:
+    """v20.7: αναζήτηση χώρας χωρίς τόνους, με κεφαλαία/πεζά, σε ελληνικά ή αγγλικά
+    (το ενσωματωμένο φίλτρο της λίστας του Streamlit απαιτούσε ακριβή τόνο:
+    «κυπρος», «ΚΥΠΡΟΣ», «Cyprus» δεν έβρισκαν την Κύπρο).
+    Επιστρέφει [(κωδικός, αγγλικό όνομα)]: πρώτα όσα αρχίζουν με το κείμενο,
+    μετά όσα το περιέχουν· Κύπρος/Ελλάδα πρώτες."""
+    q = normalize(query)
+    if not q:
+        return []
+    starts, contains = [], []
+    for code, name in countries(lang):
+        keys = [normalize(name), normalize(COUNTRY_EL.get(code, name)), code.lower()]
+        keys += [normalize(a) for a in COUNTRY_ALIASES.get(code, [])]
+        if any(k.startswith(q) for k in keys):
+            starts.append((code, name))
+        elif len(q) >= 3 and any(q in k for k in keys):
+            contains.append((code, name))
+    return (starts + contains)[:limit]
+
+
+DROPDOWN_MAX_PLACES = 300
+
+
+def places_in_country(code: str, lang: str = "el") -> list[Place]:
+    """v20.9: όλοι οι τόποι μιας χώρας, αλφαβητικά (χωρίς τόνους) στη γλώσσα του
+    πελάτη -- για λίστα επιλογής όπως στο astro.com, όταν η χώρα έχει λίγους τόπους."""
+    places = [p for p, _ in _index() if p.country_code == code]
+
+    def key(p: Place):
+        shown = (p.name_el or p.name) if lang == "el" else p.name
+        return normalize(shown)
+
+    return sorted(places, key=key)

@@ -35,7 +35,7 @@ from core.generator import API_KEY_NAMES, DEFAULT_PROVIDER, PROVIDER_LABELS, PRO
 from core.birth_input import birth_case_key, chart_from_birth
 from core.birthtime import to_ut
 from core.i18n import TR
-from core.places import countries, country_label, search_places
+from core.places import DROPDOWN_MAX_PLACES, country_label, places_in_country, search_countries, search_places
 from core.parser import parse_astrodienst_pdf
 from core.pipeline import (
     CLIENT_OUTPUT_NAME, PRESENTATION, SERVICE_TITLE, RunState, Settings, build_auto_prompt, audit_docx_filename, build_context,
@@ -256,10 +256,35 @@ def _birth_form():
     lat = lon = tz = None
     label = ""
     if not manual_place:
-        options = [("", t["birth_country_all"])] + countries(lang)
-        cc = st.selectbox(t["birth_country"], options, key=f"b_cc_{g}_{lang}",
-                          format_func=lambda o: o[1] if not o[0] else country_label(o[0], o[1], lang))[0]
-        query = st.text_input(t["birth_place"], key=f"b_q_{g}")
+        # v20.7: η χώρα ΓΡΑΦΕΤΑΙ και αναζητείται χωρίς τόνους/κεφαλαία, ελληνικά ή αγγλικά.
+        # Κενό = όλος ο κόσμος.
+        cc = ""
+        cquery = st.text_input(t["birth_country"], key=f"b_cq_{g}", placeholder=t["birth_country_ph"])
+        if cquery.strip():
+            cfound = search_countries(cquery, lang)
+            if len(cfound) == 1:
+                cc = cfound[0][0]
+                st.caption("✓ " + country_label(cc, cfound[0][1], lang))
+            elif cfound:
+                cc = st.selectbox(t["birth_country_pick"], cfound, key=f"b_cc_{g}_{lang}",
+                                  format_func=lambda o: country_label(o[0], o[1], lang))[0]
+            else:
+                st.caption(t["birth_country_none"])
+        # v20.9: χώρα με λίγους τόπους (π.χ. Κύπρος, 132) -> λίστα με ΟΛΟΥΣ τους τόπους,
+        # όπως στο astro.com· μεγάλη χώρα ή «όλος ο κόσμος» -> αναζήτηση με πληκτρολόγηση.
+        in_country = places_in_country(cc, lang) if cc else []
+        if in_country and len(in_country) <= DROPDOWN_MAX_PLACES:
+            place = st.selectbox(
+                t["birth_place_list"].format(n=len(in_country)), in_country, index=None,
+                key=f"b_list_{g}_{cc}_{lang}", placeholder=t["birth_place_list_ph"].format(n=len(in_country)),
+                format_func=lambda p: p.name_only(lang))
+            if place is not None:
+                lat, lon, tz = place.lat, place.lon, place.timezone
+                label = place.short(lang)
+            st.caption(t["birth_place_list_hint"])
+            query = ""
+        else:
+            query = st.text_input(t["birth_place"], key=f"b_q_{g}")
         if query.strip():
             found = search_places(query, 12, (cc,) if cc else ())
             if found:
@@ -334,9 +359,17 @@ def _birth_form():
     # v20.1: αγοραστής πάντα 18+· αν η αναφορά αφορά ανήλικο, δηλώνει γονική ευθύνη
     # (όπως το Astrodienst με τις αναφορές για παιδιά/νέους). Χωρίς τη δήλωση το
     # κουμπί δεν ενεργοποιείται.
-    consent = st.checkbox(t["birth_adult_consent"], key=f"b_adult_{g}")
-    if not consent:
+    # v20.8: δύο επιλογές (διαλέγεται μία): «18+, για μένα» ή «ανήλικος, έχω γονική ευθύνη».
+    # Αν η ημερομηνία γέννησης δίνει ηλικία < 18, η πρώτη επιλογή δεν γίνεται δεκτή.
+    who = st.radio(t["birth_who"], ["adult", "minor"], index=None, key=f"b_who_{g}",
+                   format_func=lambda w: t["birth_who_adult" if w == "adult" else "birth_who_minor"])
+    age = (date.today().year - bdate.year) - ((date.today().month, date.today().day) < (bdate.month, bdate.day))
+    consent = who is not None
+    if who is None:
         st.caption(t["birth_adult_needed"])
+    elif who == "adult" and age < 18:
+        st.warning(t["birth_who_age_mismatch"])
+        consent = False
     if is_admin:
         st.info(t["birth_summary"].format(
             date=bdate.strftime("%d/%m/%Y"), time=btime.strftime("%H:%M"), place=label,
