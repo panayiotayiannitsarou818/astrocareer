@@ -222,11 +222,33 @@ def _birth_form():
     διαφοράς από UT εμφανίζονται ΜΟΝΟ στη Διαχείριση."""
     g = ss.uploader_gen
     name = st.text_input(t["birth_name"], key=f"b_name_{g}", max_chars=60)
+    # v20.6: ημερομηνία ΓΡΑΦΕΤΑΙ (ημέρα · μήνας · έτος, όπως στο astro.com) -- χωρίς
+    # ημερολόγιο. Γεννήσεις των τελευταίων 100 ετών, έως σήμερα.
+    today = date.today()
+    min_year = today.year - 100
+    st.markdown(f"**{t['birth_date']}**")
     c1, c2 = st.columns(2)
     with c1:
-        bdate = st.date_input(t["birth_date"], value=None, min_value=date(1900, 1, 1),
-                              max_value=date(2049, 12, 31), format="DD/MM/YYYY", key=f"b_date_{g}",
-                              help=t["birth_years"])
+        d1, d2, d3 = st.columns([1, 1.6, 1.2])
+        day = d1.number_input(t["birth_day"], min_value=1, max_value=31, value=None, step=1,
+                              placeholder=t["birth_day_ph"], key=f"b_day_{g}")
+        month = d2.selectbox(t["birth_month"], list(range(1, 13)), index=None, key=f"b_month_{g}",
+                             placeholder=t["birth_month_ph"], format_func=lambda m: t["months"].split(",")[m - 1])
+        year = d3.number_input(t["birth_year"], min_value=1, max_value=9999, value=None, step=1,
+                               placeholder=t["birth_year_ph"], key=f"b_year_{g}",
+                               help=t["birth_years"].format(min_year=min_year))
+        bdate = None
+        if year and not (min_year <= int(year) <= today.year):
+            st.caption("⚠️ " + t["birth_years"].format(min_year=min_year))
+        elif day and month and year:
+            try:
+                bdate = date(int(year), int(month), int(day))
+            except ValueError:
+                st.caption("⚠️ " + t["birth_date_invalid"])
+            else:
+                if bdate > today:
+                    st.caption("⚠️ " + t["birth_date_future"])
+                    bdate = None
     with c2:
         btime = st.time_input(t["birth_time"], value=None, step=60, key=f"b_time_{g}", help=t["birth_time_help"])
 
@@ -305,7 +327,7 @@ def _birth_form():
             if "Placidus" in msg:
                 st.caption(t["birth_polar"])
             elif "1900" in msg:
-                st.caption(t["birth_years"])
+                st.caption(t["birth_years"].format(min_year=date.today().year - 100))
         if is_admin:
             with st.expander(t["technical_detail"]): st.code(str(err))
         return None, None, err
