@@ -108,7 +108,8 @@ def _new_case():
     # παλιά πεδία της φόρμας (b_*), τα αναγνωσμένα PDF και οι εκτιμήσεις κόστους.
     for key in list(ss.keys()):
         if key in ("birth_charts", "parsed_pdfs", "cost_estimates", "auto_result", "manual_chart",
-                   "manual_pdf_hash") or str(key).startswith("b_"):
+                   "manual_pdf_hash", "manual_birth_key", "manual_input_key", "orientation_validation") \
+                or str(key).startswith(("b_", "m_")):
             del ss[key]
     reset_case_state()
 
@@ -215,13 +216,13 @@ def _show_cost_estimate(chart, display_name):
     st.info("\n\n".join(lines))
 
 
-def _birth_form():
+def _birth_form(prefix: str = "b"):
     """v20: στοιχεία γέννησης -> υπολογισμός χάρτη μέσα στην εφαρμογή.
     Επιστρέφει (case_key, chart, error). Χώρες/τόποι στη γλώσσα του πελάτη.
     Η γραμμή «Υπολογισμός για…», οι προειδοποιήσεις ώρας και η διόρθωση της
     διαφοράς από UT εμφανίζονται ΜΟΝΟ στη Διαχείριση."""
     g = ss.uploader_gen
-    name = st.text_input(t["birth_name"], key=f"b_name_{g}", max_chars=60)
+    name = st.text_input(t["birth_name"], key=f"{prefix}_name_{g}", max_chars=60)
     # v20.6: ημερομηνία ΓΡΑΦΕΤΑΙ (ημέρα · μήνας · έτος, όπως στο astro.com) -- χωρίς
     # ημερολόγιο. Γεννήσεις των τελευταίων 100 ετών, έως σήμερα.
     today = date.today()
@@ -231,11 +232,11 @@ def _birth_form():
     with c1:
         d1, d2, d3 = st.columns([1, 1.6, 1.2])
         day = d1.number_input(t["birth_day"], min_value=1, max_value=31, value=None, step=1,
-                              placeholder=t["birth_day_ph"], key=f"b_day_{g}")
-        month = d2.selectbox(t["birth_month"], list(range(1, 13)), index=None, key=f"b_month_{g}",
+                              placeholder=t["birth_day_ph"], key=f"{prefix}_day_{g}")
+        month = d2.selectbox(t["birth_month"], list(range(1, 13)), index=None, key=f"{prefix}_month_{g}",
                              placeholder=t["birth_month_ph"], format_func=lambda m: t["months"].split(",")[m - 1])
         year = d3.number_input(t["birth_year"], min_value=1, max_value=9999, value=None, step=1,
-                               placeholder=t["birth_year_ph"], key=f"b_year_{g}",
+                               placeholder=t["birth_year_ph"], key=f"{prefix}_year_{g}",
                                help=t["birth_years"].format(min_year=min_year))
         bdate = None
         if year and not (min_year <= int(year) <= today.year):
@@ -250,59 +251,66 @@ def _birth_form():
                     st.caption("⚠️ " + t["birth_date_future"])
                     bdate = None
     with c2:
-        btime = st.time_input(t["birth_time"], value=None, step=60, key=f"b_time_{g}", help=t["birth_time_help"])
+        btime = st.time_input(t["birth_time"], value=None, step=60, key=f"{prefix}_time_{g}", help=t["birth_time_help"])
 
-    manual_place = st.checkbox(t["birth_place_manual"], key=f"b_manual_{g}")
+    manual_place = st.checkbox(t["birth_place_manual"], key=f"{prefix}_manual_{g}")
     lat = lon = tz = None
     label = ""
     if not manual_place:
         # v20.7: η χώρα ΓΡΑΦΕΤΑΙ και αναζητείται χωρίς τόνους/κεφαλαία, ελληνικά ή αγγλικά.
-        # Κενό = όλος ο κόσμος.
+        # v20.11: η χώρα είναι ΥΠΟΧΡΕΩΤΙΚΗ -- ο τόπος εμφανίζεται μόνο αφού επιλεγεί χώρα.
         cc = ""
-        cquery = st.text_input(t["birth_country"], key=f"b_cq_{g}", placeholder=t["birth_country_ph"])
+        cquery = st.text_input(t["birth_country"], key=f"{prefix}_cq_{g}", placeholder=t["birth_country_ph"])
         if cquery.strip():
             cfound = search_countries(cquery, lang)
             if len(cfound) == 1:
                 cc = cfound[0][0]
                 st.caption("✓ " + country_label(cc, cfound[0][1], lang))
             elif cfound:
-                cc = st.selectbox(t["birth_country_pick"], cfound, key=f"b_cc_{g}_{lang}",
+                cc = st.selectbox(t["birth_country_pick"], cfound, key=f"{prefix}_cc_{g}_{lang}",
                                   format_func=lambda o: country_label(o[0], o[1], lang))[0]
             else:
                 st.caption(t["birth_country_none"])
         # v20.9: χώρα με λίγους τόπους (π.χ. Κύπρος, 132) -> λίστα με ΟΛΟΥΣ τους τόπους,
         # όπως στο astro.com· μεγάλη χώρα ή «όλος ο κόσμος» -> αναζήτηση με πληκτρολόγηση.
         in_country = places_in_country(cc, lang) if cc else []
-        if in_country and len(in_country) <= DROPDOWN_MAX_PLACES:
-            place = st.selectbox(
-                t["birth_place_list"].format(n=len(in_country)), in_country, index=None,
-                key=f"b_list_{g}_{cc}_{lang}", placeholder=t["birth_place_list_ph"].format(n=len(in_country)),
-                format_func=lambda p: p.name_only(lang))
-            if place is not None:
-                lat, lon, tz = place.lat, place.lon, place.timezone
-                label = place.short(lang)
-            st.caption(t["birth_place_list_hint"])
-            query = ""
+        # v20.12: ο τόπος αναζητείται ΧΩΡΙΣ τόνους (το φίλτρο της λίστας του Streamlit
+        # ήθελε ακριβή τόνο: «παφος» δεν έβρισκε την «Πάφος»). Κενό πεδίο σε μικρή χώρα
+        # (π.χ. Κύπρος) -> πλήρης λίστα για ξεφύλλισμα, όπως στο astro.com.
+        place = None
+        if not cc:
+            st.caption(t["birth_country_first"])
         else:
-            query = st.text_input(t["birth_place"], key=f"b_q_{g}")
-        if query.strip():
-            found = search_places(query, 12, (cc,) if cc else ())
-            if found:
-                place = st.selectbox(t["birth_place_pick"], found, format_func=lambda p: p.label(lang),
-                                     key=f"b_pick_{g}_{lang}")
-                lat, lon, tz = place.lat, place.lon, place.timezone
-                label = place.short(lang)
-            else:
-                st.caption(t["birth_place_none"])
+            query = st.text_input(t["birth_place"], key=f"{prefix}_q_{g}_{cc}", placeholder=t["birth_place_ph"])
+            if query.strip():
+                found = search_places(query, 30, (cc,))
+                if len(found) == 1:
+                    place = found[0]
+                    st.caption("✓ " + place.name_only(lang))
+                elif found:
+                    place = st.selectbox(t["birth_place_pick"], found, index=None,
+                                         format_func=lambda p: p.name_only(lang),
+                                         key=f"{prefix}_pick_{g}_{cc}_{lang}", placeholder=t["birth_place_pick_ph"])
+                else:
+                    st.caption(t["birth_place_none"])
+            elif len(in_country) <= DROPDOWN_MAX_PLACES:
+                place = st.selectbox(
+                    t["birth_place_list"].format(n=len(in_country)), in_country, index=None,
+                    key=f"{prefix}_list_{g}_{cc}_{lang}", placeholder=t["birth_place_list_ph"].format(n=len(in_country)),
+                    format_func=lambda p: p.name_only(lang))
+                st.caption(t["birth_place_list_hint"])
+        if place is not None:
+            lat, lon, tz = place.lat, place.lon, place.timezone
+            label = place.short(lang)
     else:
         st.caption(t["birth_coords_help"])
         c1, c2, c3 = st.columns(3)
         lat = c1.number_input(t["birth_lat"], min_value=-66.0, max_value=66.0, value=34.7768,
-                              step=0.01, format="%.4f", key=f"b_lat_{g}")
+                              step=0.01, format="%.4f", key=f"{prefix}_lat_{g}")
         lon = c2.number_input(t["birth_lon"], min_value=-180.0, max_value=180.0, value=32.4245,
-                              step=0.01, format="%.4f", key=f"b_lon_{g}")
+                              step=0.01, format="%.4f", key=f"{prefix}_lon_{g}")
         zones = sorted(available_timezones())
-        tz = c3.selectbox(t["birth_tz"], zones, index=zones.index("Asia/Nicosia"), key=f"b_tz_{g}")
+        tz = c3.selectbox(t["birth_tz"], zones, index=zones.index("Asia/Nicosia"), key=f"{prefix}_tz_{g}")
         label = f"{lat:.4f}, {lon:.4f}"
     st.caption(t["places_credit"])
 
@@ -310,9 +318,9 @@ def _birth_form():
         return None, None, None
 
     manual_offset = None
-    if is_admin and st.checkbox(t["birth_offset_override"], key=f"b_ovr_{g}"):
+    if is_admin and st.checkbox(t["birth_offset_override"], key=f"{prefix}_ovr_{g}"):
         manual_offset = st.number_input(t["birth_offset_value"], min_value=-14.0, max_value=14.0, value=2.0,
-                                        step=0.5, key=f"b_off_{g}")
+                                        step=0.5, key=f"{prefix}_off_{g}")
 
     # v20.2: έλεγχος της τοπικής ώρας ΠΡΙΝ τον χάρτη.
     #  - ώρα που δεν υπήρξε (μπροστά τα ρολόγια): μπλοκάρει μέχρι να διορθωθεί
@@ -327,7 +335,7 @@ def _birth_form():
             first, second = to_ut(bdate, btime, tz, fold=0), to_ut(bdate, btime, tz, fold=1)
             choice = st.radio(
                 t["birth_time_ambiguous"],
-                [0, 1], index=None, key=f"b_fold_{g}",
+                [0, 1], index=None, key=f"{prefix}_fold_{g}",
                 format_func=lambda f: t["birth_fold_first" if f == 0 else "birth_fold_second"].format(
                     offset=(first if f == 0 else second).offset_text),
             )
@@ -361,7 +369,7 @@ def _birth_form():
     # κουμπί δεν ενεργοποιείται.
     # v20.8: δύο επιλογές (διαλέγεται μία): «18+, για μένα» ή «ανήλικος, έχω γονική ευθύνη».
     # Αν η ημερομηνία γέννησης δίνει ηλικία < 18, η πρώτη επιλογή δεν γίνεται δεκτή.
-    who = st.radio(t["birth_who"], ["adult", "minor"], index=None, key=f"b_who_{g}",
+    who = st.radio(t["birth_who"], ["adult", "minor"], index=None, key=f"{prefix}_who_{g}",
                    format_func=lambda w: t["birth_who_adult" if w == "adult" else "birth_who_minor"])
     age = (date.today().year - bdate.year) - ((date.today().month, date.today().day) < (bdate.month, bdate.day))
     consent = who is not None
@@ -381,8 +389,32 @@ def _birth_form():
     return key, chart, None
 
 
-def _auto_tab():
-    """🤖 Αυτόματη: στοιχεία γέννησης (ή PDF για τη Διαχείριση) -> ένα κουμπί -> εγκεκριμένο έντυπο."""
+def _chart_input():
+    """v20.14: ΚΟΙΝΑ στοιχεία γέννησης (ή PDF για τη Διαχείριση) για αυτόματη ΚΑΙ
+    χειροκίνητη δημιουργία -- ο πελάτης τα γράφει μία φορά και μετά διαλέγει τρόπο.
+    Επιστρέφει (input_key, chart, error)."""
+    st.caption(t["service_note"])
+    use_pdf = False
+    if is_admin:
+        use_pdf = st.radio(t["input_mode"], [t["input_mode_birth"], t["input_mode_pdf"]], horizontal=True,
+                           key="input_mode") == t["input_mode_pdf"]
+    if use_pdf:
+        st.subheader(t["step1_title"])
+        pdf = st.file_uploader(t["pdf_uploader"], type=['pdf'], key=f"pdf_{ss.uploader_gen}")
+        if pdf is None:
+            return None, None, None
+        key, chart, err = _parse_cached(pdf)
+        if err is not None:
+            st.error(t["pdf_error"])
+            with st.expander(t["technical_detail"]): st.code(str(err))
+            return None, None, err
+        return key, chart, None
+    st.subheader(t["birth_step1_title"])
+    return _birth_form()
+
+
+def _auto_tab(input_key, preview, preview_err):
+    """🤖 Αυτόματη: κοινά στοιχεία -> ένα κουμπί -> εγκεκριμένο έντυπο."""
     # ---------------------------------------------------------------- σελίδα πελάτη
     if not api_key:
         st.info(t["service_unavailable_auto"] if manual_visible else t["service_unavailable"])
@@ -390,24 +422,7 @@ def _auto_tab():
             return
 
     lo, hi = eta.typical_range()
-    st.caption(t["service_note"])
-    use_pdf = False
-    if is_admin:
-        use_pdf = st.radio(t["input_mode"], [t["input_mode_birth"], t["input_mode_pdf"]], horizontal=True,
-                           key="input_mode") == t["input_mode_pdf"]
-    preview, preview_err, input_key = None, None, None
-    if use_pdf:
-        st.subheader(t["step1_title"])
-        pdf = st.file_uploader(t["pdf_uploader"], type=['pdf'], key=f"pdf_{ss.uploader_gen}")
-        if pdf is not None:
-            input_key, preview, preview_err = _parse_cached(pdf)
-            if preview_err is not None:
-                st.error(t["pdf_error"])
-                with st.expander(t["technical_detail"]): st.code(str(preview_err))
-    else:
-        st.subheader(t["birth_step1_title"])
-        input_key, preview, preview_err = _birth_form()
-    # Όνομα: μόνο από το PDF. Αν το PDF δεν έχει όνομα, η αναφορά βγαίνει χωρίς όνομα.
+    # Όνομα: από τη φόρμα (ή το PDF). Κενό -> αναφορά χωρίς όνομα.
     if is_admin and preview is not None and api_key:
         _show_cost_estimate(preview, preview.name)
 
@@ -588,24 +603,15 @@ def _auto_tab():
 
 
 
-def _manual_tab():
+def _manual_tab(input_key, chart):
     """✍️ Χειροκίνητη: εντολή για ChatGPT/Claude -> ανέβασμα των δύο Word ->
-    ίδιος μηχανικός έλεγχος. Δουλεύει ΚΑΙ χωρίς κλειδί API (δεν καλεί μοντέλο)."""
+    ίδιος μηχανικός έλεγχος. Δουλεύει ΚΑΙ χωρίς κλειδί API (δεν καλεί μοντέλο).
+    v20.14: χρησιμοποιεί τα ΚΟΙΝΑ στοιχεία γέννησης της σελίδας."""
     st.caption(t["manual_intro"])
-    mpdf = st.file_uploader(t["pdf_uploader"], type=['pdf'], key=f"manual_pdf_{ss.uploader_gen}")
-    if mpdf is not None:
-        digest = hashlib.sha256(mpdf.getvalue()).hexdigest()
-        if ss.get("manual_pdf_hash") != digest:
-            try:
-                ss.manual_chart = parse_astrodienst_pdf(mpdf.getvalue(), mpdf.name)
-            except Exception as err:  # noqa: BLE001
-                st.error(t["pdf_error"])
-                with st.expander(t["technical_detail"]): st.code(str(err))
-                return
-            ss.manual_pdf_hash = digest
-            ss.pop("orientation_validation", None)
-    chart = ss.get("manual_chart") or ss.chart
-    if not chart:
+    if ss.get("manual_input_key") != input_key:
+        ss.manual_input_key = input_key
+        ss.pop("orientation_validation", None)
+    if not chart or not input_key:
         st.info(t["manual_need_pdf"])
         return
     st.success(t["manual_chart_loaded"].format(name=chart.name or "—"))
@@ -690,11 +696,14 @@ def _manual_tab():
 _manual_mode = str(_secret("MANUAL_MODE") or "all").strip().lower()
 manual_visible = _manual_mode == "all" or (_manual_mode == "admin" and is_admin)
 
+# v20.14: πρώτα τα κοινά στοιχεία, μετά ο τρόπος δημιουργίας.
+_input_key, _chart, _chart_err = _chart_input()
 if manual_visible:
+    st.markdown(f"#### {t['choose_mode']}")
     tab_auto, tab_manual = st.tabs([t["tab_auto"], t["tab_manual"]])
     with tab_auto:
-        _auto_tab()
+        _auto_tab(_input_key, _chart, _chart_err)
     with tab_manual:
-        _manual_tab()
+        _manual_tab(_input_key, _chart)
 else:
-    _auto_tab()
+    _auto_tab(_input_key, _chart, _chart_err)
