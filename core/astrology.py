@@ -65,12 +65,44 @@ def house_of(value: float, cusps: list[Point]) -> int:
     raise ValueError("Δεν ήταν δυνατός ο υπολογισμός του Οίκου.")
 
 
-def orb_weight(orb: float) -> str:
-    if orb < 2:
+# v20.3 -- ΑΝΑΛΟΓΙΚΗ βαρύτητα ανά τύπο όψης (προς επιβεβαίωση από αστρολόγο).
+# Τα όρια βαρύτητας είναι ποσοστό του μέγιστου orb που δέχεται ο πίνακας του
+# Astrodienst για τον κάθε τύπο: Στενή < 20%, Κανονική < 40%, Πλατιά ≤ 70%,
+# πάνω από 70% Πολύ πλατιά. Για σύνοδο/τρίγωνο/τετράγωνο/αντίθεση (10°) αυτό
+# δίνει ακριβώς τα παλιά όρια 2°/4°/7°. Πριν, εξάγωνο (6°) και χιαστί (3°)
+# έπαιρναν τα ίδια απόλυτα όρια και «ανέβαιναν» τεχνητά (8 στις 9 χιαστί ήταν
+# «Στενή/ισχυρή»). Όψεις του Βόρειου/Νότιου Δεσμού: το μισό μέγιστο orb.
+ASPECT_MAX_ORB = {
+    "Σύνοδος": 10.0,
+    "Εξάγωνο": 6.0,
+    "Τετράγωνο": 10.0,
+    "Τρίγωνο": 10.0,
+    "Χιαστί όψη 150°": 3.0,
+    "Αντίθεση": 10.0,
+}
+NODE_NAMES = ("Βόρειος Δεσμός", "Νότιος Δεσμός")
+NODE_ORB_FACTOR = 0.5
+WEIGHT_FRACTIONS = (0.2, 0.4, 0.7)
+
+
+def max_orb(aspect: str | None = None, node: bool = False) -> float:
+    base = ASPECT_MAX_ORB.get(aspect, 10.0) if aspect else 10.0
+    return base * (NODE_ORB_FACTOR if node else 1.0)
+
+
+def orb_weight(orb: float, aspect: str | None = None, node: bool = False) -> str:
+    """Κατηγορία βαρύτητας. Χωρίς aspect/node: τα κλασικά όρια 2°/4°/7°."""
+    # v20.5: σύγκριση σε λεπτά τόξου με στρογγυλοποίηση, ώστε τα όρια να είναι
+    # ακριβή (π.χ. 6 × 0,7 = 4,1999… στον υπολογιστή, όχι 4,2 -- ένα εξάγωνο 4°12′
+    # έβγαινε λάθος «Πολύ πλατιά»). Το orb μετριέται στο λεπτό, όπως στον πίνακα.
+    limit = max_orb(aspect, node)
+    strong, normal, wide = (round(limit * f * 60, 6) for f in WEIGHT_FRACTIONS)
+    orb = round(orb * 60, 6)
+    if orb < strong:
         return "Στενή/ισχυρή"
-    if orb < 4:
+    if orb < normal:
         return "Κανονική"
-    if orb <= 7:
+    if orb <= wide:
         return "Πλατιά αλλά έγκυρη"
     return "Πολύ πλατιά/δευτερεύουσα"
 
@@ -122,7 +154,7 @@ def angle_conjunctions_from_positions(
                         "Σύνοδος",
                         orb,
                         orb_to_text(orb),
-                        orb_weight(orb),
+                        orb_weight(round(orb * 60) / 60, "Σύνοδος", p.name in NODE_NAMES),
                         POSITION_DERIVED_SOURCE,
                         None,
                     )
@@ -158,7 +190,9 @@ def south_node_aspects(aspects: list[Aspect]) -> list[Aspect]:
                 derived_type,
                 aspect.orb,
                 aspect.orb_text,
-                aspect.weight,
+                # v20.5: η βαρύτητα ξαναϋπολογίζεται για τον ΝΕΟ τύπο όψης (π.χ. τρίγωνο
+                # του Β. Δεσμού -> εξάγωνο του Ν. Δεσμού, με μικρότερο μέγιστο orb).
+                orb_weight(aspect.orb, derived_type, node=True),
                 "Μαθηματική παραγωγή από τον άξονα Βόρειου/Νότιου Δεσμού",
                 aspect.applying,
             )

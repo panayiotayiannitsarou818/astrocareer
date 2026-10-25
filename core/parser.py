@@ -219,7 +219,11 @@ def _parse_aspect_grid(page, points_by_code):
                     ASPECT_GLYPHS[g["text"]],
                     orb,
                     f"{int(mo.group(2))}°{int(mo.group(3)):02d}′",
-                    orb_weight(orb),
+                    orb_weight(
+                        orb,
+                        ASPECT_GLYPHS[g["text"]],
+                        "L" in (col_codes[idx], row_code),
+                    ),
                     "Πίνακας Astrodienst",
                     mo.group(4) == "a",
                 )

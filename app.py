@@ -1,6 +1,10 @@
 """
 AstroCheck Career -- v18: σελίδα πελάτη, πλήρως αυτόματη.
 
+v20: ο πελάτης δίνει ημερομηνία, ώρα, χώρα και τόπο γέννησης· ο χάρτης
+υπολογίζεται μέσα στην εφαρμογή (core/ephemeris.py). Το Astrodienst PDF
+μένει μόνο για τη Διαχείριση και τη χειροκίνητη διαδικασία.
+
 ΠΕΛΑΤΗΣ: ανεβάζει το Astrodienst PDF, πατά ΕΝΑ κουμπί, βλέπει βήματα 1-4
 με εκτίμηση χρόνου, κατεβάζει το εγκεκριμένο έντυπο. Αν η διαδικασία
 διακοπεί από προσωρινό σφάλμα, «▶️ Συνέχεια από εκεί που σταμάτησε».
@@ -18,6 +22,8 @@ import hashlib
 import hmac
 import os
 import time
+from datetime import date
+from zoneinfo import available_timezones
 
 import streamlit as st
 
@@ -26,7 +32,10 @@ from core.case_state import reset_case_state
 from core.costs import CostTracker, cost_history_summary, estimate_report_cost, eur_per_usd, record_report_cost
 from core.docx_builder import build_orientation_docx
 from core.generator import API_KEY_NAMES, DEFAULT_PROVIDER, PROVIDER_LABELS, PROVIDERS, default_model
+from core.birth_input import birth_case_key, chart_from_birth
+from core.birthtime import to_ut
 from core.i18n import TR
+from core.places import countries, country_label, search_places
 from core.parser import parse_astrodienst_pdf
 from core.pipeline import (
     CLIENT_OUTPUT_NAME, PRESENTATION, SERVICE_TITLE, RunState, Settings, build_auto_prompt, audit_docx_filename, build_context,
@@ -49,6 +58,15 @@ def _secret(name):
     except Exception:  # δεν υπάρχει secrets.toml
         value = None
     return value or os.environ.get(name)
+
+
+def _is_local_request() -> bool:
+    """True μόνο όταν η σελίδα ανοίγει από τον ίδιο υπολογιστή (localhost)."""
+    try:
+        host = (st.context.headers.get("Host") or "").split(":")[0].strip().lower()
+    except Exception:  # noqa: BLE001 -- άγνωστο περιβάλλον: ασφαλής επιλογή
+        return False
+    return host in ("localhost", "127.0.0.1", "::1", "[::1]")
 
 
 # Ρυθμίσεις από τα Secrets -> περιβάλλον, ώστε να τις βλέπει το core/.
@@ -86,6 +104,12 @@ def _new_case():
     ss.cases = {}
     ss.current_case = None
     ss.uploader_gen += 1
+    # v20.2: καθαρίζονται και τα στοιχεία γέννησης, οι υπολογισμένοι χάρτες και τα
+    # παλιά πεδία της φόρμας (b_*), τα αναγνωσμένα PDF και οι εκτιμήσεις κόστους.
+    for key in list(ss.keys()):
+        if key in ("birth_charts", "parsed_pdfs", "cost_estimates", "auto_result", "manual_chart",
+                   "manual_pdf_hash") or str(key).startswith("b_"):
+            del ss[key]
     reset_case_state()
 
 
@@ -100,13 +124,20 @@ with st.sidebar:
     # ADMIN_OPEN = "1" (Secret): η Διαχείριση ανοίγει ΧΩΡΙΣ κωδικό, για όλους
     # (χρήσιμο όσο τη σελίδα τη χρησιμοποιεί μόνο η ιδιοκτήτρια).
     admin_open = str(_secret("ADMIN_OPEN") or "").strip().lower() in ("1", "true", "yes", "ναι")
+    # v20.1 (εξωτερικός έλεγχος): το ADMIN_OPEN ισχύει ΜΟΝΟ τοπικά (localhost). Σε δημόσια
+    # εγκατάσταση αγνοείται, ώστε ένα ξεχασμένο Secret να μην ανοίξει τη Διαχείριση σε όλους.
+    if admin_open and not _is_local_request():
+        admin_open = False
     is_admin = admin_open
     if admin_password or admin_open:
         st.write("")
         with st.expander(t["admin_expander"], expanded=admin_open):
             if not admin_open:
                 typed = st.text_input(t["admin_password"], type="password", key="admin_pw")
-                is_admin = bool(typed) and hmac.compare_digest(str(typed), str(admin_password))
+                # v20.4: σύγκριση σε bytes UTF-8 -- με str, το compare_digest σκάει σε μη-ASCII
+                # χαρακτήρες (π.χ. αν κάποιος πληκτρολογήσει ελληνικά).
+                is_admin = bool(typed) and hmac.compare_digest(
+                    str(typed).encode("utf-8"), str(admin_password).encode("utf-8"))
                 if typed and not is_admin:
                     st.caption(t["admin_wrong"])
             if is_admin:
@@ -184,8 +215,119 @@ def _show_cost_estimate(chart, display_name):
     st.info("\n\n".join(lines))
 
 
+def _birth_form():
+    """v20: στοιχεία γέννησης -> υπολογισμός χάρτη μέσα στην εφαρμογή.
+    Επιστρέφει (case_key, chart, error). Χώρες/τόποι στη γλώσσα του πελάτη.
+    Η γραμμή «Υπολογισμός για…», οι προειδοποιήσεις ώρας και η διόρθωση της
+    διαφοράς από UT εμφανίζονται ΜΟΝΟ στη Διαχείριση."""
+    g = ss.uploader_gen
+    name = st.text_input(t["birth_name"], key=f"b_name_{g}", max_chars=60)
+    c1, c2 = st.columns(2)
+    with c1:
+        bdate = st.date_input(t["birth_date"], value=None, min_value=date(1900, 1, 1),
+                              max_value=date(2049, 12, 31), format="DD/MM/YYYY", key=f"b_date_{g}",
+                              help=t["birth_years"])
+    with c2:
+        btime = st.time_input(t["birth_time"], value=None, step=60, key=f"b_time_{g}", help=t["birth_time_help"])
+
+    manual_place = st.checkbox(t["birth_place_manual"], key=f"b_manual_{g}")
+    lat = lon = tz = None
+    label = ""
+    if not manual_place:
+        options = [("", t["birth_country_all"])] + countries(lang)
+        cc = st.selectbox(t["birth_country"], options, key=f"b_cc_{g}_{lang}",
+                          format_func=lambda o: o[1] if not o[0] else country_label(o[0], o[1], lang))[0]
+        query = st.text_input(t["birth_place"], key=f"b_q_{g}")
+        if query.strip():
+            found = search_places(query, 12, (cc,) if cc else ())
+            if found:
+                place = st.selectbox(t["birth_place_pick"], found, format_func=lambda p: p.label(lang),
+                                     key=f"b_pick_{g}_{lang}")
+                lat, lon, tz = place.lat, place.lon, place.timezone
+                label = place.short(lang)
+            else:
+                st.caption(t["birth_place_none"])
+    else:
+        st.caption(t["birth_coords_help"])
+        c1, c2, c3 = st.columns(3)
+        lat = c1.number_input(t["birth_lat"], min_value=-66.0, max_value=66.0, value=34.7768,
+                              step=0.01, format="%.4f", key=f"b_lat_{g}")
+        lon = c2.number_input(t["birth_lon"], min_value=-180.0, max_value=180.0, value=32.4245,
+                              step=0.01, format="%.4f", key=f"b_lon_{g}")
+        zones = sorted(available_timezones())
+        tz = c3.selectbox(t["birth_tz"], zones, index=zones.index("Asia/Nicosia"), key=f"b_tz_{g}")
+        label = f"{lat:.4f}, {lon:.4f}"
+    st.caption(t["places_credit"])
+
+    if bdate is None or btime is None or lat is None:
+        return None, None, None
+
+    manual_offset = None
+    if is_admin and st.checkbox(t["birth_offset_override"], key=f"b_ovr_{g}"):
+        manual_offset = st.number_input(t["birth_offset_value"], min_value=-14.0, max_value=14.0, value=2.0,
+                                        step=0.5, key=f"b_off_{g}")
+
+    # v20.2: έλεγχος της τοπικής ώρας ΠΡΙΝ τον χάρτη.
+    #  - ώρα που δεν υπήρξε (μπροστά τα ρολόγια): μπλοκάρει μέχρι να διορθωθεί
+    #  - ώρα που υπήρξε δύο φορές (πίσω τα ρολόγια): ο πελάτης διαλέγει ποια από τις δύο
+    fold = None
+    if manual_offset is None:
+        probe = to_ut(bdate, btime, tz)
+        if probe.nonexistent:
+            st.error(t["birth_time_nonexistent"])
+            return None, None, None
+        if probe.ambiguous:
+            first, second = to_ut(bdate, btime, tz, fold=0), to_ut(bdate, btime, tz, fold=1)
+            choice = st.radio(
+                t["birth_time_ambiguous"],
+                [0, 1], index=None, key=f"b_fold_{g}",
+                format_func=lambda f: t["birth_fold_first" if f == 0 else "birth_fold_second"].format(
+                    offset=(first if f == 0 else second).offset_text),
+            )
+            if choice is None:
+                return None, None, None
+            fold = choice
+
+    cache = ss.setdefault("birth_charts", {})
+    raw_key = (name.strip(), bdate, btime, lat, lon, tz, manual_offset, label, fold)
+    if raw_key not in cache:
+        try:
+            chart, moment = chart_from_birth(name, bdate, btime, lat, lon, tz, label, manual_offset, fold)
+            key = birth_case_key(name, bdate, btime, lat, lon, moment.offset_hours)
+            cache[raw_key] = (key, chart, moment, None)
+        except Exception as err:  # noqa: BLE001
+            cache[raw_key] = (None, None, None, err)
+    key, chart, moment, err = cache[raw_key]
+    if err is not None:
+        st.error(t["birth_error"])
+        if isinstance(err, ValueError) and not is_admin:
+            msg = str(err)
+            if "Placidus" in msg:
+                st.caption(t["birth_polar"])
+            elif "1900" in msg:
+                st.caption(t["birth_years"])
+        if is_admin:
+            with st.expander(t["technical_detail"]): st.code(str(err))
+        return None, None, err
+    # v20.1: αγοραστής πάντα 18+· αν η αναφορά αφορά ανήλικο, δηλώνει γονική ευθύνη
+    # (όπως το Astrodienst με τις αναφορές για παιδιά/νέους). Χωρίς τη δήλωση το
+    # κουμπί δεν ενεργοποιείται.
+    consent = st.checkbox(t["birth_adult_consent"], key=f"b_adult_{g}")
+    if not consent:
+        st.caption(t["birth_adult_needed"])
+    if is_admin:
+        st.info(t["birth_summary"].format(
+            date=bdate.strftime("%d/%m/%Y"), time=btime.strftime("%H:%M"), place=label,
+            ut=moment.ut.strftime("%d/%m/%Y %H:%M"), offset=moment.offset_text))
+        for w in moment.warnings:
+            st.caption("⚠️ " + w)
+    if not consent:
+        return None, chart, None
+    return key, chart, None
+
+
 def _auto_tab():
-    """🤖 Αυτόματη: PDF -> ένα κουμπί -> εγκεκριμένο έντυπο."""
+    """🤖 Αυτόματη: στοιχεία γέννησης (ή PDF για τη Διαχείριση) -> ένα κουμπί -> εγκεκριμένο έντυπο."""
     # ---------------------------------------------------------------- σελίδα πελάτη
     if not api_key:
         st.info(t["service_unavailable_auto"] if manual_visible else t["service_unavailable"])
@@ -194,15 +336,22 @@ def _auto_tab():
 
     lo, hi = eta.typical_range()
     st.caption(t["service_note"])
-    st.subheader(t["step1_title"])
-    pdf = st.file_uploader(t["pdf_uploader"], type=['pdf'], key=f"pdf_{ss.uploader_gen}")
-    preview, preview_err = None, None
-    if pdf is not None:
-        _, preview, preview_err = _parse_cached(pdf)
-        if preview_err is not None:
-            st.error(t["pdf_error"])
-            if is_admin:
+    use_pdf = False
+    if is_admin:
+        use_pdf = st.radio(t["input_mode"], [t["input_mode_birth"], t["input_mode_pdf"]], horizontal=True,
+                           key="input_mode") == t["input_mode_pdf"]
+    preview, preview_err, input_key = None, None, None
+    if use_pdf:
+        st.subheader(t["step1_title"])
+        pdf = st.file_uploader(t["pdf_uploader"], type=['pdf'], key=f"pdf_{ss.uploader_gen}")
+        if pdf is not None:
+            input_key, preview, preview_err = _parse_cached(pdf)
+            if preview_err is not None:
+                st.error(t["pdf_error"])
                 with st.expander(t["technical_detail"]): st.code(str(preview_err))
+    else:
+        st.subheader(t["birth_step1_title"])
+        input_key, preview, preview_err = _birth_form()
     # Όνομα: μόνο από το PDF. Αν το PDF δεν έχει όνομα, η αναφορά βγαίνει χωρίς όνομα.
     if is_admin and preview is not None and api_key:
         _show_cost_estimate(preview, preview.name)
@@ -297,17 +446,16 @@ def _auto_tab():
             log.update(state="complete", expanded=False)
 
 
-    ready = pdf is not None and preview is not None
+    ready = preview is not None and input_key is not None
     run_clicked = st.button(t["run_button"], type="primary", use_container_width=True, disabled=not ready or not api_key)
 
     if run_clicked:
         ss.pop("auto_result", None)
-        pdf_bytes = pdf.getvalue()
-        case_key = hashlib.sha256(pdf_bytes).hexdigest()
+        case_key = input_key
         case = ss.cases.get(case_key)
         step1 = st.progress(0.0, text=t["progress_line"].format(step=1, label=t["step_read"], lo=lo, hi=hi, tlo=lo, thi=hi))
         if case is None:
-            # Ίδιο PDF ξανά -> ίδιο case: ο μετρητής και η πρόοδος ΔΕΝ μηδενίζονται.
+            # Ίδια στοιχεία/PDF ξανά -> ίδιο case: ο μετρητής και η πρόοδος ΔΕΝ μηδενίζονται.
             case = {"chart": preview, "cost": CostTracker(), "state": None, "name": None}
             ss.cases[case_key] = case
         step1.empty()
@@ -318,13 +466,13 @@ def _auto_tab():
 
     # ---------------------------------------------------------------- αποτέλεσμα
     res = ss.get("auto_result")
-    if res and pdf is not None:
-        # v19.5 (εξωτερικός έλεγχος): με νέο PDF ή άλλη γλώσσα, το παλιό αποτέλεσμα δεν
-        # εμφανίζεται -- αλλιώς φαινόταν «νέο PDF + κουμπί λήψης της προηγούμενης αναφοράς».
-        if res.get("case_key") != hashlib.sha256(pdf.getvalue()).hexdigest() or res.get("lang") != lang:
+    if res and input_key is not None:
+        # v19.5 (εξωτερικός έλεγχος): με νέα στοιχεία/PDF ή άλλη γλώσσα, το παλιό αποτέλεσμα δεν
+        # εμφανίζεται -- αλλιώς φαινόταν «νέα στοιχεία + κουμπί λήψης της προηγούμενης αναφοράς».
+        if res.get("case_key") != input_key or res.get("lang") != lang:
             ss.pop("auto_result", None)
             res = None
-    elif res and pdf is None:
+    elif res and input_key is None:
         ss.pop("auto_result", None)
         res = None
     case = ss.cases.get(ss.current_case)

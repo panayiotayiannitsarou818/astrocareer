@@ -118,19 +118,25 @@ def language_clause(lang: str) -> str:
 
 
 def reinforcement_instructions(name: str, lang: str) -> str:
-    if not (name or "").strip():
-        if lang == "el":
+    # v20.2 (εξωτερικός έλεγχος): χωρίς όνομα, πριν γινόταν πρόωρη επιστροφή και
+    # χάνονταν οι αγγλικές οδηγίες δομής -- τώρα αλλάζει ΜΟΝΟ η πρόταση του ονόματος.
+    has_name = bool((name or "").strip())
+    if lang == "el":
+        if not has_name:
             return ("Δεν δόθηκε όνομα πελάτη. Μη γράψεις κανένα όνομα και μην επινοήσεις όνομα· "
                     "απευθύνσου στον αναγνώστη απευθείας, χωρίς όνομα.")
-        return ("No client name was given. Do not write or invent any name; "
-                "address the reader directly, without a name.")
-    if lang == "el":
         return (f"Όνομα πελάτη: «{name}». Γράψε το ακριβώς όπως δόθηκε από τον χρήστη, διατηρώντας τους ίδιους "
                 "χαρακτήρες, τόνους, ορθογραφία και κενά. Μην το μεταγράψεις, μην το μεταφράσεις και μην το "
                 "διορθώσεις αυθαίρετα -- ό,τι αλφάβητο κι αν χρησιμοποιεί.")
+    if has_name:
+        name_line = (f'Client name: "{name}". Write it exactly as given -- do not alter its spelling, accents, '
+                     "or spacing, and do not transliterate or translate it.")
+    else:
+        name_line = ("No client name was given. Do not write or invent any name; "
+                     "address the reader directly, without a name.")
     # Η δεσμευτική εντολή είναι στα Ελληνικά· για αγγλικό παραδοτέο δίνεται η
     # ακριβής αντιστοίχιση με τις αγγλικές διατυπώσεις που αναγνωρίζει ο validator.
-    return f"""Client name: "{name}". Write it exactly as given -- do not alter its spelling, accents, or spacing, and do not transliterate or translate it.
+    return name_line + """
 
 The binding command is written in Greek. Apply all of its rules, but write the clean client deliverable in English, using these exact English equivalents, because the automated check looks for them literally:
 - The four section headings (Heading 1), in this order: "Brief Profile", "Talents to Explore", "Career Fields to Explore", "Final Synthesis".

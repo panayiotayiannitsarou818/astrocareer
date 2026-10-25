@@ -1,2 +1,4 @@
 -r requirements.txt
 pytest>=7
+geonamescache>=3  # μόνο για tools/build_places.py
+babel>=2.12  # μόνο για tools/build_places.py

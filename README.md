@@ -10,6 +10,12 @@
 
 ## Χαρακτηριστικά
 
+- **v20: Υπολογισμός χάρτη μέσα στην εφαρμογή.** Ο πελάτης δίνει ημερομηνία, ώρα,
+  χώρα και τόπο γέννησης — χωρίς PDF του Astrodienst. Ίδια αποτελέσματα με το
+  Astrodienst στα 6 παραδείγματα (θέσεις ±1″, Οίκοι, όψεις). Λεπτομέρειες:
+  `CHANGELOG_v20_ypologismos_xarti.md`. Άδειες: Skyfield/skyfield-data (MIT),
+  NASA/JPL DE421 (δημόσιο αγαθό), GeoNames (CC-BY 4.0) — χωρίς Swiss Ephemeris/AGPL.
+
 - Ανάγνωση Astrodienst Natal Chart Data Sheet (PDF) — δεν χρειάζεται καμία
   πλήρης ανάλυση 12 Οίκων.
 - **Selectbox γλώσσας πάνω-δεξιά (Ελληνικά/English)** που αλλάζει ολόκληρη
