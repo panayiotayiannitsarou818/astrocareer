@@ -20,9 +20,11 @@ v20: ο πελάτης δίνει ημερομηνία, ώρα, χώρα και 
 """
 import hashlib
 import hmac
+import re
 import os
 import time
 from datetime import date
+from datetime import time as dtime
 from zoneinfo import available_timezones
 
 import streamlit as st
@@ -227,82 +229,83 @@ def _birth_form(prefix: str = "b"):
     # ημερολόγιο. Γεννήσεις των τελευταίων 100 ετών, έως σήμερα.
     today = date.today()
     min_year = today.year - 100
-    st.markdown(f"**{t['birth_date']}**")
-    c1, c2 = st.columns(2)
-    with c1:
-        d1, d2, d3 = st.columns([1, 1.6, 1.2])
-        day = d1.number_input(t["birth_day"], min_value=1, max_value=31, value=None, step=1,
-                              placeholder=t["birth_day_ph"], key=f"{prefix}_day_{g}")
-        month = d2.selectbox(t["birth_month"], list(range(1, 13)), index=None, key=f"{prefix}_month_{g}",
-                             placeholder=t["birth_month_ph"], format_func=lambda m: t["months"].split(",")[m - 1])
-        year = d3.number_input(t["birth_year"], min_value=1, max_value=9999, value=None, step=1,
-                               placeholder=t["birth_year_ph"], key=f"{prefix}_year_{g}",
-                               help=t["birth_years"].format(min_year=min_year))
-        bdate = None
-        if year and not (min_year <= int(year) <= today.year):
-            st.caption("⚠️ " + t["birth_years"].format(min_year=min_year))
-        elif day and month and year:
-            try:
-                bdate = date(int(year), int(month), int(day))
-            except ValueError:
-                st.caption("⚠️ " + t["birth_date_invalid"])
-            else:
-                if bdate > today:
-                    st.caption("⚠️ " + t["birth_date_future"])
-                    bdate = None
-    with c2:
-        btime = st.time_input(t["birth_time"], value=None, step=60, key=f"{prefix}_time_{g}", help=t["birth_time_help"])
+    # v20.16: πιο εύχρηστη φόρμα -- αριθμημένα βήματα· ημερομηνία ΚΑΙ ώρα γράφονται
+    # σε απλά πεδία στην ίδια γραμμή (χωρίς «HH:mm» που ήθελε Enter)· χώρα προσυμπληρωμένη
+    # «Κύπρος»· το «Δεν βρίσκω τον τόπο μου» κάτω από τον τόπο.
+    st.markdown(f"**{t['step_when']}**")
+    d1, d2, d3, d4, d5 = st.columns([1, 1.7, 1.2, 1, 1])
+    day = d1.number_input(t["birth_day"], min_value=1, max_value=31, value=None, step=1,
+                          placeholder=t["birth_day_ph"], key=f"{prefix}_day_{g}")
+    month = d2.selectbox(t["birth_month"], list(range(1, 13)), index=None, key=f"{prefix}_month_{g}",
+                         placeholder=t["birth_month_ph"], format_func=lambda m: t["months"].split(",")[m - 1])
+    year = d3.number_input(t["birth_year"], min_value=1, max_value=9999, value=None, step=1,
+                           placeholder=t["birth_year_ph"], key=f"{prefix}_year_{g}",
+                           help=t["birth_years"].format(min_year=min_year))
+    hour = d4.number_input(t["birth_hour"], min_value=0, max_value=23, value=None, step=1,
+                           placeholder=t["birth_hour_ph"], key=f"{prefix}_hour_{g}", help=t["birth_time_help"])
+    minute = d5.number_input(t["birth_minute"], min_value=0, max_value=59, value=None, step=1,
+                             placeholder=t["birth_minute_ph"], key=f"{prefix}_minute_{g}")
+    bdate = None
+    if year and not (min_year <= int(year) <= today.year):
+        st.caption("⚠️ " + t["birth_years"].format(min_year=min_year))
+    elif day and month and year:
+        try:
+            bdate = date(int(year), int(month), int(day))
+        except ValueError:
+            st.caption("⚠️ " + t["birth_date_invalid"])
+        else:
+            if bdate > today:
+                st.caption("⚠️ " + t["birth_date_future"])
+                bdate = None
+    btime = dtime(int(hour), int(minute)) if hour is not None and minute is not None else None
 
-    manual_place = st.checkbox(t["birth_place_manual"], key=f"{prefix}_manual_{g}")
+    st.markdown(f"**{t['step_where']}**")
     lat = lon = tz = None
     label = ""
-    if not manual_place:
-        # v20.7: η χώρα ΓΡΑΦΕΤΑΙ και αναζητείται χωρίς τόνους/κεφαλαία, ελληνικά ή αγγλικά.
-        # v20.11: η χώρα είναι ΥΠΟΧΡΕΩΤΙΚΗ -- ο τόπος εμφανίζεται μόνο αφού επιλεγεί χώρα.
-        cc = ""
-        cquery = st.text_input(t["birth_country"], key=f"{prefix}_cq_{g}", placeholder=t["birth_country_ph"])
-        if cquery.strip():
-            cfound = search_countries(cquery, lang)
-            if len(cfound) == 1:
-                cc = cfound[0][0]
-                st.caption("✓ " + country_label(cc, cfound[0][1], lang))
-            elif cfound:
-                cc = st.selectbox(t["birth_country_pick"], cfound, key=f"{prefix}_cc_{g}_{lang}",
-                                  format_func=lambda o: country_label(o[0], o[1], lang))[0]
-            else:
-                st.caption(t["birth_country_none"])
-        # v20.9: χώρα με λίγους τόπους (π.χ. Κύπρος, 132) -> λίστα με ΟΛΟΥΣ τους τόπους,
-        # όπως στο astro.com· μεγάλη χώρα ή «όλος ο κόσμος» -> αναζήτηση με πληκτρολόγηση.
-        in_country = places_in_country(cc, lang) if cc else []
-        # v20.12: ο τόπος αναζητείται ΧΩΡΙΣ τόνους (το φίλτρο της λίστας του Streamlit
-        # ήθελε ακριβή τόνο: «παφος» δεν έβρισκε την «Πάφος»). Κενό πεδίο σε μικρή χώρα
-        # (π.χ. Κύπρος) -> πλήρης λίστα για ξεφύλλισμα, όπως στο astro.com.
-        place = None
-        if not cc:
-            st.caption(t["birth_country_first"])
+    # v20.7: η χώρα ΓΡΑΦΕΤΑΙ και αναζητείται χωρίς τόνους/κεφαλαία, ελληνικά ή αγγλικά.
+    # v20.11: η χώρα είναι ΥΠΟΧΡΕΩΤΙΚΗ -- ο τόπος εμφανίζεται μόνο αφού επιλεγεί χώρα.
+    cc = ""
+    cquery = st.text_input(t["birth_country"], value=t["birth_country_default"], key=f"{prefix}_cq_{g}",
+                           placeholder=t["birth_country_ph"])
+    if cquery.strip():
+        cfound = search_countries(cquery, lang)
+        if len(cfound) == 1:
+            cc = cfound[0][0]
+            st.caption("✓ " + country_label(cc, cfound[0][1], lang))
+        elif cfound:
+            cc = st.selectbox(t["birth_country_pick"], cfound, key=f"{prefix}_cc_{g}_{lang}",
+                              format_func=lambda o: country_label(o[0], o[1], lang))[0]
         else:
-            query = st.text_input(t["birth_place"], key=f"{prefix}_q_{g}_{cc}", placeholder=t["birth_place_ph"])
-            if query.strip():
-                found = search_places(query, 30, (cc,))
-                if len(found) == 1:
-                    place = found[0]
-                    st.caption("✓ " + place.name_only(lang))
-                elif found:
-                    place = st.selectbox(t["birth_place_pick"], found, index=None,
-                                         format_func=lambda p: p.name_only(lang),
-                                         key=f"{prefix}_pick_{g}_{cc}_{lang}", placeholder=t["birth_place_pick_ph"])
-                else:
-                    st.caption(t["birth_place_none"])
-            elif len(in_country) <= DROPDOWN_MAX_PLACES:
-                place = st.selectbox(
-                    t["birth_place_list"].format(n=len(in_country)), in_country, index=None,
-                    key=f"{prefix}_list_{g}_{cc}_{lang}", placeholder=t["birth_place_list_ph"].format(n=len(in_country)),
-                    format_func=lambda p: p.name_only(lang))
-                st.caption(t["birth_place_list_hint"])
-        if place is not None:
-            lat, lon, tz = place.lat, place.lon, place.timezone
-            label = place.short(lang)
+            st.caption(t["birth_country_none"])
+    # v20.9 / v20.12: μικρή χώρα (π.χ. Κύπρος) -> πλήρης λίστα όταν το πεδίο είναι κενό·
+    # αναζήτηση τόπου χωρίς τόνους.
+    in_country = places_in_country(cc, lang) if cc else []
+    place = None
+    if not cc:
+        st.caption(t["birth_country_first"])
     else:
+        query = st.text_input(t["birth_place"], key=f"{prefix}_q_{g}_{cc}", placeholder=t["birth_place_ph"])
+        if query.strip():
+            found = search_places(query, 30, (cc,))
+            if len(found) == 1:
+                place = found[0]
+                st.caption("✓ " + place.name_only(lang))
+            elif found:
+                place = st.selectbox(t["birth_place_pick"], found, index=None,
+                                     format_func=lambda p: p.name_only(lang),
+                                     key=f"{prefix}_pick_{g}_{cc}_{lang}", placeholder=t["birth_place_pick_ph"])
+            else:
+                st.caption(t["birth_place_none"])
+        elif len(in_country) <= DROPDOWN_MAX_PLACES:
+            place = st.selectbox(
+                t["birth_place_list"].format(n=len(in_country)), in_country, index=None,
+                key=f"{prefix}_list_{g}_{cc}_{lang}", placeholder=t["birth_place_list_ph"].format(n=len(in_country)),
+                format_func=lambda p: p.name_only(lang))
+    if place is not None:
+        lat, lon, tz = place.lat, place.lon, place.timezone
+        label = place.short(lang)
+
+    if st.checkbox(t["birth_place_manual"], key=f"{prefix}_manual_{g}"):
         st.caption(t["birth_coords_help"])
         c1, c2, c3 = st.columns(3)
         lat = c1.number_input(t["birth_lat"], min_value=-66.0, max_value=66.0, value=34.7768,
@@ -369,7 +372,8 @@ def _birth_form(prefix: str = "b"):
     # κουμπί δεν ενεργοποιείται.
     # v20.8: δύο επιλογές (διαλέγεται μία): «18+, για μένα» ή «ανήλικος, έχω γονική ευθύνη».
     # Αν η ημερομηνία γέννησης δίνει ηλικία < 18, η πρώτη επιλογή δεν γίνεται δεκτή.
-    who = st.radio(t["birth_who"], ["adult", "minor"], index=None, key=f"{prefix}_who_{g}",
+    st.markdown(f"**{t['step_who']}**")
+    who = st.radio(t["birth_who"], ["adult", "minor"], index=None, label_visibility="collapsed", key=f"{prefix}_who_{g}",
                    format_func=lambda w: t["birth_who_adult" if w == "adult" else "birth_who_minor"])
     age = (date.today().year - bdate.year) - ((date.today().month, date.today().day) < (bdate.month, bdate.day))
     consent = who is not None
@@ -696,8 +700,30 @@ def _manual_tab(input_key, chart):
 _manual_mode = str(_secret("MANUAL_MODE") or "all").strip().lower()
 manual_visible = _manual_mode == "all" or (_manual_mode == "admin" and is_admin)
 
+def _chart_data_text(chart) -> str:
+    """v20.15: τα υπολογισμένα δεδομένα του χάρτη σε αναγνώσιμο κείμενο (αυτά ακριβώς
+    παίρνει το AI), χωρίς τις τεχνικές σημειώσεις «πηγή:»."""
+    head = " · ".join(x for x in (chart.name, chart.date, chart.time, chart.place, chart.house_system) if x)
+    body = build_orientation_source(chart)
+    body = re.sub(r" \| πηγή: [^\n]*", "", body)
+    return (head + "\n\n" if head else "") + body
+
+
+def _show_chart_data(chart):
+    """v20.15 (μόνο Διαχείριση): «📊 Δεδομένα χάρτη» + λήψη σε αρχείο."""
+    if not (is_admin and chart):
+        return
+    text = _chart_data_text(chart)
+    with st.expander(t["chart_data_title"]):
+        st.code(text, language=None, wrap_lines=True)
+        st.download_button(t["chart_data_download"], text.encode("utf-8"),
+                           file_name=f"Xartis_{(chart.name or 'AstroCheck').replace(' ', '_')}.txt",
+                           mime="text/plain", key="chart_data_dl")
+
+
 # v20.14: πρώτα τα κοινά στοιχεία, μετά ο τρόπος δημιουργίας.
 _input_key, _chart, _chart_err = _chart_input()
+_show_chart_data(_chart if _input_key else None)
 if manual_visible:
     st.markdown(f"#### {t['choose_mode']}")
     tab_auto, tab_manual = st.tabs([t["tab_auto"], t["tab_manual"]])
