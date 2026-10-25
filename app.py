@@ -37,7 +37,7 @@ from core.generator import API_KEY_NAMES, DEFAULT_PROVIDER, PROVIDER_LABELS, PRO
 from core.birth_input import birth_case_key, chart_from_birth
 from core.birthtime import to_ut
 from core.i18n import TR
-from core.places import DROPDOWN_MAX_PLACES, country_label, places_in_country, search_countries, search_places
+from core.places import DROPDOWN_MAX_PLACES, countries, country_label, places_in_country, search_countries, search_places
 from core.parser import parse_astrodienst_pdf
 from core.pipeline import (
     CLIENT_OUTPUT_NAME, PRESENTATION, SERVICE_TITLE, RunState, Settings, build_auto_prompt, audit_docx_filename, build_context,
@@ -264,29 +264,54 @@ def _birth_form(prefix: str = "b"):
     label = ""
     # v20.7: η χώρα ΓΡΑΦΕΤΑΙ και αναζητείται χωρίς τόνους/κεφαλαία, ελληνικά ή αγγλικά.
     # v20.11: η χώρα είναι ΥΠΟΧΡΕΩΤΙΚΗ -- ο τόπος εμφανίζεται μόνο αφού επιλεγεί χώρα.
+    # v20.17: ΜΙΑ γραμμή για τη χώρα και ΜΙΑ για τον τόπο -- βέλος για λίστα Ή
+    # πληκτρολόγηση. Το φίλτρο της λίστας του Streamlit θέλει ακριβή τόνο, οπότε ό,τι
+    # γραφτεί και δεν βρεθεί (π.χ. «κυπρος», «παφος») γίνεται δεκτό με Enter
+    # (accept_new_options) και αναζητείται από εμάς χωρίς τόνους/κεφαλαία.
     cc = ""
-    cquery = st.text_input(t["birth_country"], value=t["birth_country_default"], key=f"{prefix}_cq_{g}",
-                           placeholder=t["birth_country_ph"])
-    if cquery.strip():
-        cfound = search_countries(cquery, lang)
+    all_c = countries(lang)
+    c_codes = [c for c, _ in all_c]
+    c_names = dict(all_c)
+    c_pick = st.selectbox(
+        t["birth_country"], c_codes, index=c_codes.index("CY") if "CY" in c_codes else None,
+        key=f"{prefix}_cc_{g}_{lang}", accept_new_options=True, placeholder=t["birth_country_ph"],
+        format_func=lambda c: country_label(c, c_names[c], lang) if c in c_names else c)
+    if c_pick in c_names:
+        cc = c_pick
+    elif c_pick:
+        cfound = search_countries(c_pick, lang)
         if len(cfound) == 1:
             cc = cfound[0][0]
             st.caption("✓ " + country_label(cc, cfound[0][1], lang))
         elif cfound:
-            cc = st.selectbox(t["birth_country_pick"], cfound, key=f"{prefix}_cc_{g}_{lang}",
+            cc = st.selectbox(t["birth_country_pick"], cfound, key=f"{prefix}_cc2_{g}_{lang}",
                               format_func=lambda o: country_label(o[0], o[1], lang))[0]
         else:
             st.caption(t["birth_country_none"])
-    # v20.9 / v20.12: μικρή χώρα (π.χ. Κύπρος) -> πλήρης λίστα όταν το πεδίο είναι κενό·
-    # αναζήτηση τόπου χωρίς τόνους.
-    in_country = places_in_country(cc, lang) if cc else []
+
     place = None
     if not cc:
         st.caption(t["birth_country_first"])
     else:
-        query = st.text_input(t["birth_place"], key=f"{prefix}_q_{g}_{cc}", placeholder=t["birth_place_ph"])
-        if query.strip():
-            found = search_places(query, 30, (cc,))
+        in_country = places_in_country(cc, lang)
+        small = len(in_country) <= DROPDOWN_MAX_PLACES
+        options, by_label = [], {}
+        if small:
+            for p_ in in_country:
+                lbl = p_.name_only(lang)
+                n = 2
+                while lbl in by_label:  # ίδιο όνομα δύο φορές -> διάκριση
+                    lbl = f"{p_.name_only(lang)} ({n})"; n += 1
+                by_label[lbl] = p_
+                options.append(lbl)
+        p_pick = st.selectbox(
+            t["birth_place"] if not small else t["birth_place_list"].format(n=len(in_country)),
+            options, index=None, key=f"{prefix}_place_{g}_{cc}_{lang}", accept_new_options=True,
+            placeholder=t["birth_place_ph"] if small else t["birth_place_type_ph"])
+        if p_pick in by_label:
+            place = by_label[p_pick]
+        elif p_pick:
+            found = search_places(p_pick, 30, (cc,))
             if len(found) == 1:
                 place = found[0]
                 st.caption("✓ " + place.name_only(lang))
@@ -296,11 +321,6 @@ def _birth_form(prefix: str = "b"):
                                      key=f"{prefix}_pick_{g}_{cc}_{lang}", placeholder=t["birth_place_pick_ph"])
             else:
                 st.caption(t["birth_place_none"])
-        elif len(in_country) <= DROPDOWN_MAX_PLACES:
-            place = st.selectbox(
-                t["birth_place_list"].format(n=len(in_country)), in_country, index=None,
-                key=f"{prefix}_list_{g}_{cc}_{lang}", placeholder=t["birth_place_list_ph"].format(n=len(in_country)),
-                format_func=lambda p: p.name_only(lang))
     if place is not None:
         lat, lon, tz = place.lat, place.lon, place.timezone
         label = place.short(lang)
@@ -618,7 +638,9 @@ def _manual_tab(input_key, chart):
     if not chart or not input_key:
         st.info(t["manual_need_pdf"])
         return
-    st.success(t["manual_chart_loaded"].format(name=chart.name or "—"))
+    # v20.17: δείχνει ΠΟΙΟΣ χάρτης φορτώθηκε (ημερομηνία · ώρα · τόπος), όχι μόνο το όνομα
+    # -- χωρίς όνομα έβγαινε «✓ Χάρτης: —» και φαινόταν σαν να λείπει ο χάρτης.
+    st.success(t["manual_chart_loaded"].format(name=_chart_summary(chart)))
     display_name = chart.name  # μόνο από το PDF· κενό = αναφορά χωρίς όνομα
 
     st.markdown(t["manual_step1"])
@@ -699,6 +721,13 @@ def _manual_tab(input_key, chart):
 # "admin" = μόνο μετά τον κωδικό διαχείρισης · "off" = καθόλου.
 _manual_mode = str(_secret("MANUAL_MODE") or "all").strip().lower()
 manual_visible = _manual_mode == "all" or (_manual_mode == "admin" and is_admin)
+
+def _chart_summary(chart) -> str:
+    """Σύντομη ταυτότητα χάρτη: «Μαρία · 11/02/1982 · 01:45 · Πάφος, Κύπρος»."""
+    time_txt = (chart.time or "").split(" (")[0]
+    parts = [chart.name, chart.date, time_txt, chart.place]
+    return " · ".join(x for x in parts if x) or "—"
+
 
 def _chart_data_text(chart) -> str:
     """v20.15: τα υπολογισμένα δεδομένα του χάρτη σε αναγνώσιμο κείμενο (αυτά ακριβώς
