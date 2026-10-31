@@ -1,0 +1,717 @@
+{
+ "_οδηγίες": [
+  "Κείμενα μηχανής ταλέντων AstroCheck Career (v22): 22 ταλέντα + 38 τομείς, el/en.",
+  "Επεξεργασία: άλλαξε ελεύθερα title/text/develop/desc. ΜΗΝ αλλάξεις τα κλειδιά (LEAD, ORG...) ή τα ελληνικά ονόματα τομέων.",
+  "Κανόνες: απλή γλώσσα, «μπορεί να» και όχι «είσαι», ΧΩΡΙΣ ονόματα πλανητών/ζωδίων, «Οίκος», ονόματα όψεων.",
+  "Οι 3 τομείς υγείας εμφανίζονται μόνο όταν περάσει ο φραγμός υγείας (Κανόνας 15, core/talent_map.py HEALTH_RULES).",
+  "status: «draft» = πρόχειρο, «approved» = εγκρίθηκε από αστρολόγο."
+ ],
+ "talents": {
+  "LEAD": {
+   "status": "draft",
+   "el": {
+    "title": "Ηγεσία και πρωτοβουλία",
+    "text": "Μπορεί να νιώθεις άνετα όταν παίρνεις την πρωτοβουλία και δίνεις κατεύθυνση σε μια ομάδα. Συχνά βλέπεις τι χρειάζεται να γίνει και μπορείς να κινητοποιήσεις τους άλλους να το κάνουν μαζί σου, με αυτοπεποίθηση και ζεστασιά.",
+    "develop": "Μπορείς να το καλλιεργήσεις αναλαμβάνοντας μικρές ευθύνες συντονισμού – ένα έργο, μια εκδήλωση, μια ομάδα εργασίας – και ζητώντας ανατροφοδότηση για το πώς εμπνέεις τους άλλους."
+   },
+   "en": {
+    "title": "Leadership and initiative",
+    "text": "You may feel at ease taking the initiative and giving direction to a group. You can often see what needs to be done and motivate others to do it with you, with confidence and warmth.",
+    "develop": "You can develop it by taking on small coordinating roles – a project, an event, a working group – and asking for feedback on how you inspire others."
+   }
+  },
+  "ORG": {
+   "status": "draft",
+   "el": {
+    "title": "Οργάνωση και συνέπεια",
+    "text": "Μπορεί να έχεις την ικανότητα να βάζεις τάξη, να χωρίζεις μια μεγάλη δουλειά σε βήματα και να τη φέρνεις σε πέρας με συνέπεια. Οι άλλοι μπορεί να βασίζονται πάνω σου επειδή κρατάς τα χρονοδιαγράμματα και δεν αφήνεις εκκρεμότητες.",
+    "develop": "Μπορείς να το αξιοποιήσεις μαθαίνοντας εργαλεία σχεδιασμού και παρακολούθησης έργων και αναλαμβάνοντας ρόλους όπου η αξιοπιστία μετρά περισσότερο από την ταχύτητα."
+   },
+   "en": {
+    "title": "Organisation and consistency",
+    "text": "You may have the ability to bring order, break a large task into steps and see it through with consistency. Others may rely on you because you keep to schedules and do not leave loose ends.",
+    "develop": "You can put it to use by learning project planning and tracking tools and by taking on roles where reliability matters more than speed."
+   }
+  },
+  "ANALYSIS": {
+   "status": "draft",
+   "el": {
+    "title": "Αναλυτική σκέψη και ακρίβεια",
+    "text": "Μπορεί να σου αρέσει να εξετάζεις τα πράγματα λεπτομερώς, να βρίσκεις τη λογική τους και να εντοπίζεις λάθη που άλλοι προσπερνούν. Η ακρίβεια και η καθαρή σκέψη μπορεί να είναι από τα δυνατά σου σημεία όταν χρειάζεται να ληφθεί μια τεκμηριωμένη απόφαση.",
+    "develop": "Μπορείς να το καλλιεργήσεις με προβλήματα, γρίφους, δεδομένα και μαθήματα που ζητούν συστηματική σκέψη, όπως μαθηματικά, προγραμματισμό ή στατιστική."
+   },
+   "en": {
+    "title": "Analytical thinking and precision",
+    "text": "You may enjoy examining things in detail, finding their logic and spotting mistakes others overlook. Precision and clear thinking can be among your strengths when a well-founded decision is needed.",
+    "develop": "You can develop it through problems, puzzles, data and subjects that call for systematic thinking, such as mathematics, programming or statistics."
+   }
+  },
+  "COMM": {
+   "status": "draft",
+   "el": {
+    "title": "Επικοινωνία και λόγος",
+    "text": "Μπορεί να έχεις ευκολία στον λόγο: να εξηγείς, να περιγράφεις, να πείθεις και να βρίσκεις τις σωστές λέξεις για κάθε ακροατή. Η περιέργειά σου για ιδέες και ανθρώπους μπορεί να σε κάνει καλό σύνδεσμο ανάμεσα σε διαφορετικές ομάδες.",
+    "develop": "Μπορείς να το αναπτύξεις γράφοντας, παρουσιάζοντας, συμμετέχοντας σε συζητήσεις ή μαθαίνοντας ξένες γλώσσες."
+   },
+   "en": {
+    "title": "Communication and expression in words",
+    "text": "You may have a way with words: explaining, describing, persuading and finding the right words for each listener. Your curiosity about ideas and people can make you a good link between different groups.",
+    "develop": "You can develop it by writing, presenting, joining discussions or learning foreign languages."
+   }
+  },
+  "TEACH": {
+   "status": "draft",
+   "el": {
+    "title": "Διδασκαλία και μετάδοση γνώσης",
+    "text": "Μπορεί να σου βγαίνει φυσικά να μοιράζεσαι όσα ξέρεις και να κάνεις τα δύσκολα να φαίνονται απλά. Μπορεί να χαίρεσαι όταν βλέπεις κάποιον να καταλαβαίνει κάτι χάρη σε σένα, και να έχεις υπομονή με τον ρυθμό του καθενός.",
+    "develop": "Μπορείς να το δοκιμάσεις με ιδιαίτερα μαθήματα, καθοδήγηση νεότερων, εργαστήρια ή εκπαιδευτικό περιεχόμενο στο διαδίκτυο."
+   },
+   "en": {
+    "title": "Teaching and sharing knowledge",
+    "text": "Sharing what you know and making difficult things look simple may come naturally to you. You may enjoy seeing someone understand something thanks to you, and have patience with each person's pace.",
+    "develop": "You can try it through tutoring, mentoring younger people, workshops or educational content online."
+   }
+  },
+  "RESEARCH": {
+   "status": "draft",
+   "el": {
+    "title": "Έρευνα σε βάθος",
+    "text": "Μπορεί να έχεις την ανάγκη να φτάνεις στη ρίζα των πραγμάτων και να μη μένεις στην επιφάνεια. Η επιμονή, η συγκέντρωση και η διάθεση να ψάχνεις για πολύ ώρα ένα ερώτημα μπορεί να σε οδηγούν σε ευρήματα που άλλοι δεν φτάνουν.",
+    "develop": "Μπορείς να το καλλιεργήσεις με μικρές έρευνες, εργασίες βιβλιογραφίας, πειράματα ή ερευνητικά προγράμματα σε σχολείο ή πανεπιστήμιο."
+   },
+   "en": {
+    "title": "In-depth research",
+    "text": "You may feel the need to get to the root of things rather than stay on the surface. Persistence, focus and the willingness to stay with a question for a long time can lead you to findings others do not reach.",
+    "develop": "You can develop it through small investigations, literature reviews, experiments or research programmes at school or university."
+   }
+  },
+  "INNOV": {
+   "status": "draft",
+   "el": {
+    "title": "Πρωτοτυπία και τεχνολογία",
+    "text": "Μπορεί να σε τραβούν οι νέες ιδέες, η τεχνολογία και οι λύσεις που δεν έχουν δοκιμαστεί ακόμα. Μπορεί να βλέπεις διαφορετικούς τρόπους να γίνει κάτι και να μη σε φοβίζει να ξεφύγεις από το συνηθισμένο.",
+    "develop": "Μπορείς να το αναπτύξεις με προγραμματισμό, ρομποτική, διαγωνισμούς καινοτομίας ή δικά σου μικρά πειραματικά έργα."
+   },
+   "en": {
+    "title": "Originality and technology",
+    "text": "You may be drawn to new ideas, technology and solutions that have not been tried yet. You may see different ways of doing things and not be afraid to step away from the usual.",
+    "develop": "You can develop it through programming, robotics, innovation competitions or small experimental projects of your own."
+   }
+  },
+  "ART": {
+   "status": "draft",
+   "el": {
+    "title": "Φαντασία και καλλιτεχνική έκφραση",
+    "text": "Μπορεί να έχεις πλούσια φαντασία και την ανάγκη να εκφράζεις όσα νιώθεις μέσα από εικόνες, ήχους, κίνηση ή ιστορίες. Η ευαισθησία σου μπορεί να σε βοηθά να αγγίζεις τους άλλους με τρόπους που οι λέξεις μόνες δεν καταφέρνουν.",
+    "develop": "Μπορείς να το καλλιεργήσεις με τακτική δημιουργική πρακτική – ζωγραφική, μουσική, θέατρο, φωτογραφία – και δείχνοντας τη δουλειά σου σε άλλους."
+   },
+   "en": {
+    "title": "Imagination and artistic expression",
+    "text": "You may have a rich imagination and a need to express what you feel through images, sound, movement or stories. Your sensitivity can help you touch others in ways words alone do not.",
+    "develop": "You can develop it through regular creative practice – drawing, music, theatre, photography – and by showing your work to others."
+   }
+  },
+  "DESIGN": {
+   "status": "draft",
+   "el": {
+    "title": "Αισθητική και σχεδιασμός",
+    "text": "Μπορεί να έχεις ματιά για το ωραίο: τα χρώματα, τις αναλογίες, την αρμονία ενός χώρου ή ενός αντικειμένου. Μπορεί να σε ευχαριστεί να κάνεις τα πράγματα όμορφα και λειτουργικά ταυτόχρονα.",
+    "develop": "Μπορείς να το αναπτύξεις με σχέδιο, γραφιστικά προγράμματα, διακόσμηση, μόδα ή δημιουργία αντικειμένων."
+   },
+   "en": {
+    "title": "Aesthetics and design",
+    "text": "You may have an eye for beauty: colours, proportions, the harmony of a space or an object. You may enjoy making things both beautiful and functional at the same time.",
+    "develop": "You can develop it through drawing, graphic design software, interior styling, fashion or making objects."
+   }
+  },
+  "DIPLO": {
+   "status": "draft",
+   "el": {
+    "title": "Συνεργασία και διπλωματία",
+    "text": "Μπορεί να έχεις την ικανότητα να ακούς όλες τις πλευρές, να βρίσκεις κοινό έδαφος και να μαλακώνεις τις εντάσεις. Οι άλλοι μπορεί να σε εμπιστεύονται ως κάποιον που φέρνει τους ανθρώπους πιο κοντά.",
+    "develop": "Μπορείς να το καλλιεργήσεις με ομαδικές εργασίες, διαπραγματεύσεις, προγράμματα προσομοίωσης (π.χ. μοντέλα Ηνωμένων Εθνών) ή εθελοντισμό."
+   },
+   "en": {
+    "title": "Cooperation and diplomacy",
+    "text": "You may have the ability to listen to every side, find common ground and ease tensions. Others may trust you as someone who brings people closer together.",
+    "develop": "You can develop it through group work, negotiation, simulation programmes (e.g. Model United Nations) or volunteering."
+   }
+  },
+  "JUSTICE": {
+   "status": "draft",
+   "el": {
+    "title": "Αίσθηση του δικαίου",
+    "text": "Μπορεί να έχεις έντονη αίσθηση του τι είναι δίκαιο και να σε ενοχλεί όταν κάποιος αδικείται. Μπορεί να ζυγίζεις προσεκτικά τα επιχειρήματα και να υπερασπίζεσαι αξίες και κανόνες που προστατεύουν όλους.",
+    "develop": "Μπορείς να το αξιοποιήσεις με αντιλογίες, μαθητικά ή φοιτητικά συμβούλια, εθελοντισμό για δικαιώματα ή γνωριμία με τον χώρο της νομικής."
+   },
+   "en": {
+    "title": "A sense of fairness and justice",
+    "text": "You may have a strong sense of what is fair and feel bothered when someone is treated unjustly. You may weigh arguments carefully and stand up for values and rules that protect everyone.",
+    "develop": "You can put it to use through debating, student councils, rights-based volunteering or getting to know the legal field."
+   }
+  },
+  "CARE": {
+   "status": "draft",
+   "el": {
+    "title": "Ενσυναίσθηση και φροντίδα",
+    "text": "Μπορεί να καταλαβαίνεις εύκολα πώς νιώθουν οι άλλοι και να θέλεις να τους φροντίσεις. Η ζεστασιά και η διαίσθησή σου μπορεί να κάνουν τους ανθρώπους να νιώθουν ασφάλεια κοντά σου.",
+    "develop": "Μπορείς να το καλλιεργήσεις με εθελοντισμό, φροντίδα μικρότερων παιδιών ή ηλικιωμένων και δραστηριότητες όπου η προσοχή στον άλλον κάνει τη διαφορά."
+   },
+   "en": {
+    "title": "Empathy and care",
+    "text": "You may easily understand how others feel and want to look after them. Your warmth and intuition can make people feel safe around you.",
+    "develop": "You can develop it through volunteering, caring for younger children or older people, and activities where attention to others makes the difference."
+   }
+  },
+  "HOSP": {
+   "status": "draft",
+   "el": {
+    "title": "Φιλοξενία και εξυπηρέτηση",
+    "text": "Μπορεί να σου αρέσει να κάνεις τους άλλους να νιώθουν ευπρόσδεκτοι και να φροντίζεις ώστε όλα να κυλούν ευχάριστα. Η ευγένεια και η προσοχή σου στη λεπτομέρεια μπορεί να αφήνουν στους ανθρώπους μια καλή ανάμνηση.",
+    "develop": "Μπορείς να το δοκιμάσεις με καλοκαιρινή εργασία σε τουρισμό ή εστίαση, οργάνωση εκδηλώσεων ή υποδοχή επισκεπτών."
+   },
+   "en": {
+    "title": "Hospitality and service",
+    "text": "You may enjoy making others feel welcome and making sure everything runs pleasantly. Your courtesy and attention to detail can leave people with a good memory.",
+    "develop": "You can try it through summer work in tourism or catering, organising events or welcoming visitors."
+   }
+  },
+  "ACTION": {
+   "status": "draft",
+   "el": {
+    "title": "Δράση και φυσική ενέργεια",
+    "text": "Μπορεί να έχεις πολλή ενέργεια, να σου αρέσει η κίνηση και να αντιδράς γρήγορα όταν χρειάζεται. Μπορεί να αποδίδεις καλύτερα όταν δουλεύεις με το σώμα σου, σε εξωτερικό χώρο ή σε καταστάσεις με ρυθμό.",
+    "develop": "Μπορείς να το αξιοποιήσεις με αθλητισμό, ομάδες διάσωσης ή προσκοπισμό και δραστηριότητες που ζητούν ετοιμότητα και αντοχή."
+   },
+   "en": {
+    "title": "Action and physical energy",
+    "text": "You may have a lot of energy, enjoy movement and react quickly when needed. You may perform best when working with your body, outdoors or in fast-paced situations.",
+    "develop": "You can put it to use through sport, rescue teams or scouting, and activities that call for readiness and stamina."
+   }
+  },
+  "BUILD": {
+   "status": "draft",
+   "el": {
+    "title": "Πρακτική δημιουργία και κατασκευή",
+    "text": "Μπορεί να σε ευχαριστεί να φτιάχνεις κάτι απτό με τα χέρια ή με τεχνικά μέσα και να βλέπεις το αποτέλεσμα μπροστά σου. Η υπομονή και η πρακτική σκέψη μπορεί να σε βοηθούν να κάνεις μια ιδέα πραγματικότητα.",
+    "develop": "Μπορείς να το καλλιεργήσεις με κατασκευές, επισκευές, κηπουρική, μακέτες ή εργαστήρια τεχνολογίας."
+   },
+   "en": {
+    "title": "Practical making and building",
+    "text": "You may enjoy making something tangible with your hands or with technical tools and seeing the result in front of you. Patience and practical thinking can help you turn an idea into reality.",
+    "develop": "You can develop it through building, repairing, gardening, model-making or technology workshops."
+   }
+  },
+  "ENTRE": {
+   "status": "draft",
+   "el": {
+    "title": "Επιχειρηματικότητα και διαχείριση πόρων",
+    "text": "Μπορεί να έχεις αίσθηση της αξίας των πραγμάτων και να βλέπεις ευκαιρίες εκεί που άλλοι δεν τις βλέπουν. Μπορεί να διαχειρίζεσαι καλά χρήματα, χρόνο και μέσα, και να σε τραβά η ιδέα να χτίσεις κάτι δικό σου.",
+    "develop": "Μπορείς να το δοκιμάσεις με μια μικρή δική σου δραστηριότητα, μαθητικές εταιρείες, προγράμματα επιχειρηματικότητας ή βασικά μαθήματα οικονομικών."
+   },
+   "en": {
+    "title": "Enterprise and managing resources",
+    "text": "You may have a sense of the value of things and spot opportunities where others do not. You may manage money, time and resources well, and be drawn to the idea of building something of your own.",
+    "develop": "You can try it through a small venture of your own, student company programmes, entrepreneurship schemes or basic economics courses."
+   }
+  },
+  "STRAT": {
+   "status": "draft",
+   "el": {
+    "title": "Στρατηγική σκέψη",
+    "text": "Μπορεί να σκέφτεσαι μακροπρόθεσμα, να βλέπεις τη μεγάλη εικόνα και να σχεδιάζεις πώς θα φτάσεις σε έναν στόχο βήμα βήμα. Μπορεί να προβλέπεις δυσκολίες πριν εμφανιστούν και να κρατάς έτοιμο ένα εναλλακτικό σχέδιο.",
+    "develop": "Μπορείς να το αναπτύξεις με παιχνίδια στρατηγικής, σκάκι, σχεδιασμό έργων ή μελέτη περιπτώσεων από τον χώρο των επιχειρήσεων και της πολιτικής."
+   },
+   "en": {
+    "title": "Strategic thinking",
+    "text": "You may think long-term, see the big picture and plan how to reach a goal step by step. You may foresee difficulties before they appear and keep an alternative plan ready.",
+    "develop": "You can develop it through strategy games, chess, project planning or case studies from business and politics."
+   }
+  },
+  "STORY": {
+   "status": "draft",
+   "el": {
+    "title": "Δημιουργική γραφή και αφήγηση",
+    "text": "Μπορεί να έχεις χάρισμα στο να αφηγείσαι και να δίνεις ζωή σε ιστορίες, χαρακτήρες και ιδέες. Μπορεί να βρίσκεις εικόνες και λέξεις που κρατούν το ενδιαφέρον και αγγίζουν τον αναγνώστη ή τον ακροατή.",
+    "develop": "Μπορείς να το καλλιεργήσεις γράφοντας τακτικά – ιστορίες, σενάρια, ημερολόγιο, blog – και συμμετέχοντας σε εργαστήρια ή διαγωνισμούς γραφής."
+   },
+   "en": {
+    "title": "Creative writing and storytelling",
+    "text": "You may have a gift for telling stories and bringing characters and ideas to life. You may find images and words that hold attention and move the reader or listener.",
+    "develop": "You can develop it by writing regularly – stories, scripts, a journal, a blog – and joining writing workshops or competitions."
+   }
+  },
+  "COMMUNITY": {
+   "status": "draft",
+   "el": {
+    "title": "Ομαδικότητα και κοινωνική οργάνωση",
+    "text": "Μπορεί να σε κινητοποιεί η ομάδα και ο κοινός σκοπός περισσότερο από την προσωπική διάκριση. Μπορεί να έχεις την ικανότητα να ενώνεις ανθρώπους γύρω από μια ιδέα και να οργανώνεις δίκτυα που λειτουργούν.",
+    "develop": "Μπορείς να το αξιοποιήσεις σε συλλόγους, εθελοντικές ομάδες, μαθητικά συμβούλια ή διαδικτυακές κοινότητες με κοινό στόχο."
+   },
+   "en": {
+    "title": "Teamwork and community building",
+    "text": "You may be motivated more by the group and a shared purpose than by personal distinction. You may be able to unite people around an idea and organise networks that work.",
+    "develop": "You can put it to use in clubs, volunteer groups, student councils or online communities with a shared goal."
+   }
+  },
+  "SUPPORT": {
+   "status": "draft",
+   "el": {
+    "title": "Υποστήριξη και ενθάρρυνση",
+    "text": "Μπορεί να έχεις την ικανότητα να ενθαρρύνεις τους άλλους, να βλέπεις τις δυνατότητές τους και να τους βοηθάς να προχωρήσουν. Η παρουσία σου μπορεί να δίνει κουράγιο και σταθερότητα σε όσους δουλεύουν δίπλα σου.",
+    "develop": "Μπορείς να το καλλιεργήσεις ως καθοδηγητής νεότερων, προπονητής, βοηθός σε ομάδες ή εθελοντής σε προγράμματα στήριξης."
+   },
+   "en": {
+    "title": "Supporting and encouraging others",
+    "text": "You may be able to encourage others, see their potential and help them move forward. Your presence can give courage and stability to those working alongside you.",
+    "develop": "You can develop it as a mentor to younger people, a coach, a team assistant or a volunteer in support programmes."
+   }
+  },
+  "PERFORM": {
+   "status": "draft",
+   "el": {
+    "title": "Δημόσια παρουσία και έκφραση",
+    "text": "Μπορεί να νιώθεις άνετα μπροστά σε κοινό και να έχεις την ικανότητα να τραβάς την προσοχή και να μεταδίδεις ενθουσιασμό. Η εκφραστικότητά σου μπορεί να κάνει ένα μήνυμα να μένει στη μνήμη.",
+    "develop": "Μπορείς να το αναπτύξεις με θέατρο, μουσική σκηνή, παρουσιάσεις, ρητορικούς αγώνες ή δημιουργία βίντεο."
+   },
+   "en": {
+    "title": "Public presence and self-expression",
+    "text": "You may feel comfortable in front of an audience and be able to draw attention and pass on enthusiasm. Your expressiveness can make a message memorable.",
+    "develop": "You can develop it through theatre, performing music, presentations, public-speaking contests or making videos."
+   }
+  },
+  "EXPLORE": {
+   "status": "draft",
+   "el": {
+    "title": "Εξερεύνηση και διεθνείς ορίζοντες",
+    "text": "Μπορεί να σε τραβούν τα ταξίδια, οι άλλοι πολιτισμοί και οι μεγάλες ερωτήσεις. Η ανάγκη σου να διευρύνεις τους ορίζοντές σου μπορεί να σε κάνει ανοιχτό σε νέες εμπειρίες και ιδέες από όλο τον κόσμο.",
+    "develop": "Μπορείς να το καλλιεργήσεις με ξένες γλώσσες, ανταλλαγές μαθητών ή φοιτητών (π.χ. Erasmus), ταξίδια και διάβασμα για άλλους πολιτισμούς."
+   },
+   "en": {
+    "title": "Exploration and wider horizons",
+    "text": "You may be drawn to travel, other cultures and big questions. Your need to broaden your horizons can make you open to new experiences and ideas from all over the world.",
+    "develop": "You can develop it through foreign languages, student exchanges (e.g. Erasmus), travel and reading about other cultures."
+   }
+  }
+ },
+ "fields": {
+  "Υγεία και θεραπευτικές υπηρεσίες": {
+   "status": "draft",
+   "el": {
+    "name": "Υγεία και θεραπευτικές υπηρεσίες",
+    "desc": "Ιατρική, νοσηλευτική, φαρμακευτική και θεραπείες αποκατάστασης – π.χ. γιατρός, νοσηλευτής, φαρμακοποιός, φυσικοθεραπευτής, λογοθεραπευτής."
+   },
+   "en": {
+    "name": "Health and therapeutic services",
+    "desc": "Medicine, nursing, pharmacy and rehabilitation therapies – e.g. doctor, nurse, pharmacist, physiotherapist, speech therapist."
+   }
+  },
+  "Ψυχολογία και κοινωνική φροντίδα": {
+   "status": "draft",
+   "el": {
+    "name": "Ψυχολογία και κοινωνική φροντίδα",
+    "desc": "Ψυχική υγεία, συμβουλευτική και κοινωνική υποστήριξη ανθρώπων και οικογενειών – π.χ. ψυχολόγος, κοινωνικός λειτουργός, σύμβουλος ψυχικής υγείας."
+   },
+   "en": {
+    "name": "Psychology and social care",
+    "desc": "Mental health, counselling and social support for people and families – e.g. psychologist, social worker, mental health counsellor."
+   }
+  },
+  "Διατροφή και διαιτολογία": {
+   "status": "draft",
+   "el": {
+    "name": "Διατροφή και διαιτολογία",
+    "desc": "Διατροφή, υγιεινή διατροφή και έρευνα για τα τρόφιμα και τον οργανισμό – π.χ. διαιτολόγος, διατροφολόγος, ερευνητής διατροφής."
+   },
+   "en": {
+    "name": "Nutrition and dietetics",
+    "desc": "Nutrition, healthy eating and research on food and the body – e.g. dietitian, nutritionist, nutrition researcher."
+   }
+  },
+  "Εκπαίδευση και μάθηση": {
+   "status": "draft",
+   "el": {
+    "name": "Εκπαίδευση και μάθηση",
+    "desc": "Διδασκαλία, κατάρτιση και σχεδιασμός μάθησης σε κάθε ηλικία – π.χ. εκπαιδευτικός, εκπαιδευτής ενηλίκων, σχεδιαστής εκπαιδευτικού υλικού."
+   },
+   "en": {
+    "name": "Education and learning",
+    "desc": "Teaching, training and designing learning for every age – e.g. teacher, adult trainer, learning designer."
+   }
+  },
+  "Επικοινωνία και μέσα": {
+   "status": "draft",
+   "el": {
+    "name": "Επικοινωνία και μέσα",
+    "desc": "Δημοσιογραφία, δημόσιες σχέσεις, διαφήμιση και ψηφιακό περιεχόμενο – π.χ. δημοσιογράφος, υπεύθυνος επικοινωνίας, δημιουργός περιεχομένου."
+   },
+   "en": {
+    "name": "Communication and media",
+    "desc": "Journalism, public relations, advertising and digital content – e.g. journalist, communications officer, content creator."
+   }
+  },
+  "Οργάνωση και διοίκηση έργων": {
+   "status": "draft",
+   "el": {
+    "name": "Οργάνωση και διοίκηση έργων",
+    "desc": "Σχεδιασμός, συντονισμός και παρακολούθηση έργων και ομάδων – π.χ. υπεύθυνος έργου, συντονιστής, διοικητικό στέλεχος."
+   },
+   "en": {
+    "name": "Project organisation and management",
+    "desc": "Planning, coordinating and tracking projects and teams – e.g. project manager, coordinator, administrative manager."
+   }
+  },
+  "Έρευνα και ανάπτυξη": {
+   "status": "draft",
+   "el": {
+    "name": "Έρευνα και ανάπτυξη",
+    "desc": "Έρευνα σε πανεπιστήμια, εργαστήρια και εταιρείες για νέα γνώση και προϊόντα – π.χ. ερευνητής, αναλυτής, επιστήμονας ανάπτυξης."
+   },
+   "en": {
+    "name": "Research and development",
+    "desc": "Research at universities, laboratories and companies for new knowledge and products – e.g. researcher, analyst, development scientist."
+   }
+  },
+  "Τεχνολογία και ψηφιακά συστήματα": {
+   "status": "draft",
+   "el": {
+    "name": "Τεχνολογία και ψηφιακά συστήματα",
+    "desc": "Λογισμικό, δίκτυα, κυβερνοασφάλεια και ψηφιακές υπηρεσίες – π.χ. προγραμματιστής, μηχανικός λογισμικού, ειδικός ασφάλειας."
+   },
+   "en": {
+    "name": "Technology and digital systems",
+    "desc": "Software, networks, cybersecurity and digital services – e.g. programmer, software engineer, security specialist."
+   }
+  },
+  "Μαθηματικά και δεδομένα": {
+   "status": "draft",
+   "el": {
+    "name": "Μαθηματικά και δεδομένα",
+    "desc": "Ανάλυση δεδομένων, στατιστική και μοντέλα πρόβλεψης – π.χ. αναλυτής δεδομένων, στατιστικός, αναλογιστής."
+   },
+   "en": {
+    "name": "Mathematics and data",
+    "desc": "Data analysis, statistics and forecasting models – e.g. data analyst, statistician, actuary."
+   }
+  },
+  "Μηχανική και τεχνικές εφαρμογές": {
+   "status": "draft",
+   "el": {
+    "name": "Μηχανική και τεχνικές εφαρμογές",
+    "desc": "Σχεδιασμός και κατασκευή μηχανών, έργων και τεχνικών συστημάτων – π.χ. μηχανικός, τεχνολόγος, τεχνικός."
+   },
+   "en": {
+    "name": "Engineering and technical applications",
+    "desc": "Designing and building machines, structures and technical systems – e.g. engineer, technologist, technician."
+   }
+  },
+  "Αρχιτεκτονική και χωρικός σχεδιασμός": {
+   "status": "draft",
+   "el": {
+    "name": "Αρχιτεκτονική και χωρικός σχεδιασμός",
+    "desc": "Σχεδιασμός κτιρίων, εσωτερικών χώρων, πόλεων και τοπίου – π.χ. αρχιτέκτονας, διακοσμητής, πολεοδόμος."
+   },
+   "en": {
+    "name": "Architecture and spatial design",
+    "desc": "Designing buildings, interiors, cities and landscapes – e.g. architect, interior designer, urban planner."
+   }
+  },
+  "Κοινωνικές επιστήμες": {
+   "status": "draft",
+   "el": {
+    "name": "Κοινωνικές επιστήμες",
+    "desc": "Μελέτη της κοινωνίας και της ανθρώπινης συμπεριφοράς – π.χ. κοινωνιολόγος, ερευνητής κοινωνικής πολιτικής, ανθρωπολόγος."
+   },
+   "en": {
+    "name": "Social sciences",
+    "desc": "Studying society and human behaviour – e.g. sociologist, social policy researcher, anthropologist."
+   }
+  },
+  "Περιβάλλον και ενέργεια": {
+   "status": "draft",
+   "el": {
+    "name": "Περιβάλλον και ενέργεια",
+    "desc": "Προστασία περιβάλλοντος, ανανεώσιμες πηγές και βιωσιμότητα – π.χ. περιβαλλοντολόγος, μηχανικός ενέργειας, σύμβουλος βιωσιμότητας."
+   },
+   "en": {
+    "name": "Environment and energy",
+    "desc": "Environmental protection, renewable energy and sustainability – e.g. environmental scientist, energy engineer, sustainability consultant."
+   }
+  },
+  "Επιχειρήσεις και επιχειρηματικότητα": {
+   "status": "draft",
+   "el": {
+    "name": "Επιχειρήσεις και επιχειρηματικότητα",
+    "desc": "Ίδρυση και διοίκηση επιχειρήσεων, μάρκετινγκ και πωλήσεις – π.χ. επιχειρηματίας, στέλεχος διοίκησης, υπεύθυνος μάρκετινγκ."
+   },
+   "en": {
+    "name": "Business and entrepreneurship",
+    "desc": "Founding and running businesses, marketing and sales – e.g. entrepreneur, business manager, marketing manager."
+   }
+  },
+  "Οικονομικά και χρηματοοικονομικές υπηρεσίες": {
+   "status": "draft",
+   "el": {
+    "name": "Οικονομικά και χρηματοοικονομικές υπηρεσίες",
+    "desc": "Λογιστική, τράπεζες, επενδύσεις και ασφάλειες – π.χ. λογιστής, οικονομικός αναλυτής, σύμβουλος επενδύσεων."
+   },
+   "en": {
+    "name": "Economics and financial services",
+    "desc": "Accounting, banking, investment and insurance – e.g. accountant, financial analyst, investment adviser."
+   }
+  },
+  "Νομική και δικαιοσύνη": {
+   "status": "draft",
+   "el": {
+    "name": "Νομική και δικαιοσύνη",
+    "desc": "Δίκαιο, δικαστήρια, διαμεσολάβηση και κανονιστική συμμόρφωση – π.χ. δικηγόρος, νομικός σύμβουλος, διαμεσολαβητής."
+   },
+   "en": {
+    "name": "Law and justice",
+    "desc": "Law, courts, mediation and regulatory compliance – e.g. lawyer, legal adviser, mediator."
+   }
+  },
+  "Δημόσια διοίκηση": {
+   "status": "draft",
+   "el": {
+    "name": "Δημόσια διοίκηση",
+    "desc": "Υπηρεσίες του κράτους και της τοπικής αυτοδιοίκησης – π.χ. δημόσιος λειτουργός, στέλεχος δήμου, διοικητικός υπάλληλος."
+   },
+   "en": {
+    "name": "Public administration",
+    "desc": "State and local government services – e.g. civil servant, municipal officer, administrative officer."
+   }
+  },
+  "Πολιτική και δημόσια πολιτική": {
+   "status": "draft",
+   "el": {
+    "name": "Πολιτική και δημόσια πολιτική",
+    "desc": "Διαμόρφωση πολιτικών, εκπροσώπηση και δημόσιος διάλογος – π.χ. αναλυτής πολιτικής, σύμβουλος, στέλεχος οργανώσεων."
+   },
+   "en": {
+    "name": "Politics and public policy",
+    "desc": "Shaping policy, representation and public debate – e.g. policy analyst, adviser, organisation officer."
+   }
+  },
+  "Γλώσσες και ανθρωπιστικές σπουδές": {
+   "status": "draft",
+   "el": {
+    "name": "Γλώσσες και ανθρωπιστικές σπουδές",
+    "desc": "Γλώσσες, φιλολογία, ιστορία και φιλοσοφία – π.χ. φιλόλογος, μεταφραστής, διερμηνέας, επιμελητής κειμένων."
+   },
+   "en": {
+    "name": "Languages and humanities",
+    "desc": "Languages, literature, history and philosophy – e.g. philologist, translator, interpreter, editor."
+   }
+  },
+  "Θεολογία και θρησκευτικές σπουδές": {
+   "status": "draft",
+   "el": {
+    "name": "Θεολογία και θρησκευτικές σπουδές",
+    "desc": "Μελέτη της θρησκείας, της ηθικής και της πνευματικής παράδοσης – π.χ. θεολόγος, ερευνητής, εκπαιδευτικός."
+   },
+   "en": {
+    "name": "Theology and religious studies",
+    "desc": "Studying religion, ethics and spiritual tradition – e.g. theologian, researcher, teacher."
+   }
+  },
+  "Εικαστικές τέχνες και οπτικός σχεδιασμός": {
+   "status": "draft",
+   "el": {
+    "name": "Εικαστικές τέχνες και οπτικός σχεδιασμός",
+    "desc": "Ζωγραφική, γλυπτική, γραφιστική, εικονογράφηση και φωτογραφία – π.χ. εικαστικός, γραφίστας, εικονογράφος."
+   },
+   "en": {
+    "name": "Visual arts and visual design",
+    "desc": "Painting, sculpture, graphic design, illustration and photography – e.g. visual artist, graphic designer, illustrator."
+   }
+  },
+  "Παραστατικές τέχνες": {
+   "status": "draft",
+   "el": {
+    "name": "Παραστατικές τέχνες",
+    "desc": "Θέατρο, χορός και ζωντανές παραστάσεις – π.χ. ηθοποιός, χορευτής, σκηνοθέτης, εμψυχωτής."
+   },
+   "en": {
+    "name": "Performing arts",
+    "desc": "Theatre, dance and live performance – e.g. actor, dancer, director, drama facilitator."
+   }
+  },
+  "Μουσική και ήχος": {
+   "status": "draft",
+   "el": {
+    "name": "Μουσική και ήχος",
+    "desc": "Εκτέλεση, σύνθεση, διδασκαλία μουσικής και τεχνολογία ήχου – π.χ. μουσικός, συνθέτης, ηχολήπτης."
+   },
+   "en": {
+    "name": "Music and sound",
+    "desc": "Performing, composing, teaching music and sound technology – e.g. musician, composer, sound engineer."
+   }
+  },
+  "Κινηματογράφος και οπτικοακουστικά μέσα": {
+   "status": "draft",
+   "el": {
+    "name": "Κινηματογράφος και οπτικοακουστικά μέσα",
+    "desc": "Ταινίες, τηλεόραση, βίντεο και animation – π.χ. σκηνοθέτης, σεναριογράφος, μοντέρ, παραγωγός."
+   },
+   "en": {
+    "name": "Film and audiovisual media",
+    "desc": "Film, television, video and animation – e.g. director, screenwriter, editor, producer."
+   }
+  },
+  "Μόδα και δημιουργικός σχεδιασμός": {
+   "status": "draft",
+   "el": {
+    "name": "Μόδα και δημιουργικός σχεδιασμός",
+    "desc": "Σχεδιασμός ρούχων, αξεσουάρ και προϊόντων – π.χ. σχεδιαστής μόδας, σχεδιαστής προϊόντων, στυλίστας."
+   },
+   "en": {
+    "name": "Fashion and creative design",
+    "desc": "Designing clothes, accessories and products – e.g. fashion designer, product designer, stylist."
+   }
+  },
+  "Ομορφιά και προσωπική φροντίδα": {
+   "status": "draft",
+   "el": {
+    "name": "Ομορφιά και προσωπική φροντίδα",
+    "desc": "Αισθητική, κομμωτική και μακιγιάζ – π.χ. αισθητικός, κομμωτής, make-up artist."
+   },
+   "en": {
+    "name": "Beauty and personal care",
+    "desc": "Beauty therapy, hairdressing and make-up – e.g. beautician, hairdresser, make-up artist."
+   }
+  },
+  "Τουρισμός και φιλοξενία": {
+   "status": "draft",
+   "el": {
+    "name": "Τουρισμός και φιλοξενία",
+    "desc": "Ξενοδοχεία, ταξίδια, εστίαση και εκδηλώσεις – π.χ. στέλεχος ξενοδοχείου, ξεναγός, διοργανωτής εκδηλώσεων."
+   },
+   "en": {
+    "name": "Tourism and hospitality",
+    "desc": "Hotels, travel, catering and events – e.g. hotel manager, tour guide, event organiser."
+   }
+  },
+  "Εμπόριο και εξυπηρέτηση πελατών": {
+   "status": "draft",
+   "el": {
+    "name": "Εμπόριο και εξυπηρέτηση πελατών",
+    "desc": "Πωλήσεις, λιανικό εμπόριο και σχέσεις με πελάτες – π.χ. πωλητής, υπεύθυνος καταστήματος, σύμβουλος πελατών."
+   },
+   "en": {
+    "name": "Trade and customer service",
+    "desc": "Sales, retail and customer relations – e.g. sales representative, store manager, customer adviser."
+   }
+  },
+  "Γεωργία, δασολογία και ζωική παραγωγή": {
+   "status": "draft",
+   "el": {
+    "name": "Γεωργία, δασολογία και ζωική παραγωγή",
+    "desc": "Καλλιέργεια, δάση και εκτροφή ζώων – π.χ. γεωπόνος, δασολόγος, παραγωγός, κτηνοτρόφος."
+   },
+   "en": {
+    "name": "Agriculture, forestry and animal production",
+    "desc": "Farming, forests and animal husbandry – e.g. agronomist, forester, grower, livestock farmer."
+   }
+  },
+  "Τρόφιμα και αγροδιατροφή": {
+   "status": "draft",
+   "el": {
+    "name": "Τρόφιμα και αγροδιατροφή",
+    "desc": "Παραγωγή, επεξεργασία και ποιότητα τροφίμων, μαγειρική – π.χ. τεχνολόγος τροφίμων, μάγειρας, ζαχαροπλάστης."
+   },
+   "en": {
+    "name": "Food and agri-food",
+    "desc": "Food production, processing and quality, cooking – e.g. food technologist, chef, pastry chef."
+   }
+  },
+  "Μεταφορές, ναυτιλία και εφοδιαστική": {
+   "status": "draft",
+   "el": {
+    "name": "Μεταφορές, ναυτιλία και εφοδιαστική",
+    "desc": "Ναυτιλία, μεταφορές και αλυσίδα εφοδιασμού – π.χ. ναυτιλιακό στέλεχος, αξιωματικός εμπορικού ναυτικού, υπεύθυνος logistics."
+   },
+   "en": {
+    "name": "Transport, shipping and logistics",
+    "desc": "Shipping, transport and supply chain – e.g. shipping manager, merchant navy officer, logistics manager."
+   }
+  },
+  "Αθλητισμός και άσκηση": {
+   "status": "draft",
+   "el": {
+    "name": "Αθλητισμός και άσκηση",
+    "desc": "Αθλητισμός, προπόνηση και φυσική δραστηριότητα – π.χ. προπονητής, γυμναστής, διοργανωτής αθλητικών δράσεων."
+   },
+   "en": {
+    "name": "Sport and exercise",
+    "desc": "Sport, coaching and physical activity – e.g. coach, fitness instructor, sports event organiser."
+   }
+  },
+  "Ασφάλεια και υπηρεσίες έκτακτης ανάγκης": {
+   "status": "draft",
+   "el": {
+    "name": "Ασφάλεια και υπηρεσίες έκτακτης ανάγκης",
+    "desc": "Πυροσβεστική, διάσωση, πολιτική άμυνα και ασφάλεια – π.χ. πυροσβέστης, διασώστης, στέλεχος πολιτικής προστασίας."
+   },
+   "en": {
+    "name": "Safety and emergency services",
+    "desc": "Fire service, rescue, civil defence and security – e.g. firefighter, rescuer, civil protection officer."
+   }
+  },
+  "Αεροπορία και διάστημα": {
+   "status": "draft",
+   "el": {
+    "name": "Αεροπορία και διάστημα",
+    "desc": "Πτήσεις, αεροδρόμια και διαστημική τεχνολογία – π.χ. πιλότος, ελεγκτής εναέριας κυκλοφορίας, μηχανικός αεροσκαφών."
+   },
+   "en": {
+    "name": "Aviation and space",
+    "desc": "Flight, airports and space technology – e.g. pilot, air traffic controller, aircraft engineer."
+   }
+  },
+  "Βιοεπιστήμες και βιοτεχνολογία": {
+   "status": "draft",
+   "el": {
+    "name": "Βιοεπιστήμες και βιοτεχνολογία",
+    "desc": "Βιολογία, γενετική και βιοτεχνολογικές εφαρμογές – π.χ. βιολόγος, βιοτεχνολόγος, ερευνητής εργαστηρίου."
+   },
+   "en": {
+    "name": "Life sciences and biotechnology",
+    "desc": "Biology, genetics and biotechnology applications – e.g. biologist, biotechnologist, laboratory researcher."
+   }
+  },
+  "Παιχνίδια και διαδραστικές εμπειρίες": {
+   "status": "draft",
+   "el": {
+    "name": "Παιχνίδια και διαδραστικές εμπειρίες",
+    "desc": "Σχεδιασμός και ανάπτυξη ψηφιακών παιχνιδιών και διαδραστικών εφαρμογών – π.χ. σχεδιαστής παιχνιδιών, προγραμματιστής, σχεδιαστής εμπειρίας χρήστη."
+   },
+   "en": {
+    "name": "Games and interactive experiences",
+    "desc": "Designing and developing digital games and interactive applications – e.g. game designer, developer, user experience designer."
+   }
+  },
+  "Πολιτισμός και πολιτιστική κληρονομιά": {
+   "status": "draft",
+   "el": {
+    "name": "Πολιτισμός και πολιτιστική κληρονομιά",
+    "desc": "Μουσεία, αρχαιολογία, αρχεία και πολιτιστικοί οργανισμοί – π.χ. αρχαιολόγος, μουσειολόγος, διαχειριστής πολιτιστικών έργων."
+   },
+   "en": {
+    "name": "Culture and cultural heritage",
+    "desc": "Museums, archaeology, archives and cultural organisations – e.g. archaeologist, museum professional, cultural project manager."
+   }
+  },
+  "Διεθνείς σχέσεις και ανθρωπιστική δράση": {
+   "status": "draft",
+   "el": {
+    "name": "Διεθνείς σχέσεις και ανθρωπιστική δράση",
+    "desc": "Διεθνείς οργανισμοί, διπλωματία και ανθρωπιστική βοήθεια – π.χ. διπλωμάτης, στέλεχος ΜΚΟ, συντονιστής ανθρωπιστικών προγραμμάτων."
+   },
+   "en": {
+    "name": "International relations and humanitarian action",
+    "desc": "International organisations, diplomacy and humanitarian aid – e.g. diplomat, NGO officer, humanitarian programme coordinator."
+   }
+  }
+ }
+}

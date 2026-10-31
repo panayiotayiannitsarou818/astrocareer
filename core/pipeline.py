@@ -37,11 +37,13 @@ from typing import Callable, Optional
 
 from .costs import CostTracker, max_cost_usd
 from .docx_builder import build_orientation_audit_docx, build_orientation_client_docx
+from .talent_growth import annotate_client_docx
 from .generator import (
     GenerationResult, PERMANENT_ERROR_KEYS, count_input_tokens, TRANSIENT_ERROR_KEYS, classify_generation_error, default_model,
     generate, is_api_error,
 )
 from .prompts import build_orientation_prompt, build_orientation_source, split_orientation_response
+from .teaser import teaser_instruction
 from .reference_loader import (
     docx_text, load_orientation_command, load_unified_short_example, simple_docx_format_issues,
 )
@@ -177,7 +179,8 @@ def build_auto_prompt(chart, name: str, lang: str) -> str:
     return build_orientation_prompt(
         build_context(name, lang), load_orientation_command(), build_orientation_source(chart),
         load_unified_short_example(), language_clause=language_clause(lang), need_audit=True,
-        extra_instructions=reinforcement_instructions(name, lang),
+        extra_instructions="\n\n".join(
+            x for x in (reinforcement_instructions(name, lang), teaser_instruction(chart, lang)) if x),
     )
 
 
@@ -310,6 +313,11 @@ def evaluate_response(chart, name: str, raw: str, lang: str = "el"):
         format_issues=simple_docx_format_issues(client_docx),
         expected_lang=lang,
     )
+    # v20.18: «πώς φαίνεται να αναπτύσσεται» δίπλα σε κάθε τίτλο της συνοπτικής
+    # λίστας -- ΜΕΤΑ τον έλεγχο και μόνο σε εγκεκριμένο κείμενο (ο validator
+    # συγκρίνει τους τίτλους της λίστας ακριβώς με τους τίτλους των ταλέντων).
+    if check.ok and audit_text:
+        client_docx = annotate_client_docx(client_docx, audit_text, chart, lang)
     return check, client_text, audit_text, client_docx, audit_docx
 
 

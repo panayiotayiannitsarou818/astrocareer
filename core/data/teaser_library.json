@@ -1,0 +1,897 @@
+{
+  "_οδηγίες": [
+    "Βιβλιοθήκη «δωρεάν ταλέντου» AstroCheck Career (v21).",
+    "Ένα κείμενο για κάθε ζεύγος σημείων που μπορεί να σχηματίσει τρίγωνο με τουλάχιστον ένα προσωπικό σημείο",
+    "(Ήλιος, Σελήνη, Ερμής, Αφροδίτη, Άρης, Ωροσκόπος, Μεσουράνημα). 59 ζεύγη.",
+    "Επεξεργασία: άλλαξε ελεύθερα title/text σε el και en. ΜΗΝ αλλάξεις τα «pair».",
+    "Κανόνες: απλή γλώσσα, «μπορεί να» και όχι «είσαι», ΧΩΡΙΣ ονόματα πλανητών/ζωδίων, «Οίκος», ονόματα όψεων.",
+    "status: «draft» = πρόχειρο, «approved» = εγκρίθηκε από αστρολόγο."
+  ],
+  "entries": [
+    {
+      "pair": [
+        "Ήλιος",
+        "Σελήνη"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Εσωτερική συνέπεια",
+        "text": "Αυτό που θέλεις και αυτό που χρειάζεσαι μπορεί να συμφωνούν συχνά, κι αυτό σου δίνει μια ήρεμη σιγουριά. Μπορεί να παίρνεις αποφάσεις που σε εκφράζουν χωρίς μεγάλη εσωτερική πάλη και να εμπνέεις εμπιστοσύνη με τη σταθερότητά σου. Αξίζει να εξερευνήσεις ρόλους όπου χρειάζεται κάποιος που ενώνει ανθρώπους και κρατά την ισορροπία μιας ομάδας."
+      },
+      "en": {
+        "title": "Inner consistency",
+        "text": "What you want and what you need may often agree, and this can give you a calm sense of certainty. You may make choices that express who you are without much inner struggle, and inspire trust through your steadiness. It is worth exploring roles that need someone who brings people together and keeps a team in balance."
+      }
+    },
+    {
+      "pair": [
+        "Ήλιος",
+        "Άρης"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Πρωτοβουλία με ενέργεια",
+        "text": "Μπορεί να σου βγαίνει αβίαστα να ξεκινάς πράγματα και να τα κινείς μπροστά. Όταν κάτι σε ενδιαφέρει, η ενέργειά σου μπορεί να ανεβαίνει και να παρασύρει και τους γύρω σου. Αξίζει να δοκιμάσεις δραστηριότητες όπου μετρά η γρήγορη δράση, η ανάληψη ευθύνης και το θάρρος να κάνεις το πρώτο βήμα."
+      },
+      "en": {
+        "title": "Initiative with energy",
+        "text": "Starting things and moving them forward may come easily to you. When something interests you, your energy may rise and carry the people around you along. It is worth trying activities where quick action, taking responsibility and the courage to make the first move really count."
+      }
+    },
+    {
+      "pair": [
+        "Ήλιος",
+        "Ωροσκόπος"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Αυθεντική παρουσία",
+        "text": "Ο τρόπος που εμφανίζεσαι μπορεί να ταιριάζει φυσικά με αυτό που πραγματικά είσαι μέσα σου. Οι άλλοι μπορεί να σε καταλαβαίνουν γρήγορα και να νιώθουν ότι ξέρουν πού στέκονται μαζί σου. Αξίζει να εξερευνήσεις δραστηριότητες όπου η προσωπική παρουσία, η εκπροσώπηση και η άμεση επαφή με ανθρώπους παίζουν ρόλο."
+      },
+      "en": {
+        "title": "Authentic presence",
+        "text": "The way you come across may naturally match who you really are inside. Others may understand you quickly and feel they know where they stand with you. It is worth exploring activities where personal presence, representing others and direct contact with people play a role."
+      }
+    },
+    {
+      "pair": [
+        "Ήλιος",
+        "Μεσουράνημα"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Ξεκάθαρη κατεύθυνση",
+        "text": "Μπορεί να έχεις μια φυσική αίσθηση για το πού θέλεις να φτάσεις και να βρίσκεις αβίαστα τρόπους να φαίνεται η δουλειά σου. Οι στόχοι σου μπορεί να ταιριάζουν με αυτό που σε εκφράζει, κι αυτό σου δίνει κίνητρο. Αξίζει να εξερευνήσεις πορείες όπου μπορείς να χτίσεις κάτι με το όνομά σου και να αναλάβεις σταδιακά υπεύθυνο ρόλο."
+      },
+      "en": {
+        "title": "A clear sense of direction",
+        "text": "You may have a natural sense of where you want to get to, and find easy ways for your work to be seen. Your goals may match what expresses you, and this can motivate you. It is worth exploring paths where you can build something under your own name and gradually take on a role of responsibility."
+      }
+    },
+    {
+      "pair": [
+        "Σελήνη",
+        "Ερμής"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Λόγια με συναίσθημα",
+        "text": "Μπορεί να σου βγαίνει φυσικά να βάζεις σε λέξεις αυτό που νιώθεις εσύ ή οι άλλοι. Ίσως οι άνθρωποι να ανοίγονται εύκολα μαζί σου, γιατί ακούς και καταλαβαίνεις. Αξίζει να δοκιμάσεις δραστηριότητες όπου μετρά η ζεστή επικοινωνία: γραφή, αφήγηση, συμβουλευτική συζήτηση ή διδασκαλία με προσωπική προσέγγιση."
+      },
+      "en": {
+        "title": "Words with feeling",
+        "text": "Putting into words what you or others feel may come naturally to you. People may open up easily with you, because you listen and understand. It is worth trying activities where warm communication matters: writing, storytelling, supportive conversations or teaching with a personal touch."
+      }
+    },
+    {
+      "pair": [
+        "Σελήνη",
+        "Αφροδίτη"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Ζεστασιά και φιλοξενία",
+        "text": "Μπορεί να έχεις ένα φυσικό χάρισμα να κάνεις τους άλλους να νιώθουν άνετα και ευπρόσδεκτοι. Ίσως σε ελκύει να δημιουργείς ωραίους, ζεστούς χώρους και ευχάριστες στιγμές. Αξίζει να εξερευνήσεις δραστηριότητες γύρω από τη φροντίδα, τη φιλοξενία, την αισθητική του χώρου ή οτιδήποτε φέρνει τους ανθρώπους πιο κοντά."
+      },
+      "en": {
+        "title": "Warmth and hospitality",
+        "text": "You may have a natural gift for making others feel comfortable and welcome. You might enjoy creating beautiful, warm spaces and pleasant moments. It is worth exploring activities around care, hospitality, the look and feel of spaces, or anything that brings people closer together."
+      }
+    },
+    {
+      "pair": [
+        "Σελήνη",
+        "Άρης"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Γρήγορη αντίδραση για όσους νοιάζεσαι",
+        "text": "Όταν κάτι σε αγγίζει, μπορεί να περνάς αμέσως στη δράση. Ίσως έχεις ένστικτο να προστατεύεις και να υπερασπίζεσαι όσους χρειάζονται βοήθεια, με θάρρος και ενέργεια. Αξίζει να δοκιμάσεις δραστηριότητες όπου η γρήγορη, πρακτική ανταπόκριση σε ανθρώπινες ανάγκες κάνει τη διαφορά, όπως η οργάνωση βοήθειας ή η ενεργή υποστήριξη."
+      },
+      "en": {
+        "title": "Quick action for those you care about",
+        "text": "When something touches you, you may move straight into action. You might have an instinct to protect and stand up for those who need help, with courage and energy. It is worth trying activities where a fast, practical response to human needs makes a difference, such as organising help or active support."
+      }
+    },
+    {
+      "pair": [
+        "Σελήνη",
+        "Ωροσκόπος"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Ευαισθησία που φαίνεται",
+        "text": "Μπορεί να καταλαβαίνεις αβίαστα την ατμόσφαιρα ενός χώρου και τη διάθεση των ανθρώπων. Ίσως οι άλλοι σε βλέπουν ως κάποιον προσιτό και ζεστό, με τον οποίο μιλούν εύκολα. Αξίζει να εξερευνήσεις δραστηριότητες όπου η ενσυναίσθηση και η επαφή με το κοινό είναι βασικές, όπως η εξυπηρέτηση, η φροντίδα ή η εργασία με παιδιά και οικογένειες."
+      },
+      "en": {
+        "title": "Sensitivity that shows",
+        "text": "You may easily sense the atmosphere of a place and the mood of the people in it. Others may see you as approachable and warm, someone they can talk to easily. It is worth exploring activities where empathy and contact with the public are central, such as service, care, or work with children and families."
+      }
+    },
+    {
+      "pair": [
+        "Σελήνη",
+        "Μεσουράνημα"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Δουλειά με νόημα για τους ανθρώπους",
+        "text": "Μπορεί να νιώθεις καλύτερα όταν η δουλειά σου φροντίζει ή εξυπηρετεί ανθρώπους. Ίσως το κοινό σε εμπιστεύεται εύκολα και αισθάνεται ότι καταλαβαίνεις τις ανάγκες του. Αξίζει να εξερευνήσεις πορείες όπου μπορείς να συνδυάσεις την επαγγελματική ανέλιξη με τη φροντίδα, την εκπαίδευση ή υπηρεσίες για την οικογένεια και την κοινότητα."
+      },
+      "en": {
+        "title": "Work that means something to people",
+        "text": "You may feel best when your work cares for or serves people. The public may trust you easily and feel that you understand their needs. It is worth exploring paths where you can combine professional growth with care, education, or services for families and the community."
+      }
+    },
+    {
+      "pair": [
+        "Ερμής",
+        "Άρης"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Γρήγορη και αποφασιστική σκέψη",
+        "text": "Μπορεί να σκέφτεσαι γρήγορα και να λες καθαρά αυτό που εννοείς. Ίσως σου αρέσει να συζητάς, να επιχειρηματολογείς και να βρίσκεις λύσεις επί τόπου. Αξίζει να δοκιμάσεις δραστηριότητες όπου μετρά η ετοιμότητα: αντιλογία, διαπραγμάτευση, επίλυση προβλημάτων υπό πίεση ή ρόλοι όπου χρειάζεται άμεση και ξεκάθαρη επικοινωνία."
+      },
+      "en": {
+        "title": "Quick, decisive thinking",
+        "text": "You may think quickly and say clearly what you mean. You might enjoy discussing, arguing a case and finding solutions on the spot. It is worth trying activities where readiness counts: debate, negotiation, problem-solving under pressure, or roles that need direct, clear communication."
+      }
+    },
+    {
+      "pair": [
+        "Ερμής",
+        "Ωροσκόπος"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Επικοινωνία με άνεση",
+        "text": "Μπορεί να σου βγαίνει φυσικά να συστήνεσαι, να εξηγείς και να συνδέεσαι με νέους ανθρώπους. Ίσως οι άλλοι σε βρίσκουν ευχάριστο συνομιλητή και σε θυμούνται για τον τρόπο που μιλάς. Αξίζει να εξερευνήσεις δραστηριότητες όπου η προφορική ή γραπτή επικοινωνία είναι στο κέντρο, όπως παρουσιάσεις, πωλήσεις, ενημέρωση ή διδασκαλία."
+      },
+      "en": {
+        "title": "Communicating with ease",
+        "text": "Introducing yourself, explaining things and connecting with new people may come naturally to you. Others may find you a pleasant person to talk to and remember you for the way you speak. It is worth exploring activities where speaking or writing is central, such as presentations, sales, informing others or teaching."
+      }
+    },
+    {
+      "pair": [
+        "Ερμής",
+        "Μεσουράνημα"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Λόγος που ανοίγει δρόμους",
+        "text": "Οι ιδέες σου και ο τρόπος που τις παρουσιάζεις μπορεί να σε βοηθούν να προχωράς επαγγελματικά. Ίσως σου βγαίνει αβίαστα να οργανώνεις πληροφορίες και να τις μεταφέρεις καθαρά σε άλλους. Αξίζει να εξερευνήσεις πορείες όπου η γνώση, η γραφή, η ανάλυση ή η επικοινωνία είναι το βασικό εργαλείο της δουλειάς."
+      },
+      "en": {
+        "title": "Words that open doors",
+        "text": "Your ideas and the way you present them may help you move forward professionally. Organising information and passing it on clearly may come easily to you. It is worth exploring paths where knowledge, writing, analysis or communication is the main tool of the work."
+      }
+    },
+    {
+      "pair": [
+        "Αφροδίτη",
+        "Άρης"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Δημιουργικό πάθος",
+        "text": "Μπορεί να έχεις ενέργεια για όσα βρίσκεις όμορφα και να θέλεις να τα κάνεις πραγματικότητα. Ίσως συνδυάζεις αβίαστα τη διάθεση για δράση με την αίσθηση του ωραίου. Αξίζει να δοκιμάσεις δραστηριότητες όπου η δημιουργία έχει και κίνηση: χορός, θέατρο, σχεδιασμός, χειροτεχνία ή οποιαδήποτε τέχνη όπου βάζεις όλη σου την ενέργεια."
+      },
+      "en": {
+        "title": "Creative passion",
+        "text": "You may have energy for what you find beautiful and want to make it real. You might easily combine a drive for action with a sense of beauty. It is worth trying activities where creating also involves movement: dance, theatre, design, crafts, or any art you can put all your energy into."
+      }
+    },
+    {
+      "pair": [
+        "Αφροδίτη",
+        "Ωροσκόπος"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Φυσική γοητεία και αισθητική",
+        "text": "Μπορεί να έχεις έναν ευχάριστο, φιλικό τρόπο που κάνει τους άλλους να νιώθουν άνετα κοντά σου. Ίσως έχεις και καλό μάτι για το πώς φαίνονται τα πράγματα. Αξίζει να εξερευνήσεις δραστηριότητες όπου μετρούν οι καλές σχέσεις με τους ανθρώπους και η αισθητική, όπως η εξυπηρέτηση πελατών, η εικόνα, η μόδα ή ο σχεδιασμός."
+      },
+      "en": {
+        "title": "Natural charm and a sense of style",
+        "text": "You may have a pleasant, friendly manner that makes others feel at ease around you. You might also have a good eye for how things look. It is worth exploring activities where good relationships with people and a sense of style matter, such as customer care, image, fashion or design."
+      }
+    },
+    {
+      "pair": [
+        "Αφροδίτη",
+        "Μεσουράνημα"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Ομορφιά και συνεργασία στη δουλειά",
+        "text": "Μπορεί να σου βγαίνει φυσικά να δημιουργείς ένα ευχάριστο κλίμα στη δουλειά και να τα πηγαίνεις καλά με συνεργάτες και κοινό. Ίσως σε ελκύουν επαγγέλματα που έχουν κάτι όμορφο ή αρμονικό. Αξίζει να εξερευνήσεις πορείες στις τέχνες, στον σχεδιασμό, στις δημόσιες σχέσεις ή σε ρόλους όπου η διπλωματία φέρνει αποτελέσματα."
+      },
+      "en": {
+        "title": "Beauty and cooperation at work",
+        "text": "Creating a pleasant atmosphere at work and getting on well with colleagues and the public may come naturally to you. You might be drawn to work that has something beautiful or harmonious about it. It is worth exploring paths in the arts, design, public relations, or roles where diplomacy brings results."
+      }
+    },
+    {
+      "pair": [
+        "Άρης",
+        "Ωροσκόπος"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Δυναμική παρουσία",
+        "text": "Μπορεί να μπαίνεις στις καταστάσεις με ενέργεια και αυτοπεποίθηση, και οι άλλοι να σε βλέπουν ως κάποιον που προχωρά. Ίσως σου αρέσει η κίνηση, η πρόκληση και ο ανταγωνισμός. Αξίζει να δοκιμάσεις δραστηριότητες όπου χρειάζεται θάρρος, φυσική ενέργεια και ετοιμότητα, όπως ο αθλητισμός, η καθοδήγηση ομάδων ή η δουλειά στο πεδίο."
+      },
+      "en": {
+        "title": "A dynamic presence",
+        "text": "You may step into situations with energy and confidence, and others may see you as someone who gets things moving. You might enjoy movement, challenge and competition. It is worth trying activities that need courage, physical energy and readiness, such as sport, leading groups or hands-on field work."
+      }
+    },
+    {
+      "pair": [
+        "Άρης",
+        "Μεσουράνημα"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Ενέργεια για επαγγελματικούς στόχους",
+        "text": "Μπορεί να έχεις φυσική ορμή να προχωράς προς τους στόχους σου και να μην αποθαρρύνεσαι εύκολα από τα εμπόδια. Ίσως σου ταιριάζει να έχεις πρωτοβουλία και να βλέπεις χειροπιαστά αποτελέσματα. Αξίζει να εξερευνήσεις πορείες όπου μετρούν η δράση, η ηγεσία ομάδων, η επιχειρηματικότητα ή δουλειές με κίνηση και ρυθμό."
+      },
+      "en": {
+        "title": "Drive towards professional goals",
+        "text": "You may have a natural drive to move towards your goals and not be easily discouraged by obstacles. Taking initiative and seeing tangible results might suit you. It is worth exploring paths where action counts: leading teams, starting a business, or work with movement and pace."
+      }
+    },
+    {
+      "pair": [
+        "Ήλιος",
+        "Δίας"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Αισιοδοξία που εμπνέει",
+        "text": "Μπορεί να βλέπεις αβίαστα τις δυνατότητες σε κάθε κατάσταση και να δίνεις κουράγιο στους γύρω σου. Ίσως σε ελκύει η μάθηση, τα ταξίδια και οι μεγάλες ιδέες. Αξίζει να εξερευνήσεις δραστηριότητες όπου μπορείς να διδάξεις, να καθοδηγήσεις ή να ανοίξεις ορίζοντες σε άλλους, όπως η εκπαίδευση, η ενημέρωση ή η οργάνωση νέων ευκαιριών."
+      },
+      "en": {
+        "title": "Optimism that inspires",
+        "text": "You may easily see the possibilities in any situation and give courage to those around you. Learning, travel and big ideas might attract you. It is worth exploring activities where you can teach, guide or open up horizons for others, such as education, informing people or creating new opportunities."
+      }
+    },
+    {
+      "pair": [
+        "Ήλιος",
+        "Κρόνος"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Οργάνωση και συνέπεια",
+        "text": "Μπορεί να σου βγαίνει φυσικά να βάζεις τάξη, να κάνεις σχέδιο και να το τηρείς μέχρι το τέλος. Ίσως οι άλλοι σε εμπιστεύονται επειδή κρατάς τον λόγο σου. Αξίζει να εξερευνήσεις δραστηριότητες όπου μετρούν η υπευθυνότητα, η επιμονή και η μακροπρόθεσμη οργάνωση, όπως η διοίκηση έργων, η διαχείριση ή ρόλοι εμπιστοσύνης."
+      },
+      "en": {
+        "title": "Organisation and consistency",
+        "text": "Bringing order, making a plan and sticking to it until the end may come naturally to you. Others may trust you because you keep your word. It is worth exploring activities where responsibility, persistence and long-term organisation count, such as project management, administration or positions of trust."
+      }
+    },
+    {
+      "pair": [
+        "Ήλιος",
+        "Ουρανός"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Πρωτοτυπία",
+        "text": "Μπορεί να σου βγαίνει αβίαστα να σκέφτεσαι διαφορετικά και να προτείνεις λύσεις που άλλοι δεν είχαν φανταστεί. Ίσως σε ελκύει το καινούργιο, η τεχνολογία και η ελευθερία να κάνεις τα πράγματα με τον δικό σου τρόπο. Αξίζει να δοκιμάσεις δραστηριότητες όπου η καινοτομία είναι πλεονέκτημα, όπως η τεχνολογία, η έρευνα ή νέες, πρωτότυπες ιδέες."
+      },
+      "en": {
+        "title": "Originality",
+        "text": "Thinking differently and suggesting solutions others had not imagined may come easily to you. You might be drawn to what is new, to technology and to the freedom to do things your own way. It is worth trying activities where innovation is an advantage, such as technology, research or new, original ideas."
+      }
+    },
+    {
+      "pair": [
+        "Ήλιος",
+        "Ποσειδώνας"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Φαντασία και έμπνευση",
+        "text": "Μπορεί να έχεις πλούσια φαντασία και μια φυσική ευαισθησία σε εικόνες, μουσική και ιστορίες. Ίσως καταλαβαίνεις τους άλλους χωρίς πολλά λόγια. Αξίζει να εξερευνήσεις δραστηριότητες όπου η έμπνευση και η ενσυναίσθηση έχουν θέση, όπως οι τέχνες, η μουσική, ο κινηματογράφος, η φωτογραφία ή ρόλοι στήριξης ανθρώπων."
+      },
+      "en": {
+        "title": "Imagination and inspiration",
+        "text": "You may have a rich imagination and a natural sensitivity to images, music and stories. You might understand others without many words. It is worth exploring activities where inspiration and empathy have a place, such as the arts, music, film, photography or roles that support people."
+      }
+    },
+    {
+      "pair": [
+        "Ήλιος",
+        "Πλούτωνας"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Βάθος και αποφασιστικότητα",
+        "text": "Μπορεί να έχεις την ικανότητα να συγκεντρώνεσαι σε κάτι σε βάθος και να μην τα παρατάς μέχρι να το καταλάβεις πλήρως. Ίσως σε ελκύουν τα δύσκολα ερωτήματα και οι μεγάλες αλλαγές. Αξίζει να εξερευνήσεις δραστηριότητες όπου μετρούν η έρευνα, η ανάλυση σε βάθος ή η καθοδήγηση αλλαγών σε ομάδες και οργανισμούς."
+      },
+      "en": {
+        "title": "Depth and determination",
+        "text": "You may be able to focus on something in depth and not give up until you understand it fully. Difficult questions and big changes might attract you. It is worth exploring activities where research, in-depth analysis or guiding change in teams and organisations count."
+      }
+    },
+    {
+      "pair": [
+        "Ήλιος",
+        "Χείρωνας"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Βοήθεια με κατανόηση",
+        "text": "Μπορεί να καταλαβαίνεις αβίαστα τις δυσκολίες των άλλων και να βρίσκεις τρόπους να τους βοηθήσεις να προχωρήσουν. Ίσως οι άνθρωποι έρχονται σε σένα για συμβουλή. Αξίζει να εξερευνήσεις δραστηριότητες όπου μετρά η υποστήριξη, η καθοδήγηση και η διδασκαλία, όπως η συμβουλευτική, η εκπαίδευση ή οι υπηρεσίες φροντίδας."
+      },
+      "en": {
+        "title": "Helping with understanding",
+        "text": "You may easily understand the difficulties of others and find ways to help them move forward. People might come to you for advice. It is worth exploring activities where support, guidance and teaching count, such as counselling, education or care services."
+      }
+    },
+    {
+      "pair": [
+        "Σελήνη",
+        "Δίας"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Γενναιοδωρία και φροντίδα",
+        "text": "Μπορεί να έχεις μια φυσική γενναιοδωρία και να σου αρέσει να κάνεις τους άλλους να νιώθουν ασφαλείς και ευπρόσδεκτοι. Ίσως η καλή σου διάθεση είναι μεταδοτική. Αξίζει να εξερευνήσεις δραστηριότητες όπου η φροντίδα συνδυάζεται με τη μάθηση ή τη φιλοξενία, όπως η εκπαίδευση, ο τουρισμός ή η εργασία σε κοινότητες."
+      },
+      "en": {
+        "title": "Generosity and care",
+        "text": "You may be naturally generous and enjoy making others feel safe and welcome. Your good mood might be contagious. It is worth exploring activities where caring is combined with learning or hospitality, such as education, tourism or community work."
+      }
+    },
+    {
+      "pair": [
+        "Σελήνη",
+        "Κρόνος"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Σταθερή φροντίδα",
+        "text": "Μπορεί να φροντίζεις τους άλλους με πρακτικό, αξιόπιστο τρόπο, χωρίς υπερβολές. Ίσως είσαι ο άνθρωπος στον οποίο στηρίζονται όταν τα πράγματα δυσκολεύουν. Αξίζει να εξερευνήσεις δραστηριότητες όπου χρειάζεται συνέπεια και ευθύνη απέναντι σε ανθρώπους, όπως η οργάνωση υπηρεσιών φροντίδας, η διοίκηση ή η μακροχρόνια υποστήριξη."
+      },
+      "en": {
+        "title": "Steady care",
+        "text": "You may care for others in a practical, reliable way, without exaggeration. You might be the person others rely on when things get hard. It is worth exploring activities that need consistency and responsibility towards people, such as organising care services, administration or long-term support."
+      }
+    },
+    {
+      "pair": [
+        "Σελήνη",
+        "Ουρανός"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Ευέλικτη διαίσθηση",
+        "text": "Μπορεί να προσαρμόζεσαι γρήγορα στις αλλαγές και να έχεις ξαφνικές, εύστοχες διαισθήσεις. Ίσως σου αρέσουν οι άνθρωποι με διαφορετικό τρόπο σκέψης και οι νέες εμπειρίες. Αξίζει να δοκιμάσεις δραστηριότητες με ποικιλία και καινοτομία, όπου η ευελιξία και η πρωτότυπη ματιά στους ανθρώπους είναι πλεονέκτημα."
+      },
+      "en": {
+        "title": "Flexible intuition",
+        "text": "You may adapt quickly to change and have sudden, accurate intuitions. You might enjoy people who think differently and new experiences. It is worth trying activities with variety and innovation, where flexibility and an original view of people are an advantage."
+      }
+    },
+    {
+      "pair": [
+        "Σελήνη",
+        "Ποσειδώνας"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Βαθιά ενσυναίσθηση",
+        "text": "Μπορεί να νιώθεις αβίαστα τι περνούν οι άλλοι και να έχεις μια ευαισθησία στη μουσική, στις εικόνες και στην ατμόσφαιρα. Ίσως η φαντασία σου είναι πλούσια. Αξίζει να εξερευνήσεις δραστηριότητες όπου η κατανόηση και η τέχνη συναντιούνται, όπως οι δημιουργικές τέχνες, η μουσική ή ρόλοι συναισθηματικής στήριξης."
+      },
+      "en": {
+        "title": "Deep empathy",
+        "text": "You may easily sense what others are going through, and have a sensitivity to music, images and atmosphere. Your imagination might be rich. It is worth exploring activities where understanding and art meet, such as the creative arts, music or roles of emotional support."
+      }
+    },
+    {
+      "pair": [
+        "Σελήνη",
+        "Πλούτωνας"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Διεισδυτική κατανόηση",
+        "text": "Μπορεί να καταλαβαίνεις τι κρύβεται πίσω από τις συμπεριφορές των ανθρώπων και να μη σε τρομάζουν τα βαθιά συναισθήματα. Ίσως οι άλλοι σού εμπιστεύονται σοβαρά θέματα. Αξίζει να εξερευνήσεις δραστηριότητες όπου μετρά η ψυχολογική οξυδέρκεια, όπως η συμβουλευτική, η έρευνα συμπεριφοράς ή η στήριξη ανθρώπων σε αλλαγές."
+      },
+      "en": {
+        "title": "Penetrating understanding",
+        "text": "You may understand what lies behind people's behaviour and not be frightened by deep emotions. Others might trust you with serious matters. It is worth exploring activities where psychological insight counts, such as counselling, behavioural research or supporting people through change."
+      }
+    },
+    {
+      "pair": [
+        "Σελήνη",
+        "Χείρωνας"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Τρυφερή υποστήριξη",
+        "text": "Μπορεί να έχεις ένα φυσικό χάρισμα να ηρεμείς και να ενθαρρύνεις όσους δυσκολεύονται. Ίσως ξέρεις να ακούς χωρίς να κρίνεις. Αξίζει να εξερευνήσεις δραστηριότητες όπου η ζεστή, υπομονετική στήριξη είναι το κέντρο, όπως η φροντίδα, η ειδική αγωγή, η συμβουλευτική ή η εργασία με ευάλωτες ομάδες."
+      },
+      "en": {
+        "title": "Gentle support",
+        "text": "You may have a natural gift for calming and encouraging those who are struggling. You might know how to listen without judging. It is worth exploring activities where warm, patient support is central, such as care work, special education, counselling or work with vulnerable groups."
+      }
+    },
+    {
+      "pair": [
+        "Ερμής",
+        "Δίας"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Αγάπη για τη γνώση",
+        "text": "Μπορεί να σου αρέσει να μαθαίνεις, να συνδέεις ιδέες και να τις εξηγείς σε άλλους με τρόπο που εμπνέει. Ίσως βλέπεις αβίαστα τη μεγάλη εικόνα. Αξίζει να εξερευνήσεις δραστηριότητες όπου η γνώση μοιράζεται, όπως η διδασκαλία, η συγγραφή, η δημοσιογραφία, οι εκδόσεις ή η εκπαίδευση ενηλίκων."
+      },
+      "en": {
+        "title": "A love of knowledge",
+        "text": "You may enjoy learning, connecting ideas and explaining them to others in an inspiring way. You might easily see the bigger picture. It is worth exploring activities where knowledge is shared, such as teaching, writing, journalism, publishing or adult education."
+      }
+    },
+    {
+      "pair": [
+        "Ερμής",
+        "Κρόνος"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Μεθοδική σκέψη",
+        "text": "Μπορεί να σκέφτεσαι με τάξη, να προσέχεις τη λεπτομέρεια και να ελέγχεις τα πράγματα πριν βγάλεις συμπέρασμα. Ίσως σου ταιριάζουν οι κανόνες, τα συστήματα και η ακρίβεια. Αξίζει να εξερευνήσεις δραστηριότητες όπως η ανάλυση δεδομένων, η λογιστική, η μηχανική, ο προγραμματισμός ή οτιδήποτε απαιτεί προσεκτική, δομημένη σκέψη."
+      },
+      "en": {
+        "title": "Methodical thinking",
+        "text": "You may think in an orderly way, pay attention to detail and check things before drawing conclusions. Rules, systems and precision might suit you. It is worth exploring activities such as data analysis, accounting, engineering, programming or anything that needs careful, structured thinking."
+      }
+    },
+    {
+      "pair": [
+        "Ερμής",
+        "Ουρανός"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Εφευρετικό μυαλό",
+        "text": "Μπορεί να σκέφτεσαι γρήγορα και πρωτότυπα και να βρίσκεις απρόσμενες λύσεις. Ίσως σε ελκύουν η τεχνολογία, οι επιστήμες και οι νέες ιδέες. Αξίζει να δοκιμάσεις δραστηριότητες όπου η καινοτόμος σκέψη είναι πλεονέκτημα, όπως ο προγραμματισμός, η τεχνολογία, η έρευνα ή ο σχεδιασμός νέων λύσεων."
+      },
+      "en": {
+        "title": "An inventive mind",
+        "text": "You may think quickly and originally, and find unexpected solutions. Technology, science and new ideas might attract you. It is worth trying activities where innovative thinking is an advantage, such as programming, technology, research or designing new solutions."
+      }
+    },
+    {
+      "pair": [
+        "Ερμής",
+        "Ποσειδώνας"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Λόγος με εικόνες",
+        "text": "Μπορεί να έχεις ταλέντο να λες ιστορίες, να γράφεις με εικόνες και να μεταδίδεις συναισθήματα με λέξεις. Ίσως η φαντασία σου τροφοδοτεί τις ιδέες σου. Αξίζει να εξερευνήσεις δραστηριότητες όπως η δημιουργική γραφή, το σενάριο, η ποίηση, η μετάφραση λογοτεχνίας ή η επικοινωνία με δημιουργικό τρόπο."
+      },
+      "en": {
+        "title": "Words full of images",
+        "text": "You may have a talent for telling stories, writing in images and conveying feelings through words. Your imagination might feed your ideas. It is worth exploring activities such as creative writing, scriptwriting, poetry, literary translation or communicating in a creative way."
+      }
+    },
+    {
+      "pair": [
+        "Ερμής",
+        "Πλούτωνας"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Ερευνητική σκέψη",
+        "text": "Μπορεί να σου αρέσει να ψάχνεις σε βάθος, να ρωτάς «γιατί» και να μη σταματάς στην επιφάνεια. Ίσως εντοπίζεις αβίαστα ό,τι δεν ταιριάζει. Αξίζει να εξερευνήσεις δραστηριότητες όπως η έρευνα, η ανάλυση, η ερευνητική δημοσιογραφία, ο έλεγχος ή η επίλυση σύνθετων προβλημάτων."
+      },
+      "en": {
+        "title": "Investigative thinking",
+        "text": "You may enjoy digging deep, asking 'why' and not stopping at the surface. Spotting what does not fit might come easily to you. It is worth exploring activities such as research, analysis, investigative journalism, auditing or solving complex problems."
+      }
+    },
+    {
+      "pair": [
+        "Ερμής",
+        "Χείρωνας"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Εξήγηση που βοηθά",
+        "text": "Μπορεί να έχεις τρόπο να εξηγείς δύσκολα πράγματα απλά, με υπομονή, έτσι ώστε οι άλλοι να νιώθουν ότι μπορούν. Ίσως σου αρέσει να βοηθάς κάποιον να καταλάβει. Αξίζει να εξερευνήσεις δραστηριότητες όπως η διδασκαλία, η ιδιαίτερη υποστήριξη μαθητών, η καθοδήγηση ή η συμβουλευτική."
+      },
+      "en": {
+        "title": "Explaining in a way that helps",
+        "text": "You may have a way of explaining difficult things simply and patiently, so that others feel they can do it. You might enjoy helping someone understand. It is worth exploring activities such as teaching, one-to-one learning support, mentoring or counselling."
+      }
+    },
+    {
+      "pair": [
+        "Αφροδίτη",
+        "Δίας"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Κοινωνικότητα και καλή διάθεση",
+        "text": "Μπορεί να σου βγαίνει αβίαστα να φέρνεις τους ανθρώπους κοντά και να δημιουργείς ευχάριστη ατμόσφαιρα. Ίσως έχεις και καλό γούστο. Αξίζει να εξερευνήσεις δραστηριότητες όπως η οργάνωση εκδηλώσεων, ο τουρισμός, η φιλοξενία, οι δημόσιες σχέσεις ή οτιδήποτε συνδυάζει ανθρώπους, ομορφιά και χαρά."
+      },
+      "en": {
+        "title": "Sociability and good spirits",
+        "text": "Bringing people together and creating a pleasant atmosphere may come easily to you. You might also have good taste. It is worth exploring activities such as event organising, tourism, hospitality, public relations, or anything that combines people, beauty and enjoyment."
+      }
+    },
+    {
+      "pair": [
+        "Αφροδίτη",
+        "Κρόνος"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Δεξιοτεχνία και σοβαρότητα στο ωραίο",
+        "text": "Μπορεί να έχεις υπομονή να τελειοποιείς κάτι όμορφο μέχρι την τελευταία λεπτομέρεια. Ίσως σου αρέσουν τα κλασικά, διαχρονικά πράγματα και οι σταθερές συνεργασίες. Αξίζει να εξερευνήσεις δραστηριότητες όπου η τέχνη συναντά την τεχνική, όπως η αρχιτεκτονική, η κατασκευή, η χειροτεχνία υψηλής ποιότητας ή ο σχεδιασμός."
+      },
+      "en": {
+        "title": "Craftsmanship and care for beauty",
+        "text": "You may have the patience to perfect something beautiful down to the last detail. You might enjoy classic, timeless things and stable partnerships. It is worth exploring activities where art meets technique, such as architecture, construction, high-quality crafts or design."
+      }
+    },
+    {
+      "pair": [
+        "Αφροδίτη",
+        "Ουρανός"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Πρωτότυπη αισθητική",
+        "text": "Μπορεί να έχεις μια ιδιαίτερη, μοντέρνα αίσθηση του ωραίου και να σου αρέσει να συνδυάζεις πράγματα με απρόσμενο τρόπο. Ίσως σε ελκύει η ψηφιακή δημιουργία. Αξίζει να δοκιμάσεις δραστηριότητες όπως το ψηφιακό ή γραφιστικό σχέδιο, η μόδα, η φωτογραφία ή οι νέες μορφές τέχνης."
+      },
+      "en": {
+        "title": "An original sense of style",
+        "text": "You may have a distinctive, modern sense of beauty and enjoy combining things in unexpected ways. Digital creation might attract you. It is worth trying activities such as digital or graphic design, fashion, photography or new forms of art."
+      }
+    },
+    {
+      "pair": [
+        "Αφροδίτη",
+        "Ποσειδώνας"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Καλλιτεχνική ευαισθησία",
+        "text": "Μπορεί να έχεις φυσική ευαισθησία στη μουσική, στα χρώματα και στην ομορφιά, και μια φαντασία που ονειρεύεται. Ίσως συγκινείσαι εύκολα από την τέχνη. Αξίζει να εξερευνήσεις δραστηριότητες όπως η μουσική, η ζωγραφική, ο χορός, ο κινηματογράφος ή ο σχεδιασμός, όπου η έμπνευση έχει τον πρώτο λόγο."
+      },
+      "en": {
+        "title": "Artistic sensitivity",
+        "text": "You may have a natural sensitivity to music, colour and beauty, and an imagination that dreams. Art might move you easily. It is worth exploring activities such as music, painting, dance, film or design, where inspiration comes first."
+      }
+    },
+    {
+      "pair": [
+        "Αφροδίτη",
+        "Πλούτωνας"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Ένταση στη δημιουργία",
+        "text": "Μπορεί να δίνεσαι ολόκληρος σε ό,τι αγαπάς και να δημιουργείς έργα με βάθος και δύναμη. Ίσως σε ελκύει ό,τι μεταμορφώνει, όπως η ανακαίνιση ή η αλλαγή εικόνας. Αξίζει να εξερευνήσεις δραστηριότητες όπως η τέχνη με έντονο συναίσθημα, η ανακαίνιση χώρων, το styling ή η διαχείριση πόρων και αξιών."
+      },
+      "en": {
+        "title": "Intensity in creation",
+        "text": "You may give yourself fully to what you love and create work with depth and power. Anything that transforms, such as renovation or a change of image, might attract you. It is worth exploring activities such as emotionally intense art, renovating spaces, styling, or managing resources and value."
+      }
+    },
+    {
+      "pair": [
+        "Αφροδίτη",
+        "Χείρωνας"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Ομορφιά που φροντίζει",
+        "text": "Μπορεί να χρησιμοποιείς αβίαστα την τέχνη, την ομορφιά ή την ευγένεια για να κάνεις τους άλλους να νιώσουν καλύτερα. Ίσως σε ελκύει ο συνδυασμός δημιουργίας και στήριξης. Αξίζει να εξερευνήσεις δραστηριότητες όπως η εργασία με τέχνη σε ομάδες, η περιποίηση και ευεξία ή η δημιουργία φιλικών χώρων για ανθρώπους."
+      },
+      "en": {
+        "title": "Beauty that cares",
+        "text": "You may easily use art, beauty or kindness to help others feel better. The combination of creating and supporting might attract you. It is worth exploring activities such as art work with groups, personal care and wellbeing services, or creating welcoming spaces for people."
+      }
+    },
+    {
+      "pair": [
+        "Άρης",
+        "Δίας"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Ενθουσιασμός για δράση",
+        "text": "Μπορεί να έχεις μεγάλο ενθουσιασμό και να παρασύρεις τους άλλους σε νέα σχέδια και περιπέτειες. Ίσως σου αρέσουν οι προκλήσεις και οι στόχοι που σε ανεβάζουν. Αξίζει να δοκιμάσεις δραστηριότητες όπως ο αθλητισμός, η προπονητική, η επιχειρηματικότητα, ο τουρισμός περιπέτειας ή η καθοδήγηση ομάδων."
+      },
+      "en": {
+        "title": "Enthusiasm for action",
+        "text": "You may have great enthusiasm and draw others into new plans and adventures. Challenges and goals that lift you up might appeal to you. It is worth trying activities such as sport, coaching, starting a business, adventure tourism or leading groups."
+      }
+    },
+    {
+      "pair": [
+        "Άρης",
+        "Κρόνος"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Αντοχή και πειθαρχία",
+        "text": "Μπορεί να έχεις την ικανότητα να δουλεύεις σταθερά και με πειθαρχία μέχρι να πετύχεις έναν δύσκολο στόχο. Ίσως ξέρεις να διαχειρίζεσαι την ενέργειά σου έξυπνα. Αξίζει να εξερευνήσεις δραστηριότητες όπου μετρούν η αντοχή και η ακρίβεια, όπως η μηχανική, οι κατασκευές, η τεχνική εργασία ή η διοίκηση έργων."
+      },
+      "en": {
+        "title": "Stamina and discipline",
+        "text": "You may be able to work steadily and with discipline until you reach a difficult goal. You might know how to manage your energy wisely. It is worth exploring activities where stamina and precision count, such as engineering, construction, technical work or project management."
+      }
+    },
+    {
+      "pair": [
+        "Άρης",
+        "Ουρανός"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Τόλμη για το καινούργιο",
+        "text": "Μπορεί να έχεις θάρρος να δοκιμάζεις νέα πράγματα και να αντιδράς γρήγορα σε απρόβλεπτες καταστάσεις. Ίσως σου αρέσουν η ταχύτητα και η τεχνολογία. Αξίζει να δοκιμάσεις δραστηριότητες όπως η τεχνολογία, η μηχανική, οι νεοφυείς επιχειρήσεις ή ρόλοι όπου χρειάζεται ετοιμότητα και πρωτοβουλία."
+      },
+      "en": {
+        "title": "Daring for the new",
+        "text": "You may have the courage to try new things and react quickly in unexpected situations. Speed and technology might appeal to you. It is worth trying activities such as technology, engineering, start-ups, or roles that need readiness and initiative."
+      }
+    },
+    {
+      "pair": [
+        "Άρης",
+        "Ποσειδώνας"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Δράση με έμπνευση",
+        "text": "Μπορεί να βάζεις την ενέργειά σου σε ιδανικά και σε όσα σε συγκινούν. Ίσως η κίνηση και η τέχνη συνδέονται φυσικά για σένα. Αξίζει να εξερευνήσεις δραστηριότητες όπως ο χορός, το θέατρο, η κίνηση με μουσική, ο εθελοντισμός ή οποιαδήποτε δράση έχει πίσω της ένα όραμα."
+      },
+      "en": {
+        "title": "Action with inspiration",
+        "text": "You may put your energy into ideals and into what moves you. Movement and art might naturally go together for you. It is worth exploring activities such as dance, theatre, movement with music, volunteering, or any action that has a vision behind it."
+      }
+    },
+    {
+      "pair": [
+        "Άρης",
+        "Πλούτωνας"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Δύναμη και επιμονή",
+        "text": "Μπορεί να έχεις μεγάλη εσωτερική δύναμη και να μην εγκαταλείπεις όταν κάτι έχει σημασία για σένα. Ίσως λειτουργείς καλά σε δύσκολες καταστάσεις. Αξίζει να εξερευνήσεις δραστηριότητες όπου μετρούν η αντοχή και η αποφασιστικότητα, όπως η διαχείριση κρίσεων, η έρευνα, η επιχειρηματικότητα ή ο απαιτητικός αθλητισμός."
+      },
+      "en": {
+        "title": "Strength and persistence",
+        "text": "You may have great inner strength and not give up when something matters to you. You might work well in difficult situations. It is worth exploring activities where stamina and determination count, such as crisis management, research, starting a business or demanding sport."
+      }
+    },
+    {
+      "pair": [
+        "Άρης",
+        "Χείρωνας"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Θάρρος για να βοηθάς",
+        "text": "Μπορεί να έχεις το θάρρος να παρεμβαίνεις και να βοηθάς ενεργά όταν κάποιος χρειάζεται στήριξη. Ίσως σου αρέσει να ενθαρρύνεις τους άλλους να ξεπερνούν τα όριά τους. Αξίζει να εξερευνήσεις δραστηριότητες όπως η προπονητική, η φυσική δραστηριότητα με σκοπό την ευεξία, η καθοδήγηση ή η ενεργή υποστήριξη ανθρώπων."
+      },
+      "en": {
+        "title": "Courage to help",
+        "text": "You may have the courage to step in and actively help when someone needs support. You might enjoy encouraging others to go beyond their limits. It is worth exploring activities such as coaching, physical activity for wellbeing, mentoring or actively supporting people."
+      }
+    },
+    {
+      "pair": [
+        "Δίας",
+        "Ωροσκόπος"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Ανοιχτή και ζεστή παρουσία",
+        "text": "Μπορεί να δίνεις αβίαστα την εντύπωση ενός ανοιχτού, αισιόδοξου ανθρώπου που κάνει τους άλλους να νιώθουν καλά. Ίσως σου αρέσει να γνωρίζεις νέους ανθρώπους και κόσμους. Αξίζει να εξερευνήσεις δραστηριότητες όπως η διδασκαλία, ο τουρισμός, η εκπροσώπηση ή ρόλοι όπου η θετική επαφή με το κοινό είναι βασική."
+      },
+      "en": {
+        "title": "An open, warm presence",
+        "text": "You may easily come across as an open, optimistic person who makes others feel good. You might enjoy meeting new people and new worlds. It is worth exploring activities such as teaching, tourism, representing others, or roles where positive contact with the public is central."
+      }
+    },
+    {
+      "pair": [
+        "Κρόνος",
+        "Ωροσκόπος"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Σοβαρότητα που εμπνέει εμπιστοσύνη",
+        "text": "Μπορεί οι άλλοι να σε βλέπουν ως έναν σοβαρό, αξιόπιστο άνθρωπο από την πρώτη στιγμή. Ίσως σου βγαίνει φυσικά να είσαι οργανωμένος και υπεύθυνος. Αξίζει να εξερευνήσεις δραστηριότητες όπου η αξιοπιστία είναι το βασικό προσόν, όπως η διοίκηση, η νομική, η διαχείριση ή ρόλοι που απαιτούν εμπιστοσύνη."
+      },
+      "en": {
+        "title": "A seriousness that inspires trust",
+        "text": "Others may see you as a serious, reliable person from the very first moment. Being organised and responsible might come naturally to you. It is worth exploring activities where reliability is the key quality, such as administration, law, management or roles that require trust."
+      }
+    },
+    {
+      "pair": [
+        "Ουρανός",
+        "Ωροσκόπος"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Ξεχωριστό στυλ",
+        "text": "Μπορεί να έχεις έναν δικό σου, ξεχωριστό τρόπο και να μη φοβάσαι να είσαι διαφορετικός. Ίσως οι άλλοι σε θυμούνται για την πρωτοτυπία σου. Αξίζει να δοκιμάσεις δραστηριότητες όπου η ανεξαρτησία και οι νέες ιδέες είναι πλεονέκτημα, όπως η τεχνολογία, ο σχεδιασμός ή η δημιουργία δικών σου πρωτοβουλιών."
+      },
+      "en": {
+        "title": "A style of your own",
+        "text": "You may have your own distinctive way and not be afraid of being different. Others might remember you for your originality. It is worth trying activities where independence and new ideas are an advantage, such as technology, design or creating your own initiatives."
+      }
+    },
+    {
+      "pair": [
+        "Ποσειδώνας",
+        "Ωροσκόπος"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Ευγενική, εμπνευσμένη παρουσία",
+        "text": "Μπορεί να έχεις μια ήπια, γοητευτική παρουσία και να καταλαβαίνεις αβίαστα τη διάθεση των άλλων. Ίσως οι άνθρωποι νιώθουν ότι τους καταλαβαίνεις. Αξίζει να εξερευνήσεις δραστηριότητες όπου η ευαισθησία και η φαντασία έχουν θέση, όπως οι τέχνες, η φωτογραφία, η μουσική ή η υποστήριξη ανθρώπων."
+      },
+      "en": {
+        "title": "A gentle, inspired presence",
+        "text": "You may have a soft, charming presence and easily sense the mood of others. People might feel that you understand them. It is worth exploring activities where sensitivity and imagination have a place, such as the arts, photography, music or supporting people."
+      }
+    },
+    {
+      "pair": [
+        "Πλούτωνας",
+        "Ωροσκόπος"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Δυναμική, διεισδυτική παρουσία",
+        "text": "Μπορεί να έχεις μια έντονη παρουσία που δεν περνά απαρατήρητη και μια ικανότητα να «διαβάζεις» τους ανθρώπους. Ίσως σε ελκύουν οι προκλήσεις και οι μεταμορφώσεις. Αξίζει να εξερευνήσεις δραστηριότητες όπου μετρούν η διεισδυτικότητα και η αποφασιστικότητα, όπως η έρευνα, η διαπραγμάτευση ή η διαχείριση αλλαγών."
+      },
+      "en": {
+        "title": "A strong, perceptive presence",
+        "text": "You may have an intense presence that does not go unnoticed, and an ability to 'read' people. Challenges and transformations might attract you. It is worth exploring activities where insight and determination count, such as research, negotiation or managing change."
+      }
+    },
+    {
+      "pair": [
+        "Χείρωνας",
+        "Ωροσκόπος"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Προσιτότητα που ανακουφίζει",
+        "text": "Μπορεί οι άλλοι να νιώθουν άνετα να σου μιλήσουν για όσα τους δυσκολεύουν. Ίσως έχεις έναν ήρεμο, κατανοητικό τρόπο. Αξίζει να εξερευνήσεις δραστηριότητες όπου η προσιτότητα και η στήριξη είναι βασικές, όπως η συμβουλευτική, η εκπαίδευση, η κοινωνική εργασία ή οι υπηρεσίες εξυπηρέτησης."
+      },
+      "en": {
+        "title": "An approachable, reassuring manner",
+        "text": "Others may feel comfortable talking to you about what they find difficult. You might have a calm, understanding manner. It is worth exploring activities where being approachable and supportive is central, such as counselling, education, social work or service roles."
+      }
+    },
+    {
+      "pair": [
+        "Δίας",
+        "Μεσουράνημα"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Επαγγελματική ανάπτυξη μέσα από τη γνώση",
+        "text": "Μπορεί η επαγγελματική σου πορεία να ανοίγει μέσα από τη μάθηση, τη διδασκαλία ή τις διεθνείς επαφές. Ίσως έχεις φυσική άνεση με ρόλους που δίνουν κατεύθυνση σε άλλους. Αξίζει να εξερευνήσεις πορείες στην εκπαίδευση, στα πανεπιστήμια, στις εκδόσεις, στο εμπόριο με το εξωτερικό ή στην καθοδήγηση."
+      },
+      "en": {
+        "title": "Career growth through knowledge",
+        "text": "Your professional path may open up through learning, teaching or international contacts. You might feel naturally at ease in roles that give direction to others. It is worth exploring paths in education, universities, publishing, international trade or mentoring."
+      }
+    },
+    {
+      "pair": [
+        "Κρόνος",
+        "Μεσουράνημα"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Σταθερή επαγγελματική άνοδος",
+        "text": "Μπορεί να χτίζεις την πορεία σου σταδιακά και σταθερά, με υπομονή και αξιοπιστία. Ίσως σου ταιριάζουν οι ρόλοι με ευθύνη και οι οργανωμένοι χώροι εργασίας. Αξίζει να εξερευνήσεις πορείες στη διοίκηση, στη διαχείριση, στον δημόσιο τομέα, στη νομική ή σε θέσεις που κερδίζονται με εμπειρία."
+      },
+      "en": {
+        "title": "Steady professional progress",
+        "text": "You may build your path gradually and steadily, with patience and reliability. Roles with responsibility and organised workplaces might suit you. It is worth exploring paths in administration, management, the public sector, law, or positions earned through experience."
+      }
+    },
+    {
+      "pair": [
+        "Ουρανός",
+        "Μεσουράνημα"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Πρωτοποριακή επαγγελματική πορεία",
+        "text": "Μπορεί να σου ταιριάζουν πορείες που αλλάζουν, εξελίσσονται ή δεν έχουν ακόμη ξεκάθαρο όνομα. Ίσως χρειάζεσαι ελευθερία και ποικιλία στη δουλειά σου. Αξίζει να εξερευνήσεις πορείες στην τεχνολογία, στην καινοτομία, στην ανεξάρτητη εργασία ή σε νέους κλάδους που διαμορφώνονται τώρα."
+      },
+      "en": {
+        "title": "A pioneering career path",
+        "text": "Paths that change, evolve or do not yet have a clear name may suit you. You might need freedom and variety in your work. It is worth exploring paths in technology, innovation, independent work, or new fields that are taking shape right now."
+      }
+    },
+    {
+      "pair": [
+        "Ποσειδώνας",
+        "Μεσουράνημα"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Δουλειά με όραμα και έμπνευση",
+        "text": "Μπορεί να σε κινεί η ιδέα μιας δουλειάς που εμπνέει ή βοηθά τους άλλους. Ίσως η φαντασία και η ευαισθησία σου να είναι το δυνατό σου χαρτί επαγγελματικά. Αξίζει να εξερευνήσεις πορείες στις τέχνες, στον κινηματογράφο, στη μουσική, στη φωτογραφία ή σε οργανισμούς με κοινωνικό σκοπό."
+      },
+      "en": {
+        "title": "Work with vision and inspiration",
+        "text": "You may be moved by the idea of work that inspires or helps others. Your imagination and sensitivity might be your strong point professionally. It is worth exploring paths in the arts, film, music, photography or organisations with a social purpose."
+      }
+    },
+    {
+      "pair": [
+        "Πλούτωνας",
+        "Μεσουράνημα"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Επιρροή και βάθος στη δουλειά",
+        "text": "Μπορεί να σε ελκύουν ρόλοι με ουσιαστική επιρροή, όπου οι αποφάσεις σου αλλάζουν πράγματα. Ίσως λειτουργείς καλά σε απαιτητικά περιβάλλοντα. Αξίζει να εξερευνήσεις πορείες στην έρευνα, στα οικονομικά, στη στρατηγική, στη διαχείριση κρίσεων ή σε ρόλους που απαιτούν βάθος και αποφασιστικότητα."
+      },
+      "en": {
+        "title": "Influence and depth at work",
+        "text": "You may be drawn to roles with real influence, where your decisions change things. You might work well in demanding environments. It is worth exploring paths in research, finance, strategy, crisis management, or roles that require depth and determination."
+      }
+    },
+    {
+      "pair": [
+        "Χείρωνας",
+        "Μεσουράνημα"
+      ],
+      "status": "draft",
+      "el": {
+        "title": "Επάγγελμα που βοηθά",
+        "text": "Μπορεί η επαγγελματική σου πορεία να έχει νόημα για σένα όταν βοηθά άλλους να προχωρήσουν ή να νιώσουν καλύτερα. Ίσως έχεις φυσική κλίση στη διδασκαλία και την καθοδήγηση. Αξίζει να εξερευνήσεις πορείες στην εκπαίδευση, στη συμβουλευτική, στις υπηρεσίες φροντίδας ή στην επαγγελματική καθοδήγηση."
+      },
+      "en": {
+        "title": "A profession that helps",
+        "text": "Your professional path may feel meaningful to you when it helps others move forward or feel better. You might have a natural inclination for teaching and guiding. It is worth exploring paths in education, counselling, care services or career guidance."
+      }
+    }
+  ]
+}

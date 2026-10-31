@@ -20,6 +20,7 @@ v20: ο πελάτης δίνει ημερομηνία, ώρα, χώρα και 
 """
 import hashlib
 import hmac
+import html
 import re
 import os
 import time
@@ -44,6 +45,10 @@ from core.pipeline import (
     client_docx_filename, language_clause, make_generate_fn, reinforcement_instructions, run_pipeline,
 )
 from core.prompts import build_orientation_source
+from core.teaser import pick_teaser, teaser_instruction
+from core.talent_report import build_engine_report
+from core.talent_growth import annotate_client_docx
+from core.talent_texts import approval_status, fully_approved
 from core.reference_loader import (
     docx_text, load_orientation_command, load_unified_short_example, simple_docx_format_issues,
 )
@@ -51,7 +56,7 @@ from core.validator import validate_orientation
 
 st.set_page_config(page_title="AstroCheck Career", page_icon="✦", layout="wide")
 st.markdown("""<style>
-.stApp{background:#f6f2fa}.block-container{max-width:1100px;padding-top:4.5rem}.hero{background:#3d2350;color:white;border-radius:22px;padding:30px 34px;margin-bottom:18px}.hero h1{margin:0 0 8px;font-family:Georgia;font-size:42px}.hero p{color:#e6d9f2}.ok{padding:14px 16px;background:#e5f2e7;border-left:5px solid #39704c;border-radius:8px}.warn{padding:14px 16px;background:#fff1dd;border-left:5px solid #b7791f;border-radius:8px}.stay{padding:16px 18px;background:#fde8e8;border:2px solid #b42318;border-radius:10px;font-weight:600;font-size:1.05rem;color:#7a1a12}</style>""", unsafe_allow_html=True)
+.stApp{background:#f6f2fa}.block-container{max-width:1100px;padding-top:4.5rem}.hero{background:#3d2350;color:white;border-radius:22px;padding:30px 34px;margin-bottom:18px}.hero h1{margin:0 0 8px;font-family:Georgia;font-size:42px}.hero p{color:#e6d9f2}.mission{color:#5b4a6b;font-style:italic;text-align:center;max-width:760px;margin:0 auto 24px;line-height:1.6}.hero .motto{font-family:Georgia;font-style:italic;font-size:1.05rem;color:#f3e9fb;margin:6px 0 0}.ok{padding:14px 16px;background:#e5f2e7;border-left:5px solid #39704c;border-radius:8px}.warn{padding:14px 16px;background:#fff1dd;border-left:5px solid #b7791f;border-radius:8px}.teaser{padding:18px 20px;background:#fff;border:2px solid #b9a3cf;border-radius:14px;margin:14px 0}.teaser-head{color:#3d2350;font-weight:600;margin-bottom:6px}.teaser-title{font-family:Georgia;font-size:1.35rem;color:#3d2350;margin-bottom:8px}.teaser-more{margin-top:12px;color:#5b4a6b;font-style:italic}.stay{padding:16px 18px;background:#fde8e8;border:2px solid #b42318;border-radius:10px;font-weight:600;font-size:1.05rem;color:#7a1a12}</style>""", unsafe_allow_html=True)
 
 
 def _secret(name):
@@ -74,7 +79,7 @@ def _is_local_request() -> bool:
 # Ρυθμίσεις από τα Secrets -> περιβάλλον, ώστε να τις βλέπει το core/.
 for _name in ("ANTHROPIC_MODEL", "OPENAI_MODEL", "AUTO_MAX_ATTEMPTS", "AUTO_FRESH_ROUNDS", "AUTO_STALL_ROUNDS",
               "AUTO_MAX_FAILED_REQUESTS", "AUTO_MAX_COST_USD", "AUTO_QUALITY_PASS", "AUTO_ETA_MINUTES",
-              "MODEL_PRICES", "EUR_PER_USD"):
+              "MODEL_PRICES", "EUR_PER_USD", "POLISH_MODEL"):
     _v = _secret(_name)
     if _v:
         os.environ[_name] = str(_v)
@@ -85,7 +90,8 @@ with lang_col:
 lang = "el" if site_language == "Ελληνικά" else "en"
 t = TR[lang]
 
-st.markdown(f'<div class="hero"><h1>{t["hero_title"]}</h1><p>{t["hero_subtitle"]}</p></div>', unsafe_allow_html=True)
+st.markdown(f'<div class="hero"><h1>{t["hero_title"]}</h1><p>{t["hero_subtitle"]}</p>'
+            f'<p class="motto">{t["hero_motto"]}</p></div>', unsafe_allow_html=True)
 
 ss = st.session_state
 ss.setdefault("chart", None)
@@ -99,6 +105,19 @@ available = [p for p in PROVIDERS if configured[p]]
 provider = preferred if preferred in available else (available[0] if available else DEFAULT_PROVIDER)
 api_key = configured.get(provider)
 
+# v22: REPORT_MODE (Secret):
+#   "engine" (προεπιλογή) = εκδοχή Α: μηχανή ταλέντων + έτοιμα κείμενα, χωρίς AI, κόστος 0
+#   "hybrid"              = εκδοχή Β: η Α «δεμένη» σε προσωπικό κείμενο από φτηνό AI· αν το AI
+#                           αποτύχει ή δεν περάσει τον έλεγχο, ο πελάτης παίρνει αυτόματα την Α
+#   "ai"                  = η παλιά αναφορά μόνο με AI (όπως στο v21)
+# Το μοντέλο της Β: POLISH_MODEL (Secret)· αλλιώς Claude Sonnet / το προεπιλεγμένο OpenAI.
+REPORT_MODE = str(_secret("REPORT_MODE") or "engine").strip().lower()
+# v22.2: REQUIRE_APPROVAL (Secret, προεπιλογή "1"): όσο οι πίνακες/τα κείμενα της μηχανής είναι
+# πρόχειρα, ο ΠΕΛΑΤΗΣ δεν παίρνει πλήρη αναφορά (μόνο η Διαχείριση). "0" = επιτρέπεται (π.χ. δοκιμές).
+REQUIRE_APPROVAL = str(_secret("REQUIRE_APPROVAL") or "1").strip() != "0"
+POLISH_MODEL = (os.environ.get("POLISH_MODEL") or
+                ("claude-sonnet-5-5" if provider == "anthropic" else default_model(provider)))
+
 
 def _new_case():
     """«Νέα αναφορά»: καθαρίζει ΤΑ ΠΑΝΤΑ -- αποτέλεσμα, πρόοδο, μετρητή."""
@@ -109,7 +128,7 @@ def _new_case():
     # v20.2: καθαρίζονται και τα στοιχεία γέννησης, οι υπολογισμένοι χάρτες και τα
     # παλιά πεδία της φόρμας (b_*), τα αναγνωσμένα PDF και οι εκτιμήσεις κόστους.
     for key in list(ss.keys()):
-        if key in ("birth_charts", "parsed_pdfs", "cost_estimates", "auto_result", "manual_chart",
+        if key in ("birth_charts", "parsed_pdfs", "cost_estimates", "auto_result", "engine_result", "manual_chart",
                    "manual_pdf_hash", "manual_birth_key", "manual_input_key", "orientation_validation") \
                 or str(key).startswith(("b_", "m_")):
             del ss[key]
@@ -119,7 +138,7 @@ def _new_case():
 # ---------------------------------------------------------------- πλαϊνή στήλη
 with st.sidebar:
     st.header(t["sidebar_header"])
-    st.caption(t["sidebar_privacy"])
+    st.caption(t.get(f"sidebar_privacy_{REPORT_MODE}", t["sidebar_privacy"]))
     if st.button(t["sidebar_reset"], use_container_width=True, help=t["sidebar_reset_help"]):
         _new_case()
         st.rerun()
@@ -437,8 +456,95 @@ def _chart_input():
     return _birth_form()
 
 
+def _engine_report(preview, input_key, with_ai):
+    gen, cost = None, None
+    if with_ai and api_key:
+        gen, cost = make_generate_fn(provider, api_key, POLISH_MODEL), CostTracker()
+    if gen:
+        with st.spinner(t["polish_wait"]):
+            report = build_engine_report(preview, preview.name, lang, generate_fn=gen, cost=cost,
+                                         model_name=POLISH_MODEL)
+    else:
+        report = build_engine_report(preview, preview.name, lang)
+    p = report.polish
+    return {"case_key": input_key, "lang": lang, "client_docx": report.client_docx,
+            "engine_docx": report.engine_docx, "audit_docx": report.audit_docx,
+            "client_name": report.client_name, "audit_name": report.audit_name,
+            "client_text": report.client_text, "engine_text": report.engine_text,
+            "n_talents": len(report.result.talents), "n_fields": len(report.result.fields),
+            "tried_ai": p is not None, "used_ai": bool(p and p.used_ai),
+            "ai_issues": list(p.issues) if p else [], "ai_error": p.error if p else "",
+            "cost": cost.format() if cost else ""}
+
+
+def _engine_section(input_key, preview):
+    """v22 -- Υβριδική μέθοδος: ταλέντα και τομείς από κανόνες, κείμενα από έτοιμη βιβλιοθήκη,
+    και (REPORT_MODE="hybrid") προαιρετικό «δέσιμο» από φτηνό AI με αυτόματη επιστροφή στην Α."""
+    if not fully_approved():
+        if is_admin:
+            st.warning(t["draft_admin"].format(**approval_status()) +
+                       (" " + t["draft_admin_blocked"] if REQUIRE_APPROVAL else ""))
+        elif REQUIRE_APPROVAL:
+            has_teaser = preview is not None and pick_teaser(preview, lang, approved_only=True) is not None
+            st.info(t["draft_client"] if has_teaser else t["draft_client_no_teaser"])
+            return
+    ready = preview is not None and input_key is not None
+    if st.button(t["run_button"], type="primary", use_container_width=True, disabled=not ready, key="engine_run"):
+        ss.engine_result = _engine_report(preview, input_key, with_ai=REPORT_MODE == "hybrid")
+    res = ss.get("engine_result")
+    if res and (res["case_key"] != input_key or res["lang"] != lang):
+        ss.pop("engine_result", None)  # νέα στοιχεία ή άλλη γλώσσα: όχι παλιό αποτέλεσμα
+        res = None
+    if not res:
+        return
+    st.markdown(f'<div class="ok">{t["customer_ready"]}</div>', unsafe_allow_html=True)
+    st.write("")
+    st.download_button(t["download_final"], res["client_docx"], file_name=res["client_name"],
+                       type="primary", use_container_width=True, key="engine_dl")
+    if not is_admin:
+        return
+    version = "B" if res["used_ai"] else "A"
+    st.caption(t["engine_admin_done"].format(talents=res["n_talents"], fields=res["n_fields"]) + " " +
+               t["engine_version"].format(v=version) + (f" · {res['cost']}" if res["cost"] else ""))
+    if res["tried_ai"] and not res["used_ai"]:
+        st.warning(t["polish_fallback"])
+        for line in res["ai_issues"]:
+            st.write("•", line)
+        if res["ai_error"]:
+            st.code(res["ai_error"])
+    st.download_button(t["download_audit_docx"], res["audit_docx"], file_name=res["audit_name"],
+                       use_container_width=True, key="engine_audit_dl")
+    c1, c2 = st.columns(2)
+    with c1:
+        st.download_button(t["download_version_a"], res["engine_docx"], file_name="A_" + res["client_name"],
+                           use_container_width=True, key="engine_a_dl")
+    with c2:
+        if res["used_ai"]:
+            st.download_button(t["download_version_b"], res["client_docx"], file_name="B_" + res["client_name"],
+                               use_container_width=True, key="engine_b_dl")
+        elif api_key and st.button(t["try_version_b"], use_container_width=True, key="engine_try_b"):
+            ss.engine_result = _engine_report(preview, input_key, with_ai=True)
+            st.rerun()
+    with st.expander(t["engine_preview"]):
+        st.markdown(res["client_text"])
+
+
 def _auto_tab(input_key, preview, preview_err):
-    """🤖 Αυτόματη: κοινά στοιχεία -> ένα κουμπί -> εγκεκριμένο έντυπο."""
+    if REPORT_MODE == "ai":
+        _ai_flow(input_key, preview, preview_err)
+        return
+    _engine_section(input_key, preview)
+    if is_admin:
+        st.divider()
+        # Toggle και όχι expander: η ροή AI έχει δικά της expanders/st.status, και το Streamlit
+        # δεν επιτρέπει expander μέσα σε expander.
+        if st.toggle(t["ai_fallback_title"], key="ai_fallback_on"):
+            st.caption(t["ai_fallback_note"])
+            _ai_flow(input_key, preview, preview_err)
+
+
+def _ai_flow(input_key, preview, preview_err):
+    """🤖 Αυτόματη με AI: κοινά στοιχεία -> ένα κουμπί -> εγκεκριμένο έντυπο."""
     # ---------------------------------------------------------------- σελίδα πελάτη
     if not api_key:
         st.info(t["service_unavailable_auto"] if manual_visible else t["service_unavailable"])
@@ -541,7 +647,8 @@ def _auto_tab(input_key, preview, preview_err):
 
 
     ready = preview is not None and input_key is not None
-    run_clicked = st.button(t["run_button"], type="primary", use_container_width=True, disabled=not ready or not api_key)
+    run_clicked = st.button(t["run_button"] if REPORT_MODE == "ai" else t["ai_run_button"], type="primary",
+                            use_container_width=True, disabled=not ready or not api_key, key="ai_run")
 
     if run_clicked:
         ss.pop("auto_result", None)
@@ -673,6 +780,9 @@ def _manual_tab(input_key, chart):
                          "and plain language; do not copy content or conclusions from it.\n\n" + language_clause(lang) +
                          "\n\nDo a careful self-check before delivering. The AstroCheck Career validator will run afterwards.")
     paste_message += "\n\n" + reinforcement_instructions(display_name, lang)
+    _teaser_note = teaser_instruction(chart, lang)  # v21: το δωρεάν ταλέντο και στη χειροκίνητη
+    if _teaser_note:
+        paste_message += "\n\n" + _teaser_note
     st.code(paste_message, language=None)
 
     st.markdown(t["manual_step3"])
@@ -691,11 +801,16 @@ def _manual_tab(input_key, chart):
 
     if st.button(t["check_button"], disabled=not (orientation_result and orientation_audit), use_container_width=True):
         result_bytes = orientation_result.getvalue()
+        manual_audit_text = docx_text(orientation_audit.getvalue())
         ss.orientation_validation = validate_orientation(
             chart, docx_text(result_bytes), {"Όνομα": display_name},
-            presentation_mode=PRESENTATION, audit_text=docx_text(orientation_audit.getvalue()),
+            presentation_mode=PRESENTATION, audit_text=manual_audit_text,
             format_issues=simple_docx_format_issues(result_bytes), expected_lang=lang,
         )
+        # v20.18: η φράση «πώς φαίνεται να αναπτύσσεται» μπαίνει ΜΕΤΑ τον έλεγχο,
+        # μόνο σε εγκεκριμένο αρχείο (όπως και στην αυτόματη ροή).
+        if ss.orientation_validation.ok:
+            result_bytes = annotate_client_docx(result_bytes, manual_audit_text, chart, lang)
         ss.orientation_docx_bytes = result_bytes
         ss.orientation_docx_name = orientation_result.name
         ss.orientation_fingerprint = _manual_fingerprint()
@@ -750,8 +865,29 @@ def _show_chart_data(chart):
                            mime="text/plain", key="chart_data_dl")
 
 
+def _show_teaser(chart):
+    """v21: «Δωρεάν ταλέντο» από έτοιμη βιβλιοθήκη -- χωρίς AI, χωρίς κόστος."""
+    # v22.4: όσο ισχύει η έγκριση (REQUIRE_APPROVAL), ο πελάτης βλέπει ΜΟΝΟ εγκεκριμένα κείμενα·
+    # η Διαχείριση βλέπει και τα πρόχειρα.
+    approved_only = REQUIRE_APPROVAL and not is_admin
+    teaser = pick_teaser(chart, lang, approved_only=approved_only) if chart else None
+    if teaser is None:
+        return
+    head = t["teaser_head_natural"] if teaser.natural else t["teaser_head_practice"]
+    st.markdown(
+        f'<div class="teaser"><div class="teaser-head">🎁 {head}</div>'
+        f'<div class="teaser-title">{html.escape(teaser.title)}</div>'
+        f'<div>{html.escape(teaser.text)}</div>'
+        f'<div class="teaser-more">{t["teaser_more"]}</div></div>',
+        unsafe_allow_html=True)
+    if is_admin:
+        st.caption(t["teaser_admin"].format(a=teaser.pair[0], b=teaser.pair[1], aspect=teaser.aspect,
+                                            orb=teaser.orb_text, status=teaser.status))
+
+
 # v20.14: πρώτα τα κοινά στοιχεία, μετά ο τρόπος δημιουργίας.
 _input_key, _chart, _chart_err = _chart_input()
+_show_teaser(_chart if _input_key else None)
 _show_chart_data(_chart if _input_key else None)
 if manual_visible:
     st.markdown(f"#### {t['choose_mode']}")
@@ -762,3 +898,7 @@ if manual_visible:
         _manual_tab(_input_key, _chart)
 else:
     _auto_tab(_input_key, _chart, _chart_err)
+
+# v22.6: η φιλοσοφία «Δύνασαι» -- μία παράγραφος στο κάτω μέρος της σελίδας, χωρίς τίτλο.
+st.divider()
+st.markdown(f'<div class="mission">{html.escape(t["about_mission"])}</div>', unsafe_allow_html=True)

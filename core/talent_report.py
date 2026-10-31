@@ -1,0 +1,239 @@
+"""
+core/talent_report.py -- AstroCheck Career (v22)
+
+Αναφορά από τη ΜΗΧΑΝΗ ΤΑΛΕΝΤΩΝ (υβριδική μέθοδος, επιλογή Γ):
+  * ποια ταλέντα / ποιοι τομείς      -> core/talent_engine.py (κανόνες, χωρίς AI)
+  * τι γράφει για το καθένα          -> core/data/talent_texts.json (έτοιμα κείμενα, χωρίς AI)
+  * εσωτερικό δελτίο ελέγχου         -> όλοι οι δείκτες, η βάση τεκμηρίωσης, ο φραγμός υγείας
+Κόστος AI: μηδέν. Ο ίδιος χάρτης δίνει πάντα την ίδια αναφορά.
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from .docx_builder import build_orientation_audit_docx, build_orientation_client_docx
+from .pipeline import AUDIT_TITLE, audit_docx_filename, client_docx_filename, service_title
+from .talent_engine import EngineResult, run_engine
+from .talent_growth import PHRASES as GROWTH_PHRASES, SEPARATOR
+from .talent_texts import field_text, talent_text
+from .teaser import pick_teaser
+
+RANKS = ("κυρίαρχο", "βασικό", "αναδυόμενο")
+
+TXT = {
+    "el": {
+        "intro": ("Η αναφορά αυτή παρουσιάζει τα ταλέντα και τις κλίσεις που φαίνονται στον γενέθλιο χάρτη, και "
+                  "τους επαγγελματικούς τομείς όπου μπορούν να αξιοποιηθούν. Περιγράφει δυνατότητες, όχι "
+                  "βεβαιότητες: τι θα γίνει, εξαρτάται από τις επιλογές, την προσπάθεια και τις ευκαιρίες σου."),
+        "who": "Τι σε χαρακτηρίζει",
+        "talents": "Τα ταλέντα σου",
+        "rank": {"κυρίαρχο": "Κυρίαρχα ταλέντα", "βασικό": "Βασικά ταλέντα", "αναδυόμενο": "Ταλέντα που αναδύονται"},
+        "rank_note": {
+            "κυρίαρχο": "Τα πιο έντονα ταλέντα σου: αυτά που φαίνονται πιο καθαρά και μπορεί να τα αναγνωρίζεις ήδη στον εαυτό σου.",
+            "βασικό": ("Ταλέντα με καλή, σταθερή βάση. Είναι λιγότερο έντονα από τα κυρίαρχα, αλλά είναι πραγματικές "
+                       "δυνάμεις σου και αξίζει να τα αξιοποιήσεις."),
+            "αναδυόμενο": "Ταλέντα που φαίνονται πιο αχνά για την ώρα και χρειάζονται περισσότερη εξάσκηση για να αναπτυχθούν.",
+        },
+        "develop": "Πώς να το καλλιεργήσεις:",
+        "summary": "Συνοπτικά, τα ταλέντα σου",
+        "summary_note": "Όλα αυτά είναι δυνατότητες. Το πόσο θα αναπτυχθεί το καθένα εξαρτάται από τις επιλογές και την εξάσκησή σου.",
+        "growth_long": {
+            "easy": "Φαίνεται να είναι κάτι που σου βγαίνει αβίαστα.",
+            "mixed": "Έχει μια εύκολη βάση και μπορεί να δυναμώνει ακόμη περισσότερο με την εξάσκηση.",
+            "opportunity": "Μπορεί να ανθίζει όταν βρει την κατάλληλη ευκαιρία, γι' αυτό αξίζει να του δίνεις χώρο.",
+            "practice": ("Μπορεί να χρειαστεί χρόνο και εμπειρία για να αναπτυχθεί· αν δεν σου βγαίνει ακόμη εύκολα, "
+                         "αυτό δεν σημαίνει ότι λείπει το ταλέντο, και με τον καιρό συχνά γίνεται από τα πιο δυνατά σου σημεία."),
+            "open": "Θα φανεί περισσότερο στην πράξη, όταν το δοκιμάσεις σε πραγματικές καταστάσεις.",
+        },
+        "fields": "Επαγγελματικοί τομείς που αξίζει να εξερευνήσεις",
+        "fields_note": "Τομείς όπου συναντιούνται δύο ή περισσότερα από τα ταλέντα σου.",
+        "fields_note_g": ("Οι περισσότεροι είναι τομείς όπου συναντιούνται δύο ή περισσότερα από τα ταλέντα σου· "
+                          "όπου ένα ταλέντο δεν συναντιέται με άλλο, προστίθεται ο πιο ταιριαστός τομέας γι' αυτό."),
+        "best_for": "Ο πιο ταιριαστός τομέας για το ταλέντο «{t}».",
+        "based_on": "Στηρίζεται σε",
+        "other": "Άλλες κατευθύνσεις",
+        "other_note": "Τομείς που συνδέονται με ένα από τα ταλέντα σου και αξίζει να τους έχεις υπόψη.",
+        "next": "Επόμενα βήματα",
+        "next_lines": [
+            "Διάλεξε ένα ή δύο από τα κυρίαρχα ταλέντα σου και βρες μια μικρή δραστηριότητα για να τα δοκιμάσεις στην πράξη.",
+            "Μίλησε με ανθρώπους που δουλεύουν στους τομείς που σε ενδιαφέρουν και ρώτα πώς είναι η καθημερινότητά τους.",
+            "Συζήτησε την αναφορά με έναν σύμβουλο επαγγελματικού προσανατολισμού, μαζί με τα ενδιαφέροντα και τις σπουδές σου.",
+        ],
+        "closing": ("Η αναφορά είναι εργαλείο αυτογνωσίας και έμπνευσης. Δεν αντικαθιστά τον επαγγελματικό "
+                    "προσανατολισμό, τα τεστ ικανοτήτων ή τη γνώμη ανθρώπων που σε γνωρίζουν."),
+        "dynasai": ("Η αναφορά αυτή δεν είναι υπόσχεση για το τι θα γίνεις· είναι υπενθύμιση ότι δύνασαι "
+                    "να δοκιμάσεις, να επιλέξεις και να εξελιχθείς."),
+    },
+    "en": {
+        "intro": ("This report presents the talents and inclinations shown in the birth chart, and the career fields "
+                  "where they can be put to use. It describes possibilities, not certainties: what happens depends on "
+                  "your choices, your effort and the opportunities you meet."),
+        "who": "What characterises you",
+        "talents": "Your talents",
+        "rank": {"κυρίαρχο": "Leading talents", "βασικό": "Core talents", "αναδυόμενο": "Emerging talents"},
+        "rank_note": {
+            "κυρίαρχο": "Your most pronounced talents: the ones that show most clearly and that you may already recognise in yourself.",
+            "βασικό": ("Talents with a good, steady base. They are less pronounced than the leading ones, but they are "
+                       "real strengths and worth putting to use."),
+            "αναδυόμενο": "Talents that show more faintly for now and need more practice to develop.",
+        },
+        "develop": "How to develop it:",
+        "summary": "Your talents at a glance",
+        "summary_note": "All of these are possibilities. How far each one develops depends on your choices and practice.",
+        "growth_long": {
+            "easy": "It seems to be something that comes easily to you.",
+            "mixed": "It has an easy base and may grow even stronger with practice.",
+            "opportunity": "It may blossom when it finds the right opportunity, so it is worth giving it room.",
+            "practice": ("It may take time and experience to develop; if it does not come easily yet, that does not "
+                         "mean the talent is missing, and over time it often becomes one of your strongest points."),
+            "open": "It will show more in practice, when you try it in real situations.",
+        },
+        "fields": "Career fields worth exploring",
+        "fields_note": "Fields where two or more of your talents meet.",
+        "fields_note_g": ("Most are fields where two or more of your talents meet; where a talent does not meet "
+                          "another one, the field that suits it best is added."),
+        "best_for": "The field that best suits the talent \"{t}\".",
+        "based_on": "Draws on",
+        "other": "Other directions",
+        "other_note": "Fields linked to one of your talents that are worth keeping in mind.",
+        "next": "Next steps",
+        "next_lines": [
+            "Pick one or two of your leading talents and find a small activity to try them out in practice.",
+            "Talk to people who work in the fields that interest you and ask what their everyday work is like.",
+            "Discuss the report with a career guidance counsellor, together with your interests and studies.",
+        ],
+        "closing": ("This report is a tool for self-knowledge and inspiration. It does not replace career guidance, "
+                    "aptitude tests or the views of people who know you."),
+        "dynasai": ("This report is not a promise of who you will become; it is a reminder that you may try, "
+                    "choose and grow."),
+    },
+}
+
+
+@dataclass
+class EngineReport:
+    result: EngineResult
+    client_text: str                  # τελικό κείμενο πελάτη (Β αν πέτυχε, αλλιώς Α)
+    audit_text: str
+    client_docx: bytes
+    audit_docx: bytes
+    client_name: str
+    audit_name: str
+    engine_text: str = ""             # εκδοχή Α (για σύγκριση στη Διαχείριση)
+    engine_docx: bytes = b""
+    polish: object = None             # PolishOutcome ή None (εκδοχή Α χωρίς δοκιμή AI)
+
+
+def client_markdown(result: EngineResult, lang: str = "el", ai: dict | None = None) -> str:
+    """Η αναφορά πελάτη. Χωρίς `ai`: εκδοχή Α. Με `ai` (εκδοχή Β, v22.4): η ΕΦΑΡΜΟΓΗ συνθέτει τη δομή
+    -- τίτλους, προτάσεις καλλιέργειας, τομείς, επιφύλαξη -- και το AI δίνει μόνο: την εισαγωγή
+    «Τι σε χαρακτηρίζει», 1-2 προτάσεις σύνδεσης για κάθε ΕΠΙΛΕΓΜΕΝΟ ταλέντο (μετά τη σταθερή περιγραφή της
+    βιβλιοθήκης) και μία πρόταση σύνδεσης ανά κύριο τομέα. Η αρίθμηση των ταλέντων γίνεται από την εφαρμογή."""
+    tx = TXT.get(lang, TXT["el"])
+    ai = ai or {}
+    out = [tx["intro"], ""]
+    if ai.get("intro"):
+        out += [f"## {tx['who']}", ai["intro"], ""]
+    out += [f"## {tx['talents']}", "", f"**{tx['summary']}:**"]
+    phrases = GROWTH_PHRASES.get(lang, GROWTH_PHRASES["el"])
+    out += [f"- {talent_text(t.theme, lang)['title']}{SEPARATOR}*{phrases[t.growth]}*" for t in result.talents]
+    out += ["", tx["summary_note"]]
+    number = 0
+    for rank in RANKS:
+        talents = [t for t in result.talents if t.rank == rank]
+        if not talents:
+            continue
+        out += ["", f"### {tx['rank'][rank]}", f"*{tx['rank_note'][rank]}*", ""]
+        for t in talents:
+            text = talent_text(t.theme, lang)
+            number += 1   # η ΕΦΑΡΜΟΓΗ αριθμεί: όσα βρήκε η μηχανή, τόσα και στην αναφορά
+            out.append(f"**{number}. {text['title']}**")
+            # Η περιγραφή της βιβλιοθήκης μένει ΣΤΑΘΕΡΗ· το AI (εκδοχή Β) προσθέτει μόνο σύνδεση.
+            link = ai.get("talents", {}).get(t.theme, "")
+            out.append(text["text"] + " " + tx["growth_long"][t.growth] + (f" {link}" if link else ""))
+            out.append(f"*{tx['develop']}* {text['develop']}")
+            out.append("")
+    main = [f for f in result.fields if f.decision == "ΕΠΙΛΕΓΕΤΑΙ"]
+    other = [f for f in result.fields if f.decision != "ΕΠΙΛΕΓΕΤΑΙ"]
+    if main:
+        note = tx["fields_note_g"] if any(f.guarantee for f in main) else tx["fields_note"]
+        out += [f"## {tx['fields']}", f"*{note}*", ""]
+        for f in main:
+            ft = field_text(f.name, lang)
+            names = ", ".join(talent_text(th, lang)["title"] for th in f.talents)
+            why = (tx["best_for"].format(t=names) if f.guarantee and len(f.talents) == 1
+                   else f"{tx['based_on']}: {names}.")
+            link = ai.get("fields", {}).get(f.name, "")
+            out.append(f"- **{ft['name']}**: {ft['desc']}" + (f" {link}" if link else "") + f" {why}")
+        out.append("")
+    if other:
+        out += [f"## {tx['other']}", f"*{tx['other_note']}*", ""]
+        for f in other:
+            ft = field_text(f.name, lang)
+            out.append(f"- **{ft['name']}**: {ft['desc']}")
+        out.append("")
+    out += [f"## {tx['next']}", ""] + [f"- {line}" for line in tx["next_lines"]] + ["", f"*{tx['closing']}*", "", f"**{tx['dynasai']}**"]
+    return "\n".join(out)
+
+
+def audit_markdown(chart, result: EngineResult) -> str:
+    """Εσωτερικό δελτίο (πάντα ελληνικά): από πού βγήκε κάθε ταλέντο και κάθε τομέας."""
+    head = " · ".join(x for x in (chart.name, chart.date, chart.time, chart.place) if x)
+    out = ["## Στοιχεία", f"Χάρτης: {head or '—'}",
+           "Μέθοδος: μηχανή ταλέντων v22 (κανόνες εντολής v13, χωρίς AI). Πίνακες και κείμενα: ΠΡΟΧΕΙΡΑ μέχρι έγκριση αστρολόγου.",
+           "", "## Ταλέντα"]
+    for t in result.talents:
+        out.append(f"### {t.title_el} ({t.rank}, βαθμός {t.score}, βάση: {t.basis}, ανάπτυξη: {t.growth})")
+        for i in t.indicators:
+            out.append(f"- {i.kind}: {i.label}" + (f" | {i.weight}" if i.weight else ""))
+        for i in t.supporting:
+            out.append(f"- Υποστηρικτικό (μετρά 1/4): {i.kind}: {i.label}" + (f" | {i.weight}" if i.weight else ""))
+        out.append(f"- Τομείς: {', '.join(t.fields) or '—'}")
+    out += ["", "## Τομείς (Κανόνας 12)"]
+    for f in result.fields:
+        extra = " (εγγύηση: ο καλύτερος τομέας ταλέντου χωρίς συνάντηση)" if f.guarantee else ""
+        out.append(f"- {f.name}: {f.decision}{extra} | βαθμός {f.score} | ταλέντα: {', '.join(f.talents)}")
+    health = [f for f in result.fields if f.health_basis]
+    if health:
+        out += ["", "## ΡΗΤΗ ΤΕΚΜΗΡΙΩΣΗ ΤΟΜΕΑ ΥΓΕΙΑΣ"]
+        for f in health:
+            out.append(f"### {f.name}")
+            out += [f"- {line}" for line in f.health_basis]
+    if result.candidates_rejected:
+        out += ["", "## Δεν εγκρίθηκαν"]
+        out += [f"- {k}: {v}" for k, v in result.candidates_rejected.items()]
+    teaser = pick_teaser(chart)
+    if teaser:
+        out += ["", "## Δωρεάν ταλέντο",
+                f"- «{teaser.title}» από {teaser.pair[0]}–{teaser.pair[1]} ({teaser.aspect}, orb {teaser.orb_text}), "
+                f"status {teaser.status}"]
+    return "\n".join(out)
+
+
+def build_engine_report(chart, display_name: str, lang: str = "el", *, generate_fn=None, cost=None,
+                        model_name: str = "") -> EngineReport:
+    """Εκδοχή Α (χωρίς generate_fn) ή Β («δέσιμο» από AI, με αυτόματη επιστροφή στην Α)."""
+    result = run_engine(chart)
+    engine = client_markdown(result, lang)
+    title = service_title(lang)
+    engine_docx = build_orientation_client_docx(title, display_name, engine)
+    polish, client, client_docx = None, engine, engine_docx
+    if generate_fn is not None:
+        from .talent_polish import polish_report
+        polish = polish_report(engine, result, lang, generate_fn, name=display_name, cost=cost, model_name=model_name)
+        if polish.used_ai:
+            client = polish.text
+            client_docx = build_orientation_client_docx(title, display_name, client)
+    audit = audit_markdown(chart, result)
+    if polish is not None:
+        audit += "\n\n## Εκδοχή Β (δέσιμο από AI)\n"
+        audit += (f"- Χρησιμοποιήθηκε η εκδοχή Β (προσπάθεια {polish.attempts})." if polish.used_ai else
+                  f"- Δόθηκε η εκδοχή Α (μετά από {polish.attempts} προσπάθεια/ες)." +
+                  (f" Σφάλμα AI: {polish.error}" if polish.error else ""))
+        audit += "".join(f"\n- Απορρίφθηκε: {x}" for x in (polish.issues if not polish.used_ai else []))
+    return EngineReport(
+        result, client, audit, client_docx,
+        build_orientation_audit_docx(AUDIT_TITLE, display_name or "AstroCheck", audit),
+        client_docx_filename(display_name), audit_docx_filename(display_name),
+        engine, engine_docx, polish,
+    )
