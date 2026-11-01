@@ -414,7 +414,8 @@ def _chart_input():
     """v20.14: ΚΟΙΝΑ στοιχεία γέννησης (ή PDF για τη Διαχείριση) για αυτόματη ΚΑΙ
     χειροκίνητη δημιουργία -- ο πελάτης τα γράφει μία φορά και μετά διαλέγει τρόπο.
     Επιστρέφει (input_key, chart, error)."""
-    st.caption(t["service_note_short"] if CLIENT_PAGE else t["service_note"])
+    if not CLIENT_PAGE:   # v22.26: στη σελίδα πελάτη η επισήμανση μένει μόνο στο τέλος της σελίδας
+        st.caption(t["service_note"])
     use_pdf = False
     if is_admin:
         use_pdf = st.radio(t["input_mode"], [t["input_mode_birth"], t["input_mode_pdf"]], horizontal=True,

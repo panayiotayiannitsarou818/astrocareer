@@ -15,7 +15,7 @@ core/validator.py και το core/prompts.py (π.χ. "Απλή και πρακ�
 TR = {
     "el": {
         "hero_title": "AstroCheck Career",
-        "hero_subtitle": "Ανάδειξη ταλέντων και διερεύνηση επαγγελματικών επιλογών — από την ημερομηνία, την ώρα και τον τόπο γέννησης.",
+        "hero_subtitle": "Ανάδειξη ταλέντων και διερεύνηση επαγγελματικών επιλογών",
         "hero_motto": "Δύνασαι. Γνώρισε τις δυνατότητές σου.",
         "sidebar_header": "AstroCheck Career",
         "sidebar_privacy": "Τα δεδομένα επεξεργάζονται στη συνεδρία και δεν αποθηκεύονται από την εφαρμογή. Για τη δημιουργία της αναφοράς, τα τεχνικά δεδομένα του χάρτη και το όνομα αποστέλλονται στον επιλεγμένο πάροχο τεχνητής νοημοσύνης (Anthropic ή OpenAI) (ενδεχομένως σε περισσότερες από μία κλήσεις, λόγω αυτόματης αυτοδιόρθωσης) για την παραγωγή του αποτελέσματος.",
@@ -247,7 +247,7 @@ TR = {
     },
     "en": {
         "hero_title": "AstroCheck Career",
-        "hero_subtitle": "Talent mapping and career-path exploration — from your date, time and place of birth.",
+        "hero_subtitle": "Talent mapping and career-path exploration",
         "hero_motto": "Thou mayest. Get to know your potential.",
         "sidebar_header": "AstroCheck Career",
         "sidebar_privacy": "Data is processed only for this session and is not stored by the app. To create the report, the chart's technical data and the name are sent to the selected AI provider (Anthropic or OpenAI) (possibly across more than one call, due to automatic self-correction) to produce the result.",
