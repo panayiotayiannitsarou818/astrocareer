@@ -52,7 +52,19 @@ from core.reference_loader import (
 )
 from core.validator import validate_orientation
 
-st.set_page_config(page_title="AstroCheck Career", page_icon="✦", layout="wide")
+# v22.25: ΔΥΟ σελίδες από τον ίδιο κώδικα. Το client.py τρέχει αυτό το αρχείο με CLIENT_PAGE=True:
+# καθαρή σελίδα πελάτη, χωρίς Διαχείριση και χωρίς πλαϊνή στήλη. Το app.py μόνο του = σελίδα Διαχείρισης.
+CLIENT_PAGE = bool(globals().get("CLIENT_PAGE", False))
+
+st.set_page_config(page_title="AstroCheck Career", page_icon="✦", layout="wide",
+                   initial_sidebar_state="collapsed" if CLIENT_PAGE else "auto")
+# v22.25: χωρίς τα κουμπάκια «− +» στα αριθμητικά πεδία (ημέρα, έτος, ώρα, λεπτά) -- ο χρήστης απλώς γράφει.
+st.markdown("""<style>[data-testid="stNumberInputStepUp"],[data-testid="stNumberInputStepDown"]{display:none}
+.small-note{color:#7a6d86;font-size:.82rem;text-align:center;max-width:760px;margin:0 auto 10px;line-height:1.5}</style>""",
+            unsafe_allow_html=True)
+if CLIENT_PAGE:   # σελίδα πελάτη: καθόλου πλαϊνή στήλη
+    st.markdown("""<style>[data-testid="stSidebar"],[data-testid="stExpandSidebarButton"],
+[data-testid="stSidebarCollapseButton"]{display:none!important}</style>""", unsafe_allow_html=True)
 st.markdown("""<style>
 .stApp{background:#f6f2fa}.block-container{max-width:1100px;padding-top:4.5rem}.hero{background:#3d2350;color:white;border-radius:22px;padding:30px 34px;margin-bottom:18px}.hero h1{margin:0 0 8px;font-family:Georgia;font-size:42px}.hero p{color:#e6d9f2}.mission{color:#5b4a6b;font-style:italic;text-align:center;max-width:760px;margin:0 auto 24px;line-height:1.6}.hero .motto{font-family:Georgia;font-style:italic;font-size:1.05rem;color:#f3e9fb;margin:6px 0 0}.ok{padding:14px 16px;background:#e5f2e7;border-left:5px solid #39704c;border-radius:8px}.warn{padding:14px 16px;background:#fff1dd;border-left:5px solid #b7791f;border-radius:8px}.teaser{padding:18px 20px;background:#fff;border:2px solid #b9a3cf;border-radius:14px;margin:14px 0}.teaser-head{color:#3d2350;font-weight:600;margin-bottom:6px}.teaser-title{font-family:Georgia;font-size:1.35rem;color:#3d2350;margin-bottom:8px}.teaser-more{margin-top:12px;color:#5b4a6b;font-style:italic}.stay{padding:16px 18px;background:#fde8e8;border:2px solid #b42318;border-radius:10px;font-weight:600;font-size:1.05rem;color:#7a1a12}</style>""", unsafe_allow_html=True)
 
@@ -142,13 +154,13 @@ with st.sidebar:
     if st.button(t["sidebar_reset"], use_container_width=True, help=t["sidebar_reset_help"]):
         _new_case()
         st.rerun()
-    admin_password = _secret("ADMIN_PASSWORD")
+    admin_password = None if CLIENT_PAGE else _secret("ADMIN_PASSWORD")   # v22.25: ποτέ Διαχείριση στον πελάτη
     # ADMIN_OPEN = "1" (Secret): η Διαχείριση ανοίγει ΧΩΡΙΣ κωδικό, για όλους
     # (χρήσιμο όσο τη σελίδα τη χρησιμοποιεί μόνο η ιδιοκτήτρια).
     admin_open = str(_secret("ADMIN_OPEN") or "").strip().lower() in ("1", "true", "yes", "ναι")
     # v20.1 (εξωτερικός έλεγχος): το ADMIN_OPEN ισχύει ΜΟΝΟ τοπικά (localhost). Σε δημόσια
     # εγκατάσταση αγνοείται, ώστε ένα ξεχασμένο Secret να μην ανοίξει τη Διαχείριση σε όλους.
-    if admin_open and not _is_local_request():
+    if admin_open and (CLIENT_PAGE or not _is_local_request()):
         admin_open = False
     is_admin = admin_open
     if admin_password or admin_open:
@@ -164,6 +176,10 @@ with st.sidebar:
                     st.caption(t["admin_wrong"])
             if is_admin:
                 st.caption(t["admin_on"])
+                if not admin_open:
+                    # v22.24: έξοδος με ένα κλικ -- σβήνει τον κωδικό, η σελίδα γίνεται αμέσως «σελίδα πελάτη».
+                    st.button(t["admin_logout"], use_container_width=True, key="admin_logout",
+                              on_click=lambda: ss.update(admin_pw=""))
                 provider = st.selectbox(
                     t["provider_label"], list(PROVIDERS), index=list(PROVIDERS).index(provider),
                     format_func=lambda p: PROVIDER_LABELS[p], key="provider",
@@ -307,8 +323,19 @@ def _birth_form(prefix: str = "b"):
         zones = sorted(available_timezones())
         tz = c3.selectbox(t["birth_tz"], zones, index=zones.index("Asia/Nicosia"), key=f"{prefix}_tz_{g}")
         label = f"{lat:.4f}, {lon:.4f}"
-    st.caption(t["places_credit"])
+    if not CLIENT_PAGE:   # v22.25: στη σελίδα πελάτη η πηγή των δεδομένων μπαίνει στο τέλος της σελίδας
+        st.caption(t["places_credit"])
 
+    # v20.1/v20.8: αγοραστής πάντα 18+· αν η αναφορά αφορά ανήλικο, δηλώνει γονική ευθύνη.
+    # v22.23: εμφανίζεται αμέσως, μαζί με την υπόλοιπη φόρμα (πριν: μόνο αφού συμπληρωθούν όλα
+    # και υπολογιστεί ο χάρτης -- έβγαινε με καθυστέρηση).
+    st.markdown(f"**{t['step_who']}**")
+    who = st.radio(t["birth_who"], ["adult", "minor"], index=None, label_visibility="collapsed", key=f"{prefix}_who_{g}",
+                   format_func=lambda w: t["birth_who_adult" if w == "adult" else "birth_who_minor"])
+
+    # v22.25: τι λείπει ακόμα (το δείχνει η σελίδα κάτω από το κουμπί, αντί για ένα απλώς ανενεργό κουμπί)
+    ss["form_missing"] = [t[k] for k, miss in (("missing_date", bdate is None), ("missing_time", btime is None),
+                                                ("missing_place", lat is None), ("missing_who", who is None)) if miss]
     if bdate is None or btime is None or lat is None:
         return None, None, None
 
@@ -364,9 +391,7 @@ def _birth_form(prefix: str = "b"):
     # κουμπί δεν ενεργοποιείται.
     # v20.8: δύο επιλογές (διαλέγεται μία): «18+, για μένα» ή «ανήλικος, έχω γονική ευθύνη».
     # Αν η ημερομηνία γέννησης δίνει ηλικία < 18, η πρώτη επιλογή δεν γίνεται δεκτή.
-    st.markdown(f"**{t['step_who']}**")
-    who = st.radio(t["birth_who"], ["adult", "minor"], index=None, label_visibility="collapsed", key=f"{prefix}_who_{g}",
-                   format_func=lambda w: t["birth_who_adult" if w == "adult" else "birth_who_minor"])
+    # v22.23: η ερώτηση ③ εμφανίζεται ΑΜΕΣΩΣ με τη φόρμα (πιο πάνω), όχι μετά τον υπολογισμό του χάρτη.
     age = (date.today().year - bdate.year) - ((date.today().month, date.today().day) < (bdate.month, bdate.day))
     consent = who is not None
     if who is None:
@@ -389,7 +414,7 @@ def _chart_input():
     """v20.14: ΚΟΙΝΑ στοιχεία γέννησης (ή PDF για τη Διαχείριση) για αυτόματη ΚΑΙ
     χειροκίνητη δημιουργία -- ο πελάτης τα γράφει μία φορά και μετά διαλέγει τρόπο.
     Επιστρέφει (input_key, chart, error)."""
-    st.caption(t["service_note"])
+    st.caption(t["service_note_short"] if CLIENT_PAGE else t["service_note"])
     use_pdf = False
     if is_admin:
         use_pdf = st.radio(t["input_mode"], [t["input_mode_birth"], t["input_mode_pdf"]], horizontal=True,
@@ -406,7 +431,8 @@ def _chart_input():
             return None, None, err
         return key, chart, None
     st.subheader(t["birth_step1_title"])
-    return _birth_form()
+    with st.container(border=True):   # v22.25: η φόρμα σε πλαίσιο, για να φαίνεται καθαρά τι συμπληρώνεται
+        return _birth_form()
 
 
 def _engine_report(preview, input_key, with_ai):
@@ -442,7 +468,11 @@ def _engine_section(input_key, preview):
             st.info(t["draft_client"] if has_teaser else t["draft_client_no_teaser"])
             return
     ready = preview is not None and input_key is not None
-    if st.button(t["run_button"], type="primary", use_container_width=True, disabled=not ready, key="engine_run"):
+    clicked = st.button(t["run_button"], type="primary", use_container_width=True, disabled=not ready,
+                        key="engine_run")
+    if not ready and ss.get("form_missing"):
+        st.caption(t["missing_hint"].format(items=", ".join(ss["form_missing"])))
+    if clicked:
         ss.engine_result = _engine_report(preview, input_key, with_ai=REPORT_MODE == "hybrid")
     res = ss.get("engine_result")
     if res and (res["case_key"] != input_key or res["lang"] != lang):
@@ -634,6 +664,8 @@ def _show_teaser(chart):
 
 
 # v20.14: πρώτα τα κοινά στοιχεία, μετά ο τρόπος δημιουργίας.
+if is_admin:   # v22.24: να φαίνεται καθαρά ότι ΔΕΝ είναι η σελίδα του πελάτη
+    st.warning(t["admin_banner"])
 _input_key, _chart, _chart_err = _chart_input()
 _show_teaser(_chart if _input_key else None)
 _show_chart_data(_chart if _input_key else None)
@@ -651,3 +683,10 @@ else:
 # v22.6: η φιλοσοφία «Δύνασαι» -- μία παράγραφος στο κάτω μέρος της σελίδας, χωρίς τίτλο.
 st.divider()
 st.markdown(f'<div class="mission">{html.escape(t["about_mission"])}</div>', unsafe_allow_html=True)
+if CLIENT_PAGE:   # v22.25: ό,τι ήταν στην πλαϊνή στήλη / στη φόρμα, εδώ με μικρά γράμματα
+    for _note in (t["service_note"], t.get(f"sidebar_privacy_{REPORT_MODE}", t["sidebar_privacy"]), t["places_credit"]):
+        st.markdown(f'<div class="small-note">{html.escape(_note)}</div>', unsafe_allow_html=True)
+    _c = st.columns([1.2, 2, 1.2])[1]
+    if _c.button(t["sidebar_reset"], use_container_width=True, key="client_reset"):
+        _new_case()
+        st.rerun()
