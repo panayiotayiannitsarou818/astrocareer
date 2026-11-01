@@ -124,8 +124,10 @@ def _main_fields(result: EngineResult):
 
 
 def build_polish_prompt(engine_text: str, result: EngineResult, lang: str, name: str = "") -> str:
+    # v22.31: όταν όλα τα ταλέντα είναι αναδυόμενα, το AI δεν παίρνει επίπεδα (να μη γράψει «όλα αχνά»).
+    all_emerging = bool(result.talents) and all(t.rank == "αναδυόμενο" for t in result.talents)
     data = {
-        "talents": [{"code": t.theme, "level": t.rank, "title": talent_text(t.theme, lang)["title"],
+        "talents": [{"code": t.theme, "level": "" if all_emerging else t.rank, "title": talent_text(t.theme, lang)["title"],
                      "description": talent_text(t.theme, lang)["text"],
                      "nuance": "; ".join(colour_phrases(t, lang))}
                     for t in result.talents],

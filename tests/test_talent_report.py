@@ -101,3 +101,41 @@ def test_growth_sentences_not_repeated_v22_18():
             assert len(options) == 4
             for sentence in options:
                 assert text.count(sentence) <= 1
+
+
+def test_emerging_talent_is_never_described_as_effortless_v22_27():
+    """Αναφορά Β: «Αισθητική» στα αναδυόμενα («πιο αχνά») με «φαίνεται να βγαίνει αβίαστα» -- αντίφαση."""
+    import random
+    from datetime import datetime, timedelta, timezone
+    from core.ephemeris import compute_chart
+    from core.talent_engine import run_engine
+    from core.talent_growth import PHRASES
+    from core.talent_report import TXT, client_markdown
+    random.seed(31)
+    seen = 0
+    for _ in range(80):
+        ut = datetime(1930, 1, 1, tzinfo=timezone.utc) + timedelta(minutes=random.randint(0, 95 * 365 * 24 * 60))
+        r = run_engine(compute_chart(ut, random.uniform(-45, 60), random.uniform(-120, 150)))
+        text = client_markdown(r, "el")
+        for t in r.talents:
+            if t.rank == "αναδυόμενο" and t.growth == "easy":
+                seen += 1
+                assert f"{t.title_el} — *{PHRASES['el']['easy']}*" not in text
+        part = text.split(TXT["el"]["rank"]["αναδυόμενο"])[-1] if TXT["el"]["rank"]["αναδυόμενο"] in text else ""
+        assert not any(sentence in part for sentence in TXT["el"]["growth_long"]["easy"])
+    assert seen
+
+
+def test_all_emerging_gets_neutral_heading_v22_31():
+    from dataclasses import replace
+    from datetime import datetime, timezone
+    from core.ephemeris import compute_chart
+    from core.talent_engine import run_engine
+    from core.talent_polish import build_polish_prompt
+    from core.talent_report import TXT, client_markdown
+    r = run_engine(compute_chart(datetime(1982, 2, 10, 23, 45, tzinfo=timezone.utc), 34.7754, 32.4218))
+    for t in r.talents:
+        t.rank = "αναδυόμενο"
+    text = client_markdown(r, "el")
+    assert "### Τα ταλέντα σου" in text and TXT["el"]["rank_note"]["αναδυόμενο"] not in text
+    assert '"level": "αναδυόμενο"' not in build_polish_prompt(text, r, "el")

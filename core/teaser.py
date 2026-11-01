@@ -59,16 +59,38 @@ def pick_teaser(chart, lang: str = "el", approved_only: bool = False) -> Teaser 
     library = load_library()
     if approved_only:
         library = {k: v for k, v in library.items() if v.get("status") == "approved"}
+    if not getattr(chart, "points", None):   # χωρίς θέσεις (π.χ. μόνο όψεις): μόνο ο κανόνας v21
+        return _pick(chart, lang, library, None)
     try:
         from .talent_engine import run_engine
         approved = {frozenset(i.points) for t in run_engine(chart).talents for i in t.indicators if i.kind == "Όψη"}
     except Exception:  # noqa: BLE001 -- η μηχανή δεν πρέπει ποτέ να «ρίξει» το δωρεάν ταλέντο
-        approved = set()
-    for restrict in ((True, False) if approved else (False,)):
-        found = _pick(chart, lang, library, approved if restrict else None)
+        return _pick(chart, lang, library, None)
+    if approved:
+        found = _pick(chart, lang, library, approved)
         if found:
             return found
-    return None
+    # v22.30 (αναφορά «Κλία»): ΠΟΤΕ δωρεάν ταλέντο που δεν υπάρχει στην πλήρη αναφορά. Αν καμία όψη
+    # δεν ανήκει σε εγκεκριμένο ταλέντο (π.χ. ταλέντα μόνο από θέσεις), δίνεται το ΠΡΩΤΟ ταλέντο της
+    # μηχανής με το κείμενο της βιβλιοθήκης ταλέντων.
+    return _from_engine(chart, lang, approved_only)
+
+
+def _from_engine(chart, lang, approved_only) -> Teaser | None:
+    try:
+        from .talent_engine import run_engine
+        from .talent_texts import load_texts, talent_text
+        talents = run_engine(chart).talents
+    except Exception:  # noqa: BLE001
+        return None
+    if not talents:
+        return None
+    t = talents[0]
+    if approved_only and load_texts()["talents"].get(t.theme, {}).get("status") != "approved":
+        return None
+    tx = talent_text(t.theme, lang)
+    return Teaser(("—", t.title_el), "Τρίγωνο" if t.growth == "easy" else "—", "—", "",
+                  tx["title"], tx["text"], load_texts()["talents"].get(t.theme, {}).get("status", "draft"))
 
 
 def _pick(chart, lang, library, approved) -> Teaser | None:

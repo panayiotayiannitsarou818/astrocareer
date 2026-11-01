@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 
 from .astrology import planet_concentrations
 from .talent_map import (
-    ANGLES, COLOURS, colour_options, colour_phrase, HEALTH_RULES, HOUSE_THEMES, NODES, PAIR_THEME, PERSONAL, PLANET_THEMES, SIGN_THEMES, SLOW, THEME_FIELDS, THEMES,
+    ANGLES, COLOURS, CONCENTRATION_ONLY_HOUSES, colour_options, colour_phrase, HEALTH_RULES, HOUSE_THEMES, NODES, PAIR_THEME, PERSONAL, PLANET_THEMES, SIGN_THEMES, SLOW, THEME_FIELDS, THEMES,
 )
 
 STRONG, NORMAL, WIDE, VERY_WIDE = "Στενή/ισχυρή", "Κανονική", "Πλατιά αλλά έγκυρη", "Πολύ πλατιά/δευτερεύουσα"
@@ -168,7 +168,11 @@ def _position_indicators(chart) -> dict[str, list[Indicator]]:
                 continue
             theme = SIGN_THEMES[value][0]
         else:
+            # v22.32: οι Οίκοι 4, 8, 12 μετρούν ΜΟΝΟ σε συγκέντρωση 3+ πλανητών (όχι για μεμονωμένο πλανήτη ή κυβερνήτη).
+            #          Εκεί η συγκέντρωση χρειάζεται και τουλάχιστον έναν προσωπικό πλανήτη (όχι μόνο αργούς).
             themes = HOUSE_THEMES.get(int(value))
+            if not themes and int(value) in CONCENTRATION_ONLY_HOUSES and set(names) & set(PERSONAL):
+                themes = CONCENTRATION_ONLY_HOUSES[int(value)]
             if not themes:
                 continue
             theme = themes[0]

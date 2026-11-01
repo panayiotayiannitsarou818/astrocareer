@@ -70,13 +70,15 @@ def test_field_count_stays_readable():
 
 
 def test_teaser_is_almost_always_in_the_full_report():
-    ok = got = 0
-    for c in _charts(80, 13):
+    """v22.30 (αναφορά «Κλία»): το δωρεάν ταλέντο υπάρχει ΠΑΝΤΑ στην πλήρη αναφορά."""
+    got = 0
+    for c in list(_charts(80, 13)) + [compute_chart(datetime(1965, 7, 30, 17, 0, tzinfo=timezone.utc), -20.15, 28.6)]:
         t = pick_teaser(c)
+        titles = {x.title_el for x in run_engine(c).talents}
         if t:
             got += 1
-            ok += _PAIR[frozenset(t.pair)] in {x.theme for x in run_engine(c).talents}
-    assert ok >= got * 0.95
+            assert t.pair[1] in titles or _PAIR[frozenset(t.pair)] in {x.theme for x in run_engine(c).talents}
+    assert got
 
 
 # ---- Κανόνας 15: φραγμός υγείας
@@ -238,3 +240,32 @@ def test_colours_do_not_repeat_words_v22_22():
                 assert not stems & _library_stems(t.theme), (t.theme, el)
                 assert not stems & seen, el
                 seen |= stems
+
+
+def test_seventh_house_v22_31():
+    """Αναφορά «Κλία» (30/07/1965 19:00, Bulawayo): 5 πλανήτες στον 7ο Οίκο -> «Συνεργασία και διπλωματία»
+    κυρίαρχο (πριν: ο 7ος δεν μετρούσε και έβγαιναν μόνο 3 αναδυόμενα ταλέντα)."""
+    klia = compute_chart(datetime(1965, 7, 30, 17, 0, tzinfo=timezone.utc), -20.15, 28.6)
+    by = {t.theme: t for t in run_engine(klia).talents}
+    assert by["DIPLO"].rank == "κυρίαρχο"
+    totals = sorted(len(run_engine(c).talents) for c in _charts(80, 22))
+    assert 7 <= totals[len(totals) // 2] <= 11
+
+
+def test_houses_4_8_12_count_only_for_concentrations_v22_32():
+    """Οίκοι 4, 8, 12: μόνο συγκέντρωση 3+ πλανητών με τουλάχιστον έναν προσωπικό -- ποτέ κυβερνήτης."""
+    from core.talent_map import CONCENTRATION_ONLY_HOUSES, HOUSE_THEMES, PERSONAL
+    assert not set(CONCENTRATION_ONLY_HOUSES) & set(HOUSE_THEMES)
+    used = 0
+    for c in _charts(80, 23):
+        houses = {}
+        for p in c.points:
+            houses.setdefault(p.house, []).append(p.name)
+        for t in run_engine(c).talents:
+            for i in t.indicators + t.supporting:
+                for h in CONCENTRATION_ONLY_HOUSES:
+                    assert f"κυβερνήτης του Οίκου {h} " not in i.label
+                    if f"(Οίκος {h})" in i.label:
+                        used += 1
+                        assert i.concentration and set(houses[h]) & set(PERSONAL)
+    assert used

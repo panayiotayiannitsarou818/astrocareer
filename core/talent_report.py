@@ -35,6 +35,9 @@ TXT = {
                        "δυνάμεις σου και αξίζει να τα αξιοποιήσεις."),
             "αναδυόμενο": "Ταλέντα που φαίνονται πιο αχνά για την ώρα και χρειάζονται περισσότερη εξάσκηση για να αναπτυχθούν.",
         },
+        # v22.31: όταν ΟΛΑ τα ταλέντα είναι αναδυόμενα, ουδέτερη επικεφαλίδα (χωρίς σύγκριση «πιο αχνά»).
+        "all_emerging": ("Τα ταλέντα σου",
+                         "Ταλέντα που φαίνονται στον χάρτη σου και δυναμώνουν όσο τα δοκιμάζεις στην πράξη."),
         "develop": "Πώς να το καλλιεργήσεις:",
         "summary": "Συνοπτικά, τα ταλέντα σου",
         "summary_note": "Όλα αυτά είναι δυνατότητες. Το πόσο θα αναπτυχθεί το καθένα εξαρτάται από τις επιλογές και την εξάσκησή σου.",
@@ -61,10 +64,15 @@ TXT = {
                      "Αξίζει να το δοκιμάσεις στην πράξη, για να δεις πόσο σου ταιριάζει.",
                      "Η εμπειρία μπορεί να σου δείξει πόσο μακριά μπορεί να φτάσει.",
                      "Αν το δοκιμάσεις σε κάτι συγκεκριμένο, θα καταλάβεις καλύτερα τι μπορεί να σου δώσει."],
-        },        "fields": "Επαγγελματικοί τομείς που αξίζει να εξερευνήσεις",
-        "fields_note": "Τομείς όπου συναντιούνται δύο ή περισσότερα από τα ταλέντα σου.",
+        },
+        "fields": "Επαγγελματικοί τομείς που αξίζει να εξερευνήσεις",
+        # v22.28: εξηγείται και η ΣΕΙΡΑ των τομέων (ιδιοκτήτρια).
+        "fields_note": ("Τομείς όπου συναντιούνται δύο ή περισσότερα από τα ταλέντα σου. Η σειρά δεν είναι τυχαία: "
+                        "πρώτοι είναι οι τομείς όπου συναντιούνται τα περισσότερα και πιο δυνατά ταλέντα σου."),
         "fields_note_g": ("Οι περισσότεροι είναι τομείς όπου συναντιούνται δύο ή περισσότερα από τα ταλέντα σου· "
-                          "όπου ένα ταλέντο δεν συναντιέται με άλλο, προστίθεται ο πιο ταιριαστός τομέας γι' αυτό."),
+                          "όπου ένα ταλέντο δεν συναντιέται με άλλο, προστίθεται ο πιο ταιριαστός τομέας γι' αυτό. "
+                          "Η σειρά δεν είναι τυχαία: πρώτοι είναι οι τομείς όπου συναντιούνται τα περισσότερα και πιο "
+                          "δυνατά ταλέντα σου, και τελευταίοι όσοι ταιριάζουν σε ένα μόνο ταλέντο."),
         "best_for": "Ο πιο ταιριαστός τομέας για το ταλέντο «{t}».",
         "based_on": "Στηρίζεται σε",
         "other": "Άλλες κατευθύνσεις",
@@ -93,6 +101,7 @@ TXT = {
                        "real strengths and worth putting to use."),
             "αναδυόμενο": "Talents that show more faintly for now and need more practice to develop.",
         },
+        "all_emerging": ("Your talents", "Talents that show in your chart and grow stronger as you try them out in practice."),
         "develop": "How to develop it:",
         "summary": "Your talents at a glance",
         "summary_note": "All of these are possibilities. How far each one develops depends on your choices and practice.",
@@ -118,10 +127,14 @@ TXT = {
                      "It is worth trying it in practice, to see how well it suits you.",
                      "Experience can show you how far it can go.",
                      "If you try it on something specific, you will better understand what it can give you."],
-        },        "fields": "Career fields worth exploring",
-        "fields_note": "Fields where two or more of your talents meet.",
+        },
+        "fields": "Career fields worth exploring",
+        "fields_note": ("Fields where two or more of your talents meet. The order is not random: the fields where "
+                        "the most and strongest of your talents meet come first."),
         "fields_note_g": ("Most are fields where two or more of your talents meet; where a talent does not meet "
-                          "another one, the field that suits it best is added."),
+                          "another one, the field that suits it best is added. The order is not random: the fields "
+                          "where the most and strongest of your talents meet come first, and those that suit a single "
+                          "talent come last."),
         "best_for": "The field that best suits the talent \"{t}\".",
         "based_on": "Draws on",
         "other": "Other directions",
@@ -154,6 +167,13 @@ class EngineReport:
     polish: object = None             # PolishOutcome ή None (εκδοχή Α χωρίς δοκιμή AI)
 
 
+def _shown_growth(t) -> str:
+    """v22.27: ένα ΑΝΑΔΥΟΜΕΝΟ ταλέντο («φαίνεται πιο αχνά») δεν περιγράφεται ως «βγαίνει αβίαστα» -- θα ήταν
+    αντίφαση (αναφορά Β, 11/2026). Τα μόνο-αρμονικά αναδυόμενα δείχνονται ως «ανθίζει όταν βρει ευκαιρία»."""
+    from .talent_growth import EASY, OPPORTUNITY
+    return OPPORTUNITY if t.growth == EASY and t.rank == "αναδυόμενο" else t.growth
+
+
 def client_markdown(result: EngineResult, lang: str = "el", ai: dict | None = None) -> str:
     """Η αναφορά πελάτη. Χωρίς `ai`: εκδοχή Α. Με `ai` (εκδοχή Β, v22.4): η ΕΦΑΡΜΟΓΗ συνθέτει τη δομή
     -- τίτλους, προτάσεις καλλιέργειας, τομείς, επιφύλαξη -- και το AI δίνει μόνο: την εισαγωγή
@@ -166,7 +186,7 @@ def client_markdown(result: EngineResult, lang: str = "el", ai: dict | None = No
         out += [f"## {tx['who']}", ai["intro"], ""]
     out += [f"## {tx['talents']}", "", f"**{tx['summary']}:**"]
     phrases = GROWTH_PHRASES.get(lang, GROWTH_PHRASES["el"])
-    out += [f"- {talent_text(t.theme, lang)['title']}{SEPARATOR}*{phrases[t.growth]}*" for t in result.talents]
+    out += [f"- {talent_text(t.theme, lang)['title']}{SEPARATOR}*{phrases[_shown_growth(t)]}*" for t in result.talents]
     out += ["", tx["summary_note"]]
     number = 0
     growth_used: dict[str, int] = {}
@@ -174,7 +194,11 @@ def client_markdown(result: EngineResult, lang: str = "el", ai: dict | None = No
         talents = [t for t in result.talents if t.rank == rank]
         if not talents:
             continue
-        out += ["", f"### {tx['rank'][rank]}", f"*{tx['rank_note'][rank]}*", ""]
+        if len(talents) == len(result.talents) and rank == "αναδυόμενο":
+            head, note = tx["all_emerging"]
+        else:
+            head, note = tx["rank"][rank], tx["rank_note"][rank]
+        out += ["", f"### {head}", f"*{note}*", ""]
         for t in talents:
             text = talent_text(t.theme, lang)
             number += 1   # η ΕΦΑΡΜΟΓΗ αριθμεί: όσα βρήκε η μηχανή, τόσα και στην αναφορά
@@ -184,9 +208,10 @@ def client_markdown(result: EngineResult, lang: str = "el", ai: dict | None = No
                 out.append("*" + " · ".join(colours) + "*")
             # Η περιγραφή της βιβλιοθήκης μένει ΣΤΑΘΕΡΗ· το AI (εκδοχή Β) προσθέτει μόνο σύνδεση.
             link = ai.get("talents", {}).get(t.theme, "")
-            options = tx["growth_long"][t.growth]
-            n = growth_used.get(t.growth, 0)
-            growth_used[t.growth] = n + 1
+            g = _shown_growth(t)
+            options = tx["growth_long"][g]
+            n = growth_used.get(g, 0)
+            growth_used[g] = n + 1
             out.append(text["text"] + " " + options[n % len(options)] + (f" {link}" if link else ""))
             out.append(f"*{tx['develop']}* {text['develop']}")
             out.append("")

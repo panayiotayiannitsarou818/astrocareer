@@ -270,12 +270,12 @@
   "PERFORM": {
    "status": "draft",
    "el": {
-    "title": "Δημόσια παρουσία και έκφραση",
+    "title": "Παρουσίαση και δημόσια έκφραση",
     "text": "Μπορεί να νιώθεις άνετα μπροστά σε κοινό και να έχεις την ικανότητα να τραβάς την προσοχή και να μεταδίδεις ενθουσιασμό. Η εκφραστικότητά σου μπορεί να κάνει ένα μήνυμα να μένει στη μνήμη.",
     "develop": "Με θέατρο, μουσική σκηνή, παρουσιάσεις, ρητορικούς αγώνες ή δημιουργία βίντεο."
    },
    "en": {
-    "title": "Public presence and self-expression",
+    "title": "Presenting and public expression",
     "text": "You may feel comfortable in front of an audience and be able to draw attention and pass on enthusiasm. Your expressiveness can make a message memorable.",
     "develop": "Through theatre, performing music, presentations, public-speaking contests or making videos."
    }
