@@ -198,7 +198,7 @@ def test_talent_colours_v22_21():
     by = {t.theme: t for t in run_engine(_pafos()).talents}
     assert colour_phrases(by["LEAD"])[0] == "με συνεργατικό πνεύμα"
     assert colour_phrases(by["DESIGN"])[0] == "με βάθος, πέρα από την επιφάνεια"
-    assert set(colour_phrases(by["CARE"])) == {"με πρακτική βοήθεια και φροντίδα στη λεπτομέρεια",
+    assert set(colour_phrases(by["CARE"])) == {"με πρακτική βοήθεια και προσοχή στη λεπτομέρεια",
                                                 "με φαντασία για το τι χρειάζεται ο άλλος"}
     assert all(t.colours for t in by.values())
     got = n = 0
@@ -223,3 +223,18 @@ def test_sun_supports_its_house_theme_v22_20():
     comm = next(t for t in run_engine(_pafos()).talents if t.theme == "COMM")
     assert comm.rank == "βασικό"
     assert any(i.kind == "Θέση" and i.points == ("Ήλιος",) for i in comm.indicators)
+
+
+def test_colours_do_not_repeat_words_v22_22():
+    """Αναφορά Α (11/02/1982): «…που δίνει κουράγιο» πάνω από «…μπορεί να δίνει κουράγιο», «με υπομονή» πάνω από
+    «Η υπομονή…». Η απόχρωση δεν επαναλαμβάνει λέξη του τίτλου/της περιγραφής, ούτε λέξη άλλης απόχρωσης."""
+    from core.talent_engine import _library_stems, _stems
+    from core.talent_map import colour_phrases
+    for c in list(_charts(80, 19)) + [_pafos()]:
+        seen: set[str] = set()
+        for t in run_engine(c).talents:
+            for el, en in zip(colour_phrases(t, "el"), colour_phrases(t, "en")):
+                stems = _stems(el) | _stems(en)
+                assert not stems & _library_stems(t.theme), (t.theme, el)
+                assert not stems & seen, el
+                seen |= stems

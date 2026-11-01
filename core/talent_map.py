@@ -246,30 +246,30 @@ COLOUR_SPECIFIC = {
     ("ACTION", "Δίας"): ("με ενθουσιασμό για νέες προκλήσεις", "with enthusiasm for new challenges"),
     ("ACTION", "Σελήνη"): ("ακολουθώντας το ένστικτό σου", "following your instincts"),
     ("ANALYSIS", "Άρης"): ("με γρήγορο και κοφτερό μυαλό", "with a quick, sharp mind"),
-    ("ANALYSIS", "Ήλιος"): ("με προσοχή που είναι κομμάτι σου", "with a care that is part of you"),
-    ("ANALYSIS", "Ερμής"): ("με καθαρή λογική", "with clear logic"),
-    ("ANALYSIS", "Κρόνος"): ("με υπομονή στη λεπτομέρεια", "with patience for detail"),
+    ("ANALYSIS", "Ήλιος"): ("με προσοχή που σε χαρακτηρίζει", "with a care that defines you"),
+    ("ANALYSIS", "Ερμής"): ("με οξυδέρκεια στα στοιχεία", "with sharpness with facts"),
+    ("ANALYSIS", "Κρόνος"): ("με υπομονή και μεθοδικότητα", "with patience and method"),
     ("ART", "Άρης"): ("με πάθος και ένταση", "with passion and intensity"),
     ("ART", "Ήλιος"): ("με δημιουργικότητα που σε αντιπροσωπεύει", "with creativity that represents you"),
     ("ART", "Αφροδίτη"): ("με αίσθηση για το όμορφο και το αρμονικό", "with a feel for beauty and harmony"),
     ("ART", "Λέων"): ("με χαρά να δημιουργείς και να το μοιράζεσαι", "with joy in creating and sharing it"),
     ("BUILD", "Άρης"): ("με ενέργεια να ξεκινάς και να ολοκληρώνεις", "with energy to start and finish"),
-    ("BUILD", "Αφροδίτη"): ("φτιάχνοντας πράγματα όμορφα και χρήσιμα", "creating things that are beautiful and useful"),
+    ("BUILD", "Αφροδίτη"): ("με αίσθηση του όμορφου και του χρήσιμου", "with a feel for the beautiful and the useful"),
     ("BUILD", "Ζυγός"): ("με αίσθηση αναλογίας και ισορροπίας", "with a sense of proportion and balance"),
-    ("BUILD", "Κρόνος"): ("με υπομονή και προσοχή στην ποιότητα", "with patience and care for quality"),
-    ("CARE", "Ήλιος"): ("με ζεστασιά που βγαίνει από την καρδιά σου", "with warmth that comes from the heart"),
-    ("CARE", "Παρθένος"): ("με πρακτική βοήθεια και φροντίδα στη λεπτομέρεια", "with practical help and care in the details"),
+    ("BUILD", "Κρόνος"): ("με επιμονή στην ποιότητα", "with persistence in quality"),
+    ("CARE", "Ήλιος"): ("με καρδιά που δίνεται", "with a giving heart"),
+    ("CARE", "Παρθένος"): ("με πρακτική βοήθεια και προσοχή στη λεπτομέρεια", "with practical help and attention to detail"),
     ("CARE", "Ιχθύες"): ("με συμπόνια για όσους δυσκολεύονται", "with compassion for those who struggle"),
     ("CARE", "Κρόνος"): ("με σταθερότητα και υπευθυνότητα", "with steadiness and responsibility"),
     ("CARE", "Ποσειδώνας"): ("με φαντασία για το τι χρειάζεται ο άλλος", "with imagination for what others need"),
-    ("COMM", "Άρης"): ("με λόγο άμεσο και πειστικό", "with a direct, persuasive voice"),
+    ("COMM", "Άρης"): ("με λόγο άμεσο και δυναμικό", "with a direct, forceful voice"),
     ("COMM", "Ήλιος"): ("με λόγο που βγαίνει από μέσα σου", "with a voice that comes from within"),
     ("COMM", "Αφροδίτη"): ("με ευγένεια και χάρη στον λόγο", "with grace and courtesy when you speak"),
     ("COMM", "Σελήνη"): ("με λόγο ζεστό που αγγίζει", "with a warm tone that touches others"),
-    ("COMMUNITY", "Ήλιος"): ("βάζοντας τον εαυτό σου στην ομάδα", "putting yourself into the group"),
-    ("COMMUNITY", "Πλούτωνας"): ("με δύναμη να κινητοποιείς ομάδες", "with the power to mobilise groups"),
-    ("COMMUNITY", "Κρόνος"): ("με σταθερή δέσμευση στον κοινό στόχο", "with a steady commitment to the shared goal"),
-    ("COMMUNITY", "Δίας"): ("με αισιοδοξία για το κοινό καλό", "with optimism for the common good"),
+    ("COMMUNITY", "Ήλιος"): ("δίνοντας τον εαυτό σου στο σύνολο", "giving yourself to the whole"),
+    ("COMMUNITY", "Πλούτωνας"): ("με δύναμη να συσπειρώνεις", "with the power to rally others"),
+    ("COMMUNITY", "Κρόνος"): ("με σταθερή και αξιόπιστη δέσμευση", "with a steady, reliable commitment"),
+    ("COMMUNITY", "Δίας"): ("με αισιοδοξία και γενναιοδωρία", "with optimism and generosity"),
     ("DESIGN", "Αιγόκερως"): ("με λιτή κομψότητα που αντέχει στον χρόνο", "with a simple elegance that lasts"),
     ("DESIGN", "Ουρανός"): ("με πρωτότυπο και μοντέρνο ύφος", "with an original, modern style"),
     ("DESIGN", "Πλούτωνας"): ("με βάθος, πέρα από την επιφάνεια", "with depth, beyond the surface"),
@@ -277,60 +277,60 @@ COLOUR_SPECIFIC = {
     ("ENTRE", "Αιγόκερως"): ("με σχέδιο και μακροπρόθεσμο στόχο", "with a plan and long-term goals"),
     ("ENTRE", "Δίας"): ("με όραμα για ανάπτυξη", "with a vision for growth"),
     ("ENTRE", "Παρθένος"): ("με προσοχή στα νούμερα και στη λεπτομέρεια", "with attention to figures and detail"),
-    ("ENTRE", "Ταύρος"): ("με σταθερότητα και καλή αίσθηση της αξίας", "with steadiness and a good sense of value"),
-    ("EXPLORE", "Δίας"): ("με αγάπη για νέους τόπους και ιδέες", "with a love of new places and ideas"),
-    ("HOSP", "Αφροδίτη"): ("με ευγένεια και φιλικό χαμόγελο", "with courtesy and a friendly smile"),
-    ("HOSP", "Δίας"): ("με γενναιοδωρία προς όλους", "with generosity towards everyone"),
-    ("HOSP", "Καρκίνος"): ("κάνοντας τους άλλους να νιώθουν σαν στο σπίτι τους", "making others feel at home"),
-    ("HOSP", "Σελήνη"): ("νιώθοντας τι χρειάζεται ο καθένας", "sensing what each person needs"),
-    ("INNOV", "Άρης"): ("με τόλμη να δοκιμάζεις το καινούργιο", "with the nerve to try the new"),
+    ("ENTRE", "Ταύρος"): ("με σταθερότητα και καλό ένστικτο για τα οικονομικά", "with steadiness and a good instinct for finances"),
+    ("EXPLORE", "Δίας"): ("με αγάπη για νέους τόπους και ανθρώπους", "with a love of new places and people"),
+    ("HOSP", "Αφροδίτη"): ("με χάρη και φιλικό χαμόγελο", "with charm and a friendly smile"),
+    ("HOSP", "Δίας"): ("με γενναιοδωρία προς όλους", "with generosity towards all"),
+    ("HOSP", "Καρκίνος"): ("δημιουργώντας ζεστή, οικογενειακή ατμόσφαιρα", "creating a warm, family atmosphere"),
+    ("HOSP", "Σελήνη"): ("με διαίσθηση για το τι χρειάζεται ο καθένας", "with a feel for what each person needs"),
+    ("INNOV", "Άρης"): ("με τόλμη για το καινούργιο", "with boldness for the new"),
     ("INNOV", "Ήλιος"): ("που φέρει το δικό σου στίγμα", "bearing your own mark"),
     ("INNOV", "Σελήνη"): ("με διαίσθηση για το τι θα λειτουργήσει", "with a feel for what will work"),
-    ("JUSTICE", "Άρης"): ("με θάρρος να υπερασπίζεσαι το σωστό", "with the courage to stand up for what is right"),
-    ("JUSTICE", "Ήλιος"): ("με αξίες που είναι κομμάτι σου", "with values that are part of you"),
+    ("JUSTICE", "Άρης"): ("με θάρρος να μιλάς για το σωστό", "with the courage to speak up for what is right"),
+    ("JUSTICE", "Ήλιος"): ("με αρχές που σε εκφράζουν", "with principles that reflect who you are"),
     ("JUSTICE", "Δίας"): ("με ευρύ πνεύμα και ηθική πυξίδα", "with a broad mind and a moral compass"),
-    ("JUSTICE", "Ερμής"): ("με επιχειρήματα καθαρά και τεκμηριωμένα", "with clear, well-founded arguments"),
-    ("JUSTICE", "Κρόνος"): ("με σεβασμό στους κανόνες και στην ευθύνη", "with respect for rules and responsibility"),
-    ("JUSTICE", "Πλούτωνας"): ("με δύναμη να αλλάζεις ό,τι είναι άδικο", "with the strength to change what is unfair"),
+    ("JUSTICE", "Ερμής"): ("με λόγο καθαρό και τεκμηριωμένο", "with clear, well-founded reasoning"),
+    ("JUSTICE", "Κρόνος"): ("με σοβαρότητα και σεβασμό στο καθήκον", "with seriousness and respect for duty"),
+    ("JUSTICE", "Πλούτωνας"): ("με δύναμη να αλλάζεις την αδικία", "with the strength to change injustice"),
     ("LEAD", "Άρης"): ("με θάρρος να μπαίνεις μπροστά", "with the courage to step forward"),
-    ("LEAD", "Δίδυμοι"): ("με λόγο που κινητοποιεί", "with words that motivate"),
-    ("LEAD", "Ερμής"): ("με καθαρές οδηγίες και ιδέες", "with clear directions and ideas"),
+    ("LEAD", "Δίδυμοι"): ("με λόγο που εμπνέει", "with words that inspire"),
+    ("LEAD", "Ερμής"): ("με καθαρές οδηγίες και ιδέες", "with clear guidance and ideas"),
     ("LEAD", "Ζυγός"): ("με συνεργατικό πνεύμα", "with a cooperative spirit"),
-    ("LEAD", "Καρκίνος"): ("με προστατευτική φροντίδα για την ομάδα", "with protective care for the team"),
-    ("LEAD", "Λέων"): ("με ζεστασιά και αυτοπεποίθηση που εμπνέει", "with warmth and confidence that inspire"),
+    ("LEAD", "Καρκίνος"): ("με προστατευτική φροντίδα για όσους οδηγείς", "with protective care for those you lead"),
+    ("LEAD", "Λέων"): ("με λάμψη και γενναιοδωρία", "with radiance and generosity"),
     ("LEAD", "Παρθένος"): ("με οργάνωση και προσοχή στη λεπτομέρεια", "with organisation and attention to detail"),
-    ("LEAD", "Σελήνη"): ("με ευαισθησία στις ανάγκες της ομάδας", "with sensitivity to the team's needs"),
+    ("LEAD", "Σελήνη"): ("με ευαισθησία για όσους οδηγείς", "with sensitivity towards those you guide"),
     ("LEAD", "Σκορπιός"): ("με αποφασιστικότητα και βάθος", "with determination and depth"),
     ("LEAD", "Ταύρος"): ("με σταθερότητα και ψυχραιμία", "with steadiness and calm"),
-    ("LEAD", "Υδροχόος"): ("με νέες ιδέες για το πώς δουλεύει μια ομάδα", "with new ideas on how a team works"),
-    ("ORG", "Ήλιος"): ("με τάξη που είναι κομμάτι του εαυτού σου", "with an order that is part of who you are"),
-    ("ORG", "Ερμής"): ("με καθαρό σχέδιο και σωστή σειρά", "with a clear plan and the right order"),
-    ("PERFORM", "Άρης"): ("με ενέργεια και τόλμη μπροστά σε κοινό", "with energy and boldness in front of an audience"),
+    ("LEAD", "Υδροχόος"): ("με νέες ιδέες για τη συνεργασία", "with new ideas about working together"),
+    ("ORG", "Ήλιος"): ("ως κάτι που σε εκφράζει βαθιά", "as something that deeply reflects you"),
+    ("ORG", "Ερμής"): ("με καθαρό σχέδιο και σωστή σειρά", "with a clear plan and the right sequence"),
+    ("PERFORM", "Άρης"): ("με ενέργεια και τόλμη στη σκηνή", "with energy and boldness on stage"),
     ("PERFORM", "Ήλιος"): ("με φυσική λάμψη", "with a natural radiance"),
     ("PERFORM", "Αφροδίτη"): ("με χάρη και γοητεία", "with grace and charm"),
     ("PERFORM", "Ερμής"): ("με λόγο ζωντανό και έξυπνο", "with lively, witty words"),
     ("PERFORM", "Ιχθύες"): ("με ευαισθησία που συγκινεί", "with a sensitivity that moves others"),
     ("PERFORM", "Ποσειδώνας"): ("με φαντασία που μαγεύει", "with an imagination that captivates"),
-    ("RESEARCH", "Ήλιος"): ("με επιμονή να φτάσεις στην αλήθεια", "with persistence to reach the truth"),
-    ("RESEARCH", "Ερμής"): ("με κοφτερές ερωτήσεις και καθαρή σκέψη", "with sharp questions and clear thinking"),
+    ("RESEARCH", "Ήλιος"): ("με πάθος να φτάσεις στην αλήθεια", "with a passion to find the truth"),
+    ("RESEARCH", "Ερμής"): ("με κοφτερή και καθαρή σκέψη", "with sharp, clear thinking"),
     ("RESEARCH", "Σελήνη"): ("με διαίσθηση για ό,τι κρύβεται", "with an intuition for what is hidden"),
-    ("STORY", "Δίδυμοι"): ("με ζωντάνια και ευκολία στις λέξεις", "with liveliness and an ease with words"),
-    ("STORY", "Ερμής"): ("με λέξεις που βρίσκουν τον στόχο τους", "with words that hit the mark"),
+    ("STORY", "Δίδυμοι"): ("με ζωντάνια και ευκολία στον λόγο", "with liveliness and fluency"),
+    ("STORY", "Ερμής"): ("με εκφράσεις που πετυχαίνουν τον στόχο τους", "with phrasing that hits the mark"),
     ("STORY", "Ιχθύες"): ("με φαντασία και ευαισθησία", "with imagination and sensitivity"),
-    ("STORY", "Ποσειδώνας"): ("με εικόνες που ζωντανεύουν στο μυαλό", "with images that come alive in the mind"),
-    ("STORY", "Σελήνη"): ("με ιστορίες που αγγίζουν το συναίσθημα", "with stories that touch the heart"),
+    ("STORY", "Ποσειδώνας"): ("με φαντασία που ζωντανεύει στο μυαλό", "with imagination that comes alive"),
+    ("STORY", "Σελήνη"): ("με ιστορίες από την καρδιά", "with tales from the heart"),
     ("STRAT", "Άρης"): ("με γρήγορες και τολμηρές κινήσεις", "with quick, bold moves"),
     ("STRAT", "Πλούτωνας"): ("βλέποντας πολλά βήματα μπροστά", "seeing many steps ahead"),
-    ("SUPPORT", "Άρης"): ("με θάρρος να στέκεσαι δίπλα στους άλλους", "with the courage to stand by people"),
-    ("SUPPORT", "Ήλιος"): ("με προσωπικό παράδειγμα που δίνει κουράγιο", "with a personal example that gives courage"),
+    ("SUPPORT", "Άρης"): ("με θάρρος και πίστη στους ανθρώπους", "with bravery and faith in people"),
+    ("SUPPORT", "Ήλιος"): ("με προσωπικό παράδειγμα που εμψυχώνει", "with a personal example that uplifts"),
     ("SUPPORT", "Αφροδίτη"): ("με ευγένεια και καλή διάθεση", "with kindness and good humour"),
     ("SUPPORT", "Σελήνη"): ("με τρυφερότητα και κατανόηση", "with tenderness and understanding"),
-    ("TEACH", "Ήλιος"): ("μοιράζοντας όσα αγαπάς", "sharing what you love"),
-    ("TEACH", "Ερμής"): ("με εξηγήσεις απλές και καθαρές", "with simple, clear explanations"),
+    ("TEACH", "Ήλιος"): ("μεταφέροντας όσα αγαπάς", "passing on what you love"),
+    ("TEACH", "Ερμής"): ("με εξηγήσεις απλές και καθαρές", "with plain, clear explanations"),
     ("TEACH", "Υδροχόος"): ("με νέους τρόπους μάθησης", "with new ways of learning"),
-    ("TEACH", "Χείρωνας"): ("με υπομονή για όσους δυσκολεύονται να μάθουν", "with patience for those who find learning hard"),
-    ("TECH", "Ερμής"): ("με γρήγορη κατανόηση του πώς λειτουργούν τα συστήματα", "with a quick grasp of how systems work"),
-    ("TECH", "Ουρανός"): ("με πρωτότυπες ψηφιακές λύσεις", "with original digital solutions"),
+    ("TEACH", "Χείρωνας"): ("με ζεστασιά για κάθε μαθητή", "with warmth for every learner"),
+    ("TECH", "Ερμής"): ("με ευκολία στη λογική των μηχανών", "with an ease for how machines think"),
+    ("TECH", "Ουρανός"): ("με πρωτότυπες και καινοτόμες λύσεις", "with original, innovative solutions"),
 }
 
 
@@ -339,16 +339,28 @@ def colour_phrases(talent, lang: str = "el") -> list[str]:
     return [colour_phrase(k, v, lang, talent.theme) for k, v, _ in talent.colours]
 
 
+SPECIFIC = -1   # «διατύπωση» -1 = η ειδική φράση του συνδυασμού (COLOUR_SPECIFIC)
+
+
+def colour_options(key: str, theme: str) -> list[int]:
+    """Οι διαθέσιμες διατυπώσεις μιας απόχρωσης για ένα ταλέντο: ΜΟΝΟ η ειδική, αν υπάρχει (είναι γραμμένη για
+    αυτό το ταλέντο -- μια γενική στη θέση της ακούγεται συχνά άβολα)· αλλιώς οι 3 γενικές."""
+    if (theme, key) in COLOUR_SPECIFIC:
+        return [SPECIFIC]
+    return list(range(len(COLOURS.get(key, ()))))
+
+
 def colour_phrase(key: str, variant: int, lang: str = "el", theme: str = "") -> str:
-    """Η απόχρωση του ταλέντου `theme` από το σημείο `key`: η ειδική φράση του συνδυασμού αν υπάρχει,
-    αλλιώς η διατύπωση `variant` (0, 1, 2) της γενικής. "" αν δεν υπάρχει απόχρωση."""
-    specific = COLOUR_SPECIFIC.get((theme, key))
-    if specific:
-        return specific[0 if lang == "el" else 1]
+    """Η απόχρωση του ταλέντου `theme` από το σημείο `key`: η ειδική φράση (variant -1) ή η γενική διατύπωση
+    `variant` (0, 1, 2). "" αν δεν υπάρχει."""
+    idx = 0 if lang == "el" else 1
+    if variant == SPECIFIC:
+        specific = COLOUR_SPECIFIC.get((theme, key))
+        return specific[idx] if specific else ""
     options = COLOURS.get(key) or ()
     if not options:
         return ""
-    return options[min(variant, len(options) - 1)][0 if lang == "el" else 1]
+    return options[min(variant, len(options) - 1)][idx]
 
 HEALTH_FIELDS = ("Υγεία και θεραπευτικές υπηρεσίες", "Ψυχολογία και κοινωνική φροντίδα", "Διατροφή και διαιτολογία")
 

@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 
 from .astrology import planet_concentrations
 from .talent_map import (
-    ANGLES, COLOURS, HEALTH_RULES, HOUSE_THEMES, NODES, PAIR_THEME, PERSONAL, PLANET_THEMES, SIGN_THEMES, SLOW, THEME_FIELDS, THEMES,
+    ANGLES, COLOURS, colour_options, colour_phrase, HEALTH_RULES, HOUSE_THEMES, NODES, PAIR_THEME, PERSONAL, PLANET_THEMES, SIGN_THEMES, SLOW, THEME_FIELDS, THEMES,
 )
 
 STRONG, NORMAL, WIDE, VERY_WIDE = "Στενή/ισχυρή", "Κανονική", "Πλατιά αλλά έγκυρη", "Πολύ πλατιά/δευτερεύουσα"
@@ -382,33 +382,76 @@ def _colour_candidates(chart, t: Talent):
 MAX_COLOURS = 4
 
 
+_COLOUR_STOP = {"αλλους", "αλλου", "αλλον", "αλλοι", "αλλων", "ειναι", "δινει", "πραγματα", "πραγματων", "εαυτου", "others", "other",
+                "things", "which", "where", "yourself"}
+
+
+def _stems(text: str) -> set[str]:
+    import re
+    import unicodedata
+    plain = "".join(c for c in unicodedata.normalize("NFD", text or "") if unicodedata.category(c) != "Mn").casefold()
+    return {w[:5] for w in re.findall(r"\w{5,}", plain) if w not in _COLOUR_STOP}
+
+
+def _library_stems(theme: str) -> set[str]:
+    """Ρίζες λέξεων του τίτλου και της περιγραφής (el + en) του ταλέντου."""
+    from .talent_texts import talent_text
+    out: set[str] = set()
+    for lang in ("el", "en"):
+        tx = talent_text(theme, lang)
+        out |= _stems(" ".join((tx.get("title", ""), tx.get("text", ""))))
+    return out
+
+
 def _assign_colours(chart, talents: list[Talent]) -> None:
-    """Αποχρώσεις («πώς φαίνεται σε σένα»). Η ίδια φράση δεν επαναλαμβάνεται ποτέ στην αναφορά: όταν το ίδιο
-    σημείο χρωματίζει δύο ταλέντα, το δεύτερο παίρνει ΑΛΛΗ διατύπωση (έως 3).
+    """Αποχρώσεις («πώς φαίνεται σε σένα»).
+      * Κάθε σημείο έχει διατυπώσεις: πρώτα η ειδική του συνδυασμού (αν υπάρχει), μετά 3 γενικές. Παίρνεται
+        η πρώτη που (α) δεν έχει ήδη μπει στην αναφορά και (β) v22.22: ΔΕΝ επαναλαμβάνει λέξη από τον τίτλο ή
+        την περιγραφή του ίδιου ταλέντου. Αν δεν υπάρχει τέτοια, το σημείο
+        παραλείπεται.
       1. Πρώτη απόχρωση για ΚΑΘΕ ταλέντο: πρώτα οι πιο καθαρές (σημείο χωρίς το θέμα, από ισχυρότερο δείκτη)·
-         κάθε σημείο σε ένα ταλέντο· όσα μείνουν χωρίς παίρνουν σημείο ήδη χρησιμοποιημένο, με άλλη διατύπωση.
-      2. v22.21: ΟΛΕΣ οι υπόλοιπες αληθινές αποχρώσεις κάθε ταλέντου, από άλλα σημεία, έως MAX_COLOURS."""
+         κάθε σημείο σε ένα ταλέντο· όσα μείνουν χωρίς παίρνουν σημείο ήδη χρησιμοποιημένο.
+      2. v22.21: οι υπόλοιπες αληθινές αποχρώσεις κάθε ταλέντου, από άλλα σημεία, έως MAX_COLOURS."""
     cands = {t.theme: _colour_candidates(chart, t) for t in talents}
+    lib = {t.theme: _library_stems(t.theme) for t in talents}
     pairs = sorted(((-prio, -score, n, key, label, t)
                     for n, t in enumerate(talents) for prio, score, key, label in cands[t.theme]),
                    key=lambda x: x[:3])
-    uses: dict[str, int] = {}
+    used_phrases: set[str] = set()
+    used_keys: set[str] = set()
+
+    used_stems: set[str] = set()      # v22.22: ούτε η ίδια λέξη-κλειδί δύο φορές στην αναφορά (π.χ. «θάρρος»)
+
+    def pick(t, key):
+        for v in colour_options(key, t.theme):
+            el, en = colour_phrase(key, v, "el", t.theme), colour_phrase(key, v, "en", t.theme)
+            stems = _stems(el) | _stems(en)
+            if el and el not in used_phrases and not stems & (lib[t.theme] | used_stems):
+                return v, el, stems
+        return None
+
+    def add(t, key, label):
+        got = pick(t, key)
+        if got is None:
+            return False
+        t.colours.append((key, got[0], label))
+        used_phrases.add(got[1])
+        used_stems.update(got[2])
+        used_keys.add(key)
+        return True
+
     for t in talents:
         t.colours = []
     for allow_reuse in (False, True):
         for _, _, _, key, label, t in pairs:
-            n = uses.get(key, 0)
-            if t.colours or n >= len(COLOURS[key]) or (n and not allow_reuse):
+            if t.colours or (key in used_keys and not allow_reuse):
                 continue
-            t.colours.append((key, n, label))
-            uses[key] = n + 1
+            add(t, key, label)
     for t in talents:
         for _, _, key, label in cands[t.theme]:
-            n = uses.get(key, 0)
-            if len(t.colours) >= MAX_COLOURS or key in {c[0] for c in t.colours} or n >= len(COLOURS[key]):
+            if len(t.colours) >= MAX_COLOURS or key in {c[0] for c in t.colours}:
                 continue
-            t.colours.append((key, n, label))
-            uses[key] = n + 1
+            add(t, key, label)
     for t in talents:   # σειρά εμφάνισης: πρώτα η πιο καθαρή/ισχυρή απόχρωση
         order: dict[str, int] = {}
         for i, (_, _, key, _) in enumerate(cands[t.theme]):

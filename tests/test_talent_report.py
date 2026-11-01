@@ -82,8 +82,8 @@ def test_report_shows_colour_subtitle_v22_15():
     r = run_engine(chart)
     el = client_markdown(r, "el")
     i = el.index("Ηγεσία και πρωτοβουλία**")
-    assert el[i:].split("\n")[1].startswith("*με συνεργατικό πνεύμα · ")
-    assert "*with a cooperative spirit · " in client_markdown(r, "en")
+    assert el[i:].split("\n")[1].startswith("*με συνεργατικό πνεύμα")
+    assert "*with a cooperative spirit" in client_markdown(r, "en")
     assert "Απόχρωση: «με συνεργατικό πνεύμα» από Ζυγός" in audit_markdown(chart, r)
 
 
