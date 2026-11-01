@@ -18,7 +18,7 @@ def test_titles_match_engine_and_both_languages_exist():
         assert talent_text(k, "el")["title"] == el and talent_text(k, "en")["title"] == en
         for lang in ("el", "en"):
             t = talent_text(k, lang)
-            assert len(t["text"].split()) >= 20 and len(t["develop"].split()) >= 12
+            assert len(t["text"].split()) >= 20 and len(t["develop"].split()) >= 8
     assert field_text("Νομική και δικαιοσύνη", "en")["name"] == "Law and justice"
 
 

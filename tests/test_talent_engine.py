@@ -184,3 +184,28 @@ def test_ruler_placement_only_supports_v22_12():
     innov = next(t for t in r.talents if t.theme == "INNOV")
     assert any("βρίσκεται στον Οίκο 2" in i.label for i in innov.supporting)
     assert "ENTRE" in r.candidates_rejected
+
+
+def test_talent_colour_subtitle_v22_15():
+    """Δεύτερος τίτλος (απόχρωση): από το «άλλο» σημείο ενός δείκτη, ποτέ από την ίδια την πηγή του
+    ταλέντου· κάθε απόχρωση μία φορά ανά αναφορά. 11/02/1982: Ηγεσία από Άρη σε Ζυγό -> «με συνεργατικό πνεύμα»."""
+    from core.talent_map import COLOURS, PLANET_THEMES, SIGN_THEMES
+    assert set(PLANET_THEMES) | set(SIGN_THEMES) <= set(COLOURS)
+    assert all(len(v) == 3 for v in COLOURS.values())
+    by = {t.theme: t for t in run_engine(_pafos()).talents}
+    assert by["LEAD"].colour == "Ζυγός" and by["BUILD"].colour == "Αφροδίτη" and by["CARE"].colour == "Ποσειδώνας"
+    got = n = 0
+    for c in _charts(60, 17):
+        talents = run_engine(c).talents
+        keys = [(t.colour, t.colour_variant) for t in talents if t.colour]   # v22.16: ποτέ ίδια φράση
+        assert len(keys) == len(set(keys))
+        for t in talents:
+            n += 1
+            if t.colour:
+                got += 1
+                own = PLANET_THEMES.get(t.colour) or SIGN_THEMES[t.colour]
+                assert own[0] != t.theme and t.colour_from
+    assert got / n > 0.75
+    by = {t.theme: t for t in run_engine(_pafos()).talents}     # ο Ήλιος χρωματίζει δύο ταλέντα, με άλλη φράση
+    assert (by["ORG"].colour, by["ORG"].colour_variant) == ("Ήλιος", 0)
+    assert (by["INNOV"].colour, by["INNOV"].colour_variant) == ("Ήλιος", 1)

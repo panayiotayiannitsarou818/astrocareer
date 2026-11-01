@@ -23,26 +23,24 @@ import hmac
 import html
 import re
 import os
-import time
 from datetime import date
 from datetime import time as dtime
 from zoneinfo import available_timezones
 
 import streamlit as st
 
-from core import eta
 from core.case_state import reset_case_state
-from core.costs import CostTracker, cost_history_summary, estimate_report_cost, eur_per_usd, record_report_cost
-from core.docx_builder import build_orientation_docx
+from core.costs import CostTracker
 from core.generator import API_KEY_NAMES, DEFAULT_PROVIDER, PROVIDER_LABELS, PROVIDERS, default_model
 from core.birth_input import birth_case_key, chart_from_birth
 from core.birthtime import to_ut
 from core.i18n import TR
 from core.places import DROPDOWN_MAX_PLACES, countries, country_label, places_in_country, search_countries, search_places
 from core.parser import parse_astrodienst_pdf
+from core.docx_builder import build_orientation_docx
 from core.pipeline import (
-    CLIENT_OUTPUT_NAME, PRESENTATION, SERVICE_TITLE, RunState, Settings, build_auto_prompt, audit_docx_filename, build_context,
-    client_docx_filename, language_clause, make_generate_fn, reinforcement_instructions, run_pipeline,
+    CLIENT_OUTPUT_NAME, PRESENTATION, SERVICE_TITLE, build_context, language_clause, make_generate_fn,
+    reinforcement_instructions,
 )
 from core.prompts import build_orientation_source
 from core.teaser import pick_teaser, teaser_instruction
@@ -109,9 +107,11 @@ api_key = configured.get(provider)
 #   "engine" (προεπιλογή) = εκδοχή Α: μηχανή ταλέντων + έτοιμα κείμενα, χωρίς AI, κόστος 0
 #   "hybrid"              = εκδοχή Β: η Α «δεμένη» σε προσωπικό κείμενο από φτηνό AI· αν το AI
 #                           αποτύχει ή δεν περάσει τον έλεγχο, ο πελάτης παίρνει αυτόματα την Α
-#   "ai"                  = η παλιά αναφορά μόνο με AI (όπως στο v21)
+#   ("ai" -- η παλιά αναφορά μόνο με AI -- αφαιρέθηκε στο v22.17· αντιμετωπίζεται ως "hybrid")
 # Το μοντέλο της Β: POLISH_MODEL (Secret)· αλλιώς Claude Sonnet / το προεπιλεγμένο OpenAI.
 REPORT_MODE = str(_secret("REPORT_MODE") or "engine").strip().lower()
+if REPORT_MODE not in ("engine", "hybrid"):
+    REPORT_MODE = "hybrid" if REPORT_MODE == "ai" else "engine"
 # v22.2: REQUIRE_APPROVAL (Secret, προεπιλογή "1"): όσο οι πίνακες/τα κείμενα της μηχανής είναι
 # πρόχειρα, ο ΠΕΛΑΤΗΣ δεν παίρνει πλήρη αναφορά (μόνο η Διαχείριση). "0" = επιτρέπεται (π.χ. δοκιμές).
 REQUIRE_APPROVAL = str(_secret("REQUIRE_APPROVAL") or "1").strip() != "0"
@@ -175,21 +175,7 @@ with st.sidebar:
                     api_key = st.text_input(t["api_key_label"].format(provider=PROVIDER_LABELS[provider]),
                                             type="password", key=f"api_key_{provider}")
                     st.caption(t["key_hint"].format(secret=API_KEY_NAMES[provider]))
-                cfg = Settings.from_env()
-                st.caption(t["admin_settings"].format(
-                    model=default_model(provider), stall=cfg.stall_rounds, fresh=cfg.fresh_rounds,
-                    fails=cfg.max_failed_requests,
-                    cap=(f"${cfg.max_cost_usd:.2f}" if cfg.max_cost_usd else "—"),
-                    quality=("✓" if cfg.quality_pass else "✗"),
-                ))
-                case = ss.cases.get(ss.current_case)
-                if case:
-                    st.metric(t["admin_cost"], f"€{case['cost'].total_eur:.2f}",
-                              f"${case['cost'].total_usd:.2f} · {len(case['cost'].calls)} {t['admin_calls']}",
-                              delta_color="off")
-                    if case["cost"].unknown_price:
-                        st.caption(t["admin_unknown_price"])
-                    st.caption(t["admin_cost_note"].format(rate=eur_per_usd()))
+                st.caption(t["admin_polish_model"].format(model=POLISH_MODEL, mode=REPORT_MODE))
 
 def _parse_cached(uploaded):
     """Διαβάζει το PDF ΜΙΑ φορά ανά αρχείο (κλειδί: αποτύπωμα περιεχομένου)."""
@@ -202,39 +188,6 @@ def _parse_cached(uploaded):
         except Exception as err:  # noqa: BLE001
             cache[digest] = (None, err)
     return (digest,) + cache[digest]
-
-
-def _show_cost_estimate(chart, display_name):
-    """Διαχείριση: εκτίμηση κόστους ΠΡΙΝ πατηθεί το κουμπί. Υπολογίζεται μία
-    φορά ανά χάρτη/όνομα/γλώσσα/μοντέλο (η καταμέτρηση tokens είναι αίτημα
-    στην Anthropic -- δεν επαναλαμβάνεται σε κάθε ανανέωση της σελίδας)."""
-    model = default_model(provider)
-    prompt = build_auto_prompt(chart, display_name, lang)
-    key = (hashlib.sha256(prompt.encode("utf-8")).hexdigest(), model)
-    cache = ss.setdefault("cost_estimates", {})
-    if key not in cache:
-        counter = getattr(make_generate_fn(provider, api_key), "count_tokens", None)
-        try:
-            counted = counter(prompt) if counter else None
-        except Exception:  # noqa: BLE001
-            counted = None
-        hist = cost_history_summary()
-        cache[key] = (estimate_report_cost(model, prompt, counted, hist["avg_out"] if hist else None), hist)
-    est, hist = cache[key]
-    rate = eur_per_usd()
-    lines = [t["estimate_line"].format(
-        lo_eur=est["low_usd"] * rate, hi_eur=est["high_usd"] * rate,
-        lo_usd=est["low_usd"], hi_usd=est["high_usd"], model=model)]
-    lines.append(t["estimate_basis"].format(
-        tin=est["input_tokens"], how=t["estimate_counted"] if est["counted"] else t["estimate_approx"],
-        tout=est["output_tokens"]))
-    if hist:
-        lines.append(t["estimate_history"].format(
-            avg_eur=hist["avg_usd"] * rate, min_eur=hist["min_usd"] * rate, max_eur=hist["max_usd"] * rate,
-            n=hist["n"], calls=hist["avg_calls"]))
-    if not est["known_price"]:
-        lines.append(t["admin_unknown_price"])
-    st.info("\n\n".join(lines))
 
 
 def _birth_form(prefix: str = "b"):
@@ -530,208 +483,9 @@ def _engine_section(input_key, preview):
 
 
 def _auto_tab(input_key, preview, preview_err):
-    if REPORT_MODE == "ai":
-        _ai_flow(input_key, preview, preview_err)
-        return
+    """v22.17: μόνο η υβριδική μέθοδος (μηχανή + προαιρετικό φτηνό «δέσιμο»). Η παλιά πλήρης αναφορά με AI
+    και η χειροκίνητη διαδικασία (ChatGPT/Claude) αφαιρέθηκαν από τη σελίδα -- κόστιζαν πολύ."""
     _engine_section(input_key, preview)
-    if is_admin:
-        st.divider()
-        # Toggle και όχι expander: η ροή AI έχει δικά της expanders/st.status, και το Streamlit
-        # δεν επιτρέπει expander μέσα σε expander.
-        if st.toggle(t["ai_fallback_title"], key="ai_fallback_on"):
-            st.caption(t["ai_fallback_note"])
-            _ai_flow(input_key, preview, preview_err)
-
-
-def _ai_flow(input_key, preview, preview_err):
-    """🤖 Αυτόματη με AI: κοινά στοιχεία -> ένα κουμπί -> εγκεκριμένο έντυπο."""
-    # ---------------------------------------------------------------- σελίδα πελάτη
-    if not api_key:
-        st.info(t["service_unavailable_auto"] if manual_visible else t["service_unavailable"])
-        if not is_admin:
-            return
-
-    lo, hi = eta.typical_range()
-    # Όνομα: από τη φόρμα (ή το PDF). Κενό -> αναφορά χωρίς όνομα.
-    if is_admin and preview is not None and api_key:
-        _show_cost_estimate(preview, preview.name)
-
-    STEPS = {1: "step_read", 2: "step_write", 3: "step_check", 4: "step_final"}
-
-
-    def _run(case_key, case, display_name, resume=False):
-        """Εκτελεί/συνεχίζει τη διαδικασία με βήματα 1-4, εκτίμηση χρόνου και
-        εμφανή προειδοποίηση. Η πρόοδος γράφεται επί τόπου στο case['state']."""
-        stay = st.empty()
-        stay.markdown(f'<div class="stay">⚠️ {t["stay_on_page"]}</div>', unsafe_allow_html=True)
-        bar = st.progress(0.0)
-        log = st.status(t["run_status"], expanded=True) if is_admin else None
-        started = time.time()
-
-        def show(step, extra_fraction=0.0):
-            elapsed = (time.time() - started) / 60
-            r_lo, r_hi = eta.remaining_minutes(elapsed)
-            frac = min(0.97, (step - 1 + min(extra_fraction, 0.95)) / 4)
-            bar.progress(frac, text=t["progress_line"].format(
-                step=step, label=t[STEPS[step]], lo=r_lo, hi=r_hi, tlo=lo, thi=hi))
-
-        def note(msg):
-            if log:
-                log.write(msg)
-
-        calls = {"n": 0}
-
-        def on_progress(event, **info):
-            if event == "call":
-                calls["n"] += 1
-                kind = info["kind"]
-                if kind in ("write", "fresh") and info.get("best_count") is None:
-                    show(2)
-                else:
-                    # Κάθε διόρθωση προχωρά λίγο τη μπάρα μέσα στο βήμα 3 (χωρίς να φτάνει στο τέλος).
-                    show(3 if kind != "quality" else 4, 1 - 0.7 ** calls["n"])
-                note(t["log_call"].format(n=info["attempt"], kind=t.get(f"kind_{kind}", kind),
-                                          cost=case["cost"].format()))
-            elif event == "checked":
-                show(3, 1 - 0.7 ** calls["n"])
-                note(t["checked_ok"] if info["count"] == 0 else t["checked_issues"].format(count=info["count"]))
-            elif event == "improved" and info["count"]:
-                note(t["log_improved"].format(count=info["count"]))
-            elif event == "api_retry":
-                note(t["api_retry"].format(n=info["n"]))
-            elif event == "new_round":
-                note(t["new_round"].format(n=info["n"]))
-            elif event == "truncated":
-                note(t["log_truncated"])
-            elif event == "quality":
-                show(4)
-                note(t["log_quality"])
-
-        # Το αντικείμενο προόδου υπάρχει στη συνεδρία ΠΡΙΝ την πρώτη κλήση, ώστε
-        # κάθε βελτίωση να σώζεται αμέσως -- ακόμη κι αν η εκτέλεση κοπεί απότομα.
-        calls_before = len(case["cost"].calls)
-        if case.get("state") is None:
-            case["state"] = RunState(fingerprint="")
-        case["name"] = display_name
-        show(2 if not resume else 3)
-        try:
-            result = run_pipeline(
-                case["chart"], display_name, lang,
-                generate_fn=make_generate_fn(provider, api_key), model_name=default_model(provider),
-                state=case.get("state"), cost=case["cost"], on_progress=on_progress,
-            )
-        finally:
-            stay.empty()
-            bar.empty()
-        case["state"] = result.state
-        case["name"] = display_name
-        show_minutes = (time.time() - started) / 60
-        if result.ok and not resume:
-            eta.record_duration(show_minutes)
-        run_calls = case["cost"].calls[calls_before:]
-        if result.ok and run_calls:
-            # Πραγματικό κόστος αυτής της αναφοράς -> μέσος όρος για τις επόμενες εκτιμήσεις.
-            record_report_cost(sum(c["cost_usd"] for c in run_calls), len(run_calls),
-                               sum(c["output_tokens"] for c in run_calls) / len(run_calls))
-        ss.auto_result = {
-            # v19.5: το αποτέλεσμα ανήκει σε συγκεκριμένο PDF + γλώσσα.
-            "case_key": case_key, "lang": lang,
-            "ok": result.ok, "reason": result.stopped_reason, "attempts": result.attempts,
-            "resumable": result.resumable, "error_key": result.error_key, "error_detail": result.error_detail,
-            "client_docx": result.client_docx, "audit_docx": result.audit_docx,
-            "client_name": client_docx_filename(display_name), "audit_name": audit_docx_filename(display_name),
-            "check": result.check, "quality": result.quality_applied, "minutes": show_minutes,
-        }
-        if log:
-            log.update(state="complete", expanded=False)
-
-
-    ready = preview is not None and input_key is not None
-    run_clicked = st.button(t["run_button"] if REPORT_MODE == "ai" else t["ai_run_button"], type="primary",
-                            use_container_width=True, disabled=not ready or not api_key, key="ai_run")
-
-    if run_clicked:
-        ss.pop("auto_result", None)
-        case_key = input_key
-        case = ss.cases.get(case_key)
-        step1 = st.progress(0.0, text=t["progress_line"].format(step=1, label=t["step_read"], lo=lo, hi=hi, tlo=lo, thi=hi))
-        if case is None:
-            # Ίδια στοιχεία/PDF ξανά -> ίδιο case: ο μετρητής και η πρόοδος ΔΕΝ μηδενίζονται.
-            case = {"chart": preview, "cost": CostTracker(), "state": None, "name": None}
-            ss.cases[case_key] = case
-        step1.empty()
-        ss.current_case = case_key
-        ss.chart = case["chart"]
-        _run(case_key, case, case["chart"].name)
-        st.rerun()
-
-    # ---------------------------------------------------------------- αποτέλεσμα
-    res = ss.get("auto_result")
-    if res and input_key is not None:
-        # v19.5 (εξωτερικός έλεγχος): με νέα στοιχεία/PDF ή άλλη γλώσσα, το παλιό αποτέλεσμα δεν
-        # εμφανίζεται -- αλλιώς φαινόταν «νέα στοιχεία + κουμπί λήψης της προηγούμενης αναφοράς».
-        if res.get("case_key") != input_key or res.get("lang") != lang:
-            ss.pop("auto_result", None)
-            res = None
-    elif res and input_key is None:
-        ss.pop("auto_result", None)
-        res = None
-    case = ss.cases.get(ss.current_case)
-    if res:
-        if res["ok"]:
-            st.markdown(f'<div class="ok">{t["customer_ready"]}</div>', unsafe_allow_html=True)
-            st.write("")
-            st.download_button(t["download_final"], res["client_docx"], file_name=res["client_name"],
-                               type="primary", use_container_width=True)
-            if is_admin:
-                st.caption(t["admin_done"].format(n=res["attempts"], m=res["minutes"],
-                                                  q=t["admin_quality_yes"] if res["quality"] else t["admin_quality_no"]))
-                if res["audit_docx"]:
-                    st.download_button(t["download_audit_docx"], res["audit_docx"], file_name=res["audit_name"],
-                                       use_container_width=True)
-                if res["check"].warnings:
-                    with st.expander(t["details_expander"]):
-                        for line in res["check"].warnings: st.write("•", line)
-        else:
-            # Ο πελάτης ΔΕΝ παίρνει ποτέ μη εγκεκριμένο έντυπο.
-            customer_can_resume = res["resumable"] and res["reason"] == "api_failures"
-            st.markdown(f'<div class="warn">{t["customer_interrupted"] if customer_can_resume else t["customer_failed"]}</div>',
-                        unsafe_allow_html=True)
-            if case and (customer_can_resume or (is_admin and res["resumable"])):
-                st.write("")
-                if st.button(t["resume_button"], type="primary", use_container_width=True):
-                    ss.pop("auto_result", None)
-                    display_name = case["chart"].name
-                    _run(ss.current_case, case, display_name, resume=True)
-                    st.rerun()
-            if is_admin:
-                reason_text = t.get(f"reason_{res['reason']}", res["reason"])
-                st.caption(t["admin_stopped"].format(n=res["attempts"], reason=reason_text))
-                if res["error_key"]:
-                    st.error(t.get(f"auto_error_{res['error_key']}", t["auto_error"]))
-                    with st.expander(t["technical_detail"]): st.code(res["error_detail"] or "")
-                if res["check"] is not None:
-                    with st.expander(t["details_expander"], expanded=True):
-                        for line in res["check"].details_lines(): st.write("•", line)
-                if res["client_docx"]:
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        st.download_button(t["download_draft"], res["client_docx"],
-                                           file_name="ΠΡΟΣΧΕΔΙΟ_" + res["client_name"], use_container_width=True)
-                    with c2:
-                        if res["audit_docx"]:
-                            st.download_button(t["download_audit_docx"], res["audit_docx"],
-                                               file_name=res["audit_name"], use_container_width=True)
-
-    elif case and case.get("state") is not None and not case["state"].finished and case["state"].attempts > 0:
-        # Η προηγούμενη εκτέλεση κόπηκε απότομα (χωρίς αποτέλεσμα) -- η πρόοδος
-        # έχει σωθεί στη συνεδρία, οπότε προσφέρεται συνέχεια.
-        st.markdown(f'<div class="warn">{t["customer_interrupted"]}</div>', unsafe_allow_html=True)
-        st.write("")
-        if st.button(t["resume_button"], type="primary", use_container_width=True, key="resume_after_cut"):
-            _run(ss.current_case, case, case["chart"].name, resume=True)
-            st.rerun()
-
 
 
 def _manual_tab(input_key, chart):
@@ -831,12 +585,6 @@ def _manual_tab(input_key, chart):
             for line in check.details_lines(): st.write("•", line)
 
 
-# ---------------------------------------------------------------- δύο τρόποι: καρτέλες
-# MANUAL_MODE (Secret): "all" (προεπιλογή) = χειροκίνητη καρτέλα για όλους ·
-# "admin" = μόνο μετά τον κωδικό διαχείρισης · "off" = καθόλου.
-_manual_mode = str(_secret("MANUAL_MODE") or "all").strip().lower()
-manual_visible = _manual_mode == "all" or (_manual_mode == "admin" and is_admin)
-
 def _chart_summary(chart) -> str:
     """Σύντομη ταυτότητα χάρτη: «Μαρία · 11/02/1982 · 01:45 · Πάφος, Κύπρος»."""
     time_txt = (chart.time or "").split(" (")[0]
@@ -889,7 +637,8 @@ def _show_teaser(chart):
 _input_key, _chart, _chart_err = _chart_input()
 _show_teaser(_chart if _input_key else None)
 _show_chart_data(_chart if _input_key else None)
-if manual_visible:
+if is_admin:
+    # v22.17: η χειροκίνητη διαδικασία (ChatGPT/Claude, χωρίς κόστος API) μόνο για τη Διαχείριση.
     st.markdown(f"#### {t['choose_mode']}")
     tab_auto, tab_manual = st.tabs([t["tab_auto"], t["tab_manual"]])
     with tab_auto:

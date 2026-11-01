@@ -30,7 +30,15 @@ def _good(result, lang="el"):
                  "you while improving the way things are done.")
         link = "This may link well with your other talents when you work with others."
         flink = "Here your talents may meet in something useful to others."
-    return {"intro": intro, "talents": {t.theme: link for t in result.talents},
+    if lang == "el":
+        openers = ["Αυτό", "Εδώ", "Συχνά", "Παράλληλα", "Έτσι", "Επιπλέον", "Ακόμη", "Επίσης", "Τότε",
+                   "Συνδυαστικά", "Με αυτόν τον τρόπο", "Στην πράξη", "Μέσα σε ομάδα"]
+    else:
+        openers = ["This", "Here", "Often", "At the same time", "In this way", "Also", "Then", "Besides",
+                   "In practice", "Combined", "Likewise", "In a team", "Over time"]
+    talents = {t.theme: f"{openers[i % len(openers)]} {link[0].lower()}{link[1:]}"
+               for i, t in enumerate(result.talents)}
+    return {"intro": intro, "talents": talents,
             "fields": {f.name: flink for f in result.fields if f.decision == "ΕΠΙΛΕΓΕΤΑΙ"}}
 
 
@@ -56,7 +64,7 @@ def test_good_segments_are_composed_by_the_app():
     for i, t in enumerate(result.talents, 1):                 # αρίθμηση + σταθερή περιγραφή βιβλιοθήκης
         lib = talent_text(t.theme, "el")
         assert f"**{i}. {lib['title']}**" in out.text and lib["text"] in out.text and lib["develop"] in out.text
-    assert out.text.strip().endswith("*") and out.text.count(seg["talents"][result.talents[0].theme]) == len(result.talents)
+    assert out.text.strip().endswith("*") and all(v in out.text for v in seg["talents"].values())
 
 
 def _reject(seg, result, text, lang="el"):
@@ -133,3 +141,28 @@ def test_english_version_b():
     seg = _good(result, "en")
     r = build_engine_report(chart, "", "en", generate_fn=lambda p, max_output_tokens=None: json.dumps(seg))
     assert r.polish.used_ai and "## What characterises you" in r.client_text and r.engine_text != r.client_text
+
+
+def test_one_sentence_per_talent_v22_13():
+    _, result, text = _setup()
+    seg = _good(result)
+    seg["talents"][result.talents[0].theme] = ("Αυτό μπορεί να δένει με την ομαδικότητα σου. "
+                                               "Μαζί με την οργάνωση ίσως γίνεται ακόμη πιο χρήσιμο.")
+    assert any("πάνω από μία πρόταση" in x for x in check_segments(seg, text, result, "el"))
+
+
+def test_single_talent_field_mentions_only_its_talent_v22_13():
+    """Αναφορά Β (11/02/1982): «Εικαστικές τέχνες» είναι τομέας ΜΟΝΟ για την «Αισθητική», αλλά το AI
+    έγραψε «…συνδυάζεται εδώ με την πρωτοτυπία και την πρακτική δημιουργία…»."""
+    _, result, text = _setup()
+    single = [f for f in result.fields if f.decision == "ΕΠΙΛΕΓΕΤΑΙ" and len(f.talents) == 1]
+    assert single
+    f = next((x for x in single if x.talents[0] == "DESIGN"), single[0])
+    seg = _good(result)
+    seg["fields"][f.name] = ("Η αισθητική μπορεί να συνδυάζεται εδώ με την πρωτοτυπία και την πρακτική "
+                             "δημιουργία, ώστε ό,τι φτιάχνεις να είναι όμορφο και λειτουργικό.")
+    issues = check_segments(seg, text, result, "el")
+    assert any("τομέας ενός ταλέντου" in x for x in issues)
+    seg["fields"][f.name] = "Εδώ η ματιά σου για το ωραίο μπορεί να βρει χώρο σε εικόνες, σχέδια και φωτογραφία."
+    assert not any("τομέας ενός ταλέντου" in x for x in check_segments(seg, text, result, "el"))
+    assert '"only_this_talent": true' in build_polish_prompt(text, result, "el")

@@ -18,7 +18,7 @@ THEMES = {
     "COMM": ("Επικοινωνία και λόγος", "Communication and expression in words"),
     "TEACH": ("Διδασκαλία και μετάδοση γνώσης", "Teaching and sharing knowledge"),
     "RESEARCH": ("Έρευνα σε βάθος", "In-depth research"),
-    "INNOV": ("Πρωτοτυπία και τεχνολογία", "Originality and technology"),
+    "INNOV": ("Πρωτότυπη σκέψη και νέες ιδέες", "Original thinking and new ideas"),   # v22.13: η τεχνολογία είναι τομέας
     "ART": ("Φαντασία και καλλιτεχνική έκφραση", "Imagination and artistic expression"),
     "DESIGN": ("Αισθητική και σχεδιασμός", "Aesthetics and design"),
     "DIPLO": ("Συνεργασία και διπλωματία", "Cooperation and diplomacy"),
@@ -34,6 +34,8 @@ THEMES = {
     "SUPPORT": ("Υποστήριξη και ενθάρρυνση", "Supporting and encouraging others"),
     "PERFORM": ("Δημόσια παρουσία και έκφραση", "Public presence and self-expression"),
     "EXPLORE": ("Εξερεύνηση και διεθνείς ορίζοντες", "Exploration and wider horizons"),
+    # v22.14 (ΠΡΟΧΕΙΡΟ, ερώτηση Ε6): τεχνική/ψηφιακή ευχέρεια -- χωριστά από την πρωτοτυπία.
+    "TECH": ("Τεχνολογία, υπολογιστές και δίκτυα", "Technology, computers and networks"),
 }
 
 PERSONAL = ("Ήλιος", "Σελήνη", "Ερμής", "Αφροδίτη", "Άρης")
@@ -45,12 +47,12 @@ NODES = ("Βόρειος Δεσμός", "Νότιος Δεσμός")
 PLANET_THEMES = {
     "Ήλιος": ("LEAD", "PERFORM", "ENTRE"),
     "Σελήνη": ("CARE", "HOSP", "STORY"),
-    "Ερμής": ("COMM", "ANALYSIS", "TEACH", "STORY"),
+    "Ερμής": ("COMM", "ANALYSIS", "TEACH", "STORY", "TECH"),
     "Αφροδίτη": ("DESIGN", "ART", "DIPLO", "HOSP"),
     "Άρης": ("ACTION", "LEAD", "ENTRE", "BUILD"),
     "Δίας": ("TEACH", "EXPLORE", "JUSTICE", "ENTRE"),
     "Κρόνος": ("ORG", "BUILD", "ANALYSIS", "JUSTICE"),
-    "Ουρανός": ("INNOV", "COMMUNITY"),
+    "Ουρανός": ("INNOV", "COMMUNITY", "TECH"),
     "Ποσειδώνας": ("ART", "CARE", "STORY"),
     "Πλούτωνας": ("RESEARCH", "STRAT"),
     "Χείρωνας": ("SUPPORT", "TEACH"),
@@ -69,7 +71,7 @@ SIGN_THEMES = {
     "Σκορπιός": ("RESEARCH", "STRAT"),
     "Τοξότης": ("TEACH", "EXPLORE", "JUSTICE"),
     "Αιγόκερως": ("ORG", "STRAT", "ENTRE"),
-    "Υδροχόος": ("INNOV", "COMMUNITY"),
+    "Υδροχόος": ("INNOV", "COMMUNITY", "TECH"),
     "Ιχθύες": ("ART", "CARE", "STORY"),
 }
 
@@ -82,7 +84,7 @@ HOUSE_THEMES = {
     6: ("ORG", "ANALYSIS", "SUPPORT"),
     9: ("TEACH", "EXPLORE", "RESEARCH", "JUSTICE"),
     10: ("LEAD", "ORG", "PERFORM"),
-    11: ("COMMUNITY", "INNOV"),
+    11: ("COMMUNITY", "INNOV", "TECH"),
 }
 
 # ---------------------------------------------------------------- 5. Όψεις: ζεύγος -> θέμα
@@ -100,7 +102,7 @@ PAIR_THEME = {
     ("Ήλιος", "Ποσειδώνας"): "ART", ("Ήλιος", "Πλούτωνας"): "RESEARCH", ("Ήλιος", "Χείρωνας"): "SUPPORT",
     ("Σελήνη", "Δίας"): "HOSP", ("Σελήνη", "Κρόνος"): "CARE", ("Σελήνη", "Ουρανός"): "INNOV",
     ("Σελήνη", "Ποσειδώνας"): "CARE", ("Σελήνη", "Πλούτωνας"): "RESEARCH", ("Σελήνη", "Χείρωνας"): "SUPPORT",
-    ("Ερμής", "Δίας"): "TEACH", ("Ερμής", "Κρόνος"): "ANALYSIS", ("Ερμής", "Ουρανός"): "INNOV",
+    ("Ερμής", "Δίας"): "TEACH", ("Ερμής", "Κρόνος"): "ANALYSIS", ("Ερμής", "Ουρανός"): "TECH",
     ("Ερμής", "Ποσειδώνας"): "STORY", ("Ερμής", "Πλούτωνας"): "RESEARCH", ("Ερμής", "Χείρωνας"): "TEACH",
     ("Αφροδίτη", "Δίας"): "HOSP", ("Αφροδίτη", "Κρόνος"): "BUILD", ("Αφροδίτη", "Ουρανός"): "DESIGN",
     ("Αφροδίτη", "Ποσειδώνας"): "ART", ("Αφροδίτη", "Πλούτωνας"): "DESIGN", ("Αφροδίτη", "Χείρωνας"): "SUPPORT",
@@ -152,11 +154,98 @@ THEME_FIELDS = {
                   "Πολιτική και δημόσια πολιτική", "Τεχνολογία και ψηφιακά συστήματα"),
     "SUPPORT": ("Εκπαίδευση και μάθηση", "Αθλητισμός και άσκηση", "Κοινωνικές επιστήμες"),
     "PERFORM": ("Παραστατικές τέχνες", "Επικοινωνία και μέσα", "Μουσική και ήχος", "Πολιτική και δημόσια πολιτική"),
+    "TECH": ("Τεχνολογία και ψηφιακά συστήματα", "Μαθηματικά και δεδομένα", "Μηχανική και τεχνικές εφαρμογές",
+             "Παιχνίδια και διαδραστικές εμπειρίες"),
     "EXPLORE": ("Τουρισμός και φιλοξενία", "Διεθνείς σχέσεις και ανθρωπιστική δράση",
                 "Γλώσσες και ανθρωπιστικές σπουδές", "Πολιτισμός και πολιτιστική κληρονομιά"),
 }
 # Κατάσταση των πινάκων αντιστοίχισης: «draft» μέχρι να τους εγκρίνει αστρολόγος, τότε «approved».
 TABLES_STATUS = "draft"
+
+# ---------------------------------------------------------------- 7. Απόχρωση ταλέντου (v22.15-16, ΠΡΟΧΕΙΡΟ, Ε7)
+# Δεύτερος τίτλος: «πώς» φαίνεται το ταλέντο σε αυτόν τον άνθρωπο. Βγαίνει από το «άλλο» σημείο
+# ενός δείκτη -- τον πλανήτη ή το ζώδιο που ΔΕΝ είναι η πηγή του ταλέντου (π.χ. Ηγεσία από Άρη στον
+# Οίκο 10, σε Ζυγό -> «με συνεργατικό πνεύμα»). ΤΡΕΙΣ διατυπώσεις ανά πλανήτη/ζώδιο, με το ίδιο νόημα,
+# ώστε όταν το ίδιο σημείο χρωματίζει δύο ή τρία ταλέντα να μην επαναλαμβάνεται η ίδια φράση.
+COLOURS = {
+    "Ήλιος": (("ως κομμάτι του εαυτού σου", "as part of who you are"),
+              ("με το δικό σου προσωπικό στίγμα", "with your own personal touch"),
+              ("με όλη σου την καρδιά", "with all your heart")),
+    "Σελήνη": (("με ευαισθησία στις ανάγκες των άλλων", "with sensitivity to the needs of others"),
+               ("με ζεστασιά και φροντίδα", "with warmth and care"),
+               ("νιώθοντας τι χρειάζονται οι άλλοι", "sensing what others need")),
+    "Ερμής": (("με καθαρή και γρήγορη σκέψη", "with clear, quick thinking"),
+              ("με ευκολία στα λόγια και στις ιδέες", "with an ease with words and ideas"),
+              ("με ζωηρό και ευέλικτο μυαλό", "with a lively, flexible mind")),
+    "Αφροδίτη": (("με αίσθηση του ωραίου", "with a sense of beauty"),
+                 ("με γούστο και αρμονία", "with taste and harmony"),
+                 ("με ευγένεια και καλαισθησία", "with grace and good taste")),
+    "Άρης": (("με θάρρος και αποφασιστικότητα", "with courage and determination"),
+             ("με ενέργεια και δράση", "with energy and action"),
+             ("με τόλμη να κάνεις το πρώτο βήμα", "with the nerve to take the first step")),
+    "Δίας": (("με ευρύτητα και αισιοδοξία", "with breadth and optimism"),
+             ("με γενναιοδωρία και ανοιχτό μυαλό", "with generosity and an open mind"),
+             ("βλέποντας τη μεγάλη εικόνα", "seeing the bigger picture")),
+    "Κρόνος": (("με σταθερότητα και ποιότητα", "with steadiness and quality"),
+               ("με συνέπεια και αντοχή", "with consistency and stamina"),
+               ("με σοβαρότητα και υπευθυνότητα", "with seriousness and responsibility")),
+    "Ουρανός": (("με πρωτότυπη ματιά", "with an original outlook"),
+                ("με απρόσμενες ιδέες", "with unexpected ideas"),
+                ("με διάθεση να αλλάζεις τα συνηθισμένα", "with a wish to change the usual way of doing things")),
+    "Ποσειδώνας": (("με φαντασία και έμπνευση", "with imagination and inspiration"),
+                   ("με διαίσθηση για ό,τι δεν φαίνεται", "with a feel for what is not visible"),
+                   ("με όραμα και δημιουργικότητα", "with vision and creativity")),
+    "Πλούτωνας": (("με επιμονή και δύναμη", "with persistence and strength"),
+                  ("πηγαίνοντας στην ουσία των πραγμάτων", "getting to the heart of things"),
+                  ("με δύναμη να αλλάζεις όσα δεν λειτουργούν", "with the strength to change what does not work")),
+    "Χείρωνας": (("με κατανόηση για τις δυσκολίες των άλλων", "with understanding for the difficulties of others"),
+                 ("με διάθεση να στέκεσαι δίπλα σε όποιον το χρειάζεται", "ready to stand by anyone who needs it"),
+                 ("με ευαισθησία για όσους δυσκολεύονται", "with sensitivity to those who struggle")),
+    "Κριός": (("με τόλμη και γρήγορη δράση", "with boldness and quick action"),
+              ("με ενθουσιασμό για νέα ξεκινήματα", "with enthusiasm for new beginnings"),
+              ("με αυθορμητισμό και ζωντάνια", "with spontaneity and liveliness")),
+    "Ταύρος": (("με υπομονή και πρακτικότητα", "with patience and practicality"),
+               ("με σταθερά βήματα", "with steady steps"),
+               ("με αίσθηση για ό,τι έχει αξία και διαρκεί", "with a feel for what has value and lasts")),
+    "Δίδυμοι": (("με περιέργεια και ευελιξία", "with curiosity and flexibility"),
+                ("με ευκολία να μαθαίνεις και να μοιράζεσαι", "with an ease for learning and sharing"),
+                ("με ενδιαφέρον για πολλά πράγματα μαζί", "with an interest in many things at once")),
+    "Καρκίνος": (("με φροντίδα και προστατευτικότητα", "with care and protectiveness"),
+                 ("με ζεστασιά σαν σε οικογένεια", "with a family-like warmth"),
+                 ("δημιουργώντας αίσθημα ασφάλειας", "creating a sense of safety")),
+    "Λέων": (("με ζεστασιά και αυτοπεποίθηση", "with warmth and confidence"),
+             ("με γενναιοδωρία και κέφι", "with generosity and good spirits"),
+             ("με δημιουργική λάμψη", "with a creative spark")),
+    "Παρθένος": (("με προσοχή στη λεπτομέρεια", "with attention to detail"),
+                 ("με μέθοδο και τάξη", "with method and order"),
+                 ("με διάθεση να βελτιώνεις ό,τι πιάνεις", "with a wish to improve whatever you touch")),
+    "Ζυγός": (("με συνεργατικό πνεύμα", "with a cooperative spirit"),
+              ("με δίκαιη και ισορροπημένη ματιά", "with a fair and balanced view"),
+              ("ακούγοντας και τις δύο πλευρές", "listening to both sides")),
+    "Σκορπιός": (("με ένταση και βάθος", "with intensity and depth"),
+                 ("με αφοσίωση μέχρι το τέλος", "with commitment to the end"),
+                 ("με ματιά που βλέπει πίσω από τα φαινόμενα", "seeing beyond appearances")),
+    "Τοξότης": (("με ενθουσιασμό και ευρύ ορίζοντα", "with enthusiasm and a broad horizon"),
+                ("με αγάπη για τη μάθηση", "with a love of learning"),
+                ("με διάθεση για νέες εμπειρίες", "with an appetite for new experiences")),
+    "Αιγόκερως": (("με υπευθυνότητα και μακροπρόθεσμο στόχο", "with responsibility and long-term goals"),
+                  ("με σχέδιο και πειθαρχία", "with a plan and discipline"),
+                  ("χτίζοντας βήμα βήμα κάτι που μένει", "building step by step something that lasts")),
+    "Υδροχόος": (("με ανεξάρτητη σκέψη", "with independent thinking"),
+                 ("με ματιά στο μέλλον", "with an eye on the future"),
+                 ("με διάθεση να ενώνεις ανθρώπους γύρω από μια ιδέα", "bringing people together around an idea")),
+    "Ιχθύες": (("με ευαισθησία και διαίσθηση", "with sensitivity and intuition"),
+               ("με συμπόνια και φαντασία", "with compassion and imagination"),
+               ("με καλοσύνη και κατανόηση", "with kindness and understanding")),
+}
+
+
+def colour_phrase(key: str, variant: int, lang: str = "el") -> str:
+    """Η διατύπωση `variant` (0, 1, 2) της απόχρωσης `key` στη γλώσσα `lang` ("" αν δεν υπάρχει)."""
+    options = COLOURS.get(key) or ()
+    if not options:
+        return ""
+    return options[min(variant, len(options) - 1)][0 if lang == "el" else 1]
 
 HEALTH_FIELDS = ("Υγεία και θεραπευτικές υπηρεσίες", "Ψυχολογία και κοινωνική φροντίδα", "Διατροφή και διαιτολογία")
 

@@ -13,6 +13,7 @@ from dataclasses import dataclass
 
 from .docx_builder import build_orientation_audit_docx, build_orientation_client_docx
 from .pipeline import AUDIT_TITLE, audit_docx_filename, client_docx_filename, service_title
+from .talent_map import colour_phrase
 from .talent_engine import EngineResult, run_engine
 from .talent_growth import PHRASES as GROWTH_PHRASES, SEPARATOR
 from .talent_texts import field_text, talent_text
@@ -38,12 +39,12 @@ TXT = {
         "summary": "Συνοπτικά, τα ταλέντα σου",
         "summary_note": "Όλα αυτά είναι δυνατότητες. Το πόσο θα αναπτυχθεί το καθένα εξαρτάται από τις επιλογές και την εξάσκησή σου.",
         "growth_long": {
-            "easy": "Φαίνεται να είναι κάτι που σου βγαίνει αβίαστα.",
-            "mixed": "Έχει μια εύκολη βάση και μπορεί να δυναμώνει ακόμη περισσότερο με την εξάσκηση.",
-            "opportunity": "Μπορεί να ανθίζει όταν βρει την κατάλληλη ευκαιρία, γι' αυτό αξίζει να του δίνεις χώρο.",
-            "practice": ("Μπορεί να χρειαστεί χρόνο και εμπειρία για να αναπτυχθεί· αν δεν σου βγαίνει ακόμη εύκολα, "
-                         "αυτό δεν σημαίνει ότι λείπει το ταλέντο, και με τον καιρό συχνά γίνεται από τα πιο δυνατά σου σημεία."),
-            "open": "Θα φανεί περισσότερο στην πράξη, όταν το δοκιμάσεις σε πραγματικές καταστάσεις.",
+            "easy": "Συχνά το κάνεις χωρίς ιδιαίτερη προσπάθεια, σχεδόν από ένστικτο.",
+            "mixed": "Ξεκινά από μια φυσική ευκολία, και η εξάσκηση μπορεί να το κάνει ακόμη πιο δυνατό.",
+            "opportunity": "Δυναμώνει όταν του δίνονται αφορμές, γι' αυτό αξίζει να αναζητάς περιστάσεις για να το δοκιμάσεις.",
+            "practice": ("Ίσως χρειαστεί λίγος χρόνος μέχρι να αναπτυχθεί· αν δεν σου βγαίνει ακόμη εύκολα, αυτό δεν "
+                         "σημαίνει ότι λείπει το ταλέντο, και με τον καιρό συχνά γίνεται από τα πιο δυνατά σου σημεία."),
+            "open": "Η πραγματική του δύναμη θα φανεί όταν το δοκιμάσεις σε πραγματικές καταστάσεις.",
         },
         "fields": "Επαγγελματικοί τομείς που αξίζει να εξερευνήσεις",
         "fields_note": "Τομείς όπου συναντιούνται δύο ή περισσότερα από τα ταλέντα σου.",
@@ -81,12 +82,12 @@ TXT = {
         "summary": "Your talents at a glance",
         "summary_note": "All of these are possibilities. How far each one develops depends on your choices and practice.",
         "growth_long": {
-            "easy": "It seems to be something that comes easily to you.",
-            "mixed": "It has an easy base and may grow even stronger with practice.",
-            "opportunity": "It may blossom when it finds the right opportunity, so it is worth giving it room.",
-            "practice": ("It may take time and experience to develop; if it does not come easily yet, that does not "
-                         "mean the talent is missing, and over time it often becomes one of your strongest points."),
-            "open": "It will show more in practice, when you try it in real situations.",
+            "easy": "You often do it without much effort, almost by instinct.",
+            "mixed": "It starts from a natural ease, and practice can make it even stronger.",
+            "opportunity": "It grows when it is given a chance, so it is worth looking for situations to try it out.",
+            "practice": ("It may take some time to develop; if it does not come easily yet, that does not mean the "
+                         "talent is missing, and over time it often becomes one of your strongest points."),
+            "open": "Its real strength will show when you try it in real situations.",
         },
         "fields": "Career fields worth exploring",
         "fields_note": "Fields where two or more of your talents meet.",
@@ -147,7 +148,8 @@ def client_markdown(result: EngineResult, lang: str = "el", ai: dict | None = No
         for t in talents:
             text = talent_text(t.theme, lang)
             number += 1   # η ΕΦΑΡΜΟΓΗ αριθμεί: όσα βρήκε η μηχανή, τόσα και στην αναφορά
-            out.append(f"**{number}. {text['title']}**")
+            colour = colour_phrase(t.colour, t.colour_variant, lang)   # v22.15: δεύτερος τίτλος (από τη μηχανή)
+            out.append(f"**{number}. {text['title']}**" + (f" — *{colour}*" if colour else ""))
             # Η περιγραφή της βιβλιοθήκης μένει ΣΤΑΘΕΡΗ· το AI (εκδοχή Β) προσθέτει μόνο σύνδεση.
             link = ai.get("talents", {}).get(t.theme, "")
             out.append(text["text"] + " " + tx["growth_long"][t.growth] + (f" {link}" if link else ""))
@@ -186,6 +188,8 @@ def audit_markdown(chart, result: EngineResult) -> str:
            "", "## Ταλέντα"]
     for t in result.talents:
         out.append(f"### {t.title_el} ({t.rank}, βαθμός {t.score}, βάση: {t.basis}, ανάπτυξη: {t.growth})")
+        if t.colour:
+            out.append(f"- Απόχρωση (δεύτερος τίτλος): «{colour_phrase(t.colour, t.colour_variant)}» από {t.colour} ({t.colour_from})")
         for i in t.indicators:
             out.append(f"- {i.kind}: {i.label}" + (f" | {i.weight}" if i.weight else ""))
         for i in t.supporting:

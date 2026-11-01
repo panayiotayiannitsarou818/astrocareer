@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 
 from .astrology import planet_concentrations
 from .talent_map import (
-    ANGLES, HEALTH_RULES, HOUSE_THEMES, NODES, PAIR_THEME, PERSONAL, PLANET_THEMES, SIGN_THEMES, SLOW, THEME_FIELDS, THEMES,
+    ANGLES, COLOURS, HEALTH_RULES, HOUSE_THEMES, NODES, PAIR_THEME, PERSONAL, PLANET_THEMES, SIGN_THEMES, SLOW, THEME_FIELDS, THEMES,
 )
 
 STRONG, NORMAL, WIDE, VERY_WIDE = "Στενή/ισχυρή", "Κανονική", "Πλατιά αλλά έγκυρη", "Πολύ πλατιά/δευτερεύουσα"
@@ -50,6 +50,7 @@ VERY_TIGHT_ORB, VERY_TIGHT_BONUS = 1.0, 1.5
 #  * Άλλες κατευθύνσεις: οι FIELDS_PER_THEME καλύτεροι τομείς κάθε ταλέντου που δεν είναι ήδη κύριοι.
 FIELD_POSITION_WEIGHTS = (1.0, 0.8, 0.6, 0.4)
 MAX_MAIN_FIELDS = 6
+MAX_BRIEF_FIELDS = 6   # v22.14: «Άλλες κατευθύνσεις» -- οι 6 με τον υψηλότερο βαθμό
 FIELDS_PER_THEME = 1
 PERSONAL_OR_ANGLE = PERSONAL + ANGLES
 _PAIR = {frozenset(k): v for k, v in PAIR_THEME.items()}
@@ -90,6 +91,9 @@ class Talent:
     rank: str = ""                       # κυρίαρχο / βασικό / αναδυόμενο
     score: float = 0.0
     fields: list[str] = field(default_factory=list)
+    colour: str = ""                     # v22.15: κλειδί του COLOURS (πλανήτης ή ζώδιο) -- δεύτερος τίτλος
+    colour_from: str = ""                # ο δείκτης από τον οποίο βγήκε (για το δελτίο)
+    colour_variant: int = 0              # v22.16: ποια από τις 3 διατυπώσεις (0, 1, 2)
 
     @property
     def natural(self) -> bool:
@@ -326,6 +330,51 @@ def _rank(score: float) -> str:
     return "κυρίαρχο" if score >= DOMINANT_MIN else "βασικό" if score >= BASIC_MIN else "αναδυόμενο"
 
 
+def _colour_candidates(chart, t: Talent):
+    """v22.15 -- υποψήφιες αποχρώσεις ενός ταλέντου: (προτεραιότητα, βαθμός δείκτη, κλειδί, δείκτης).
+    Μετρούν μόνο οι δείκτες που στηρίζουν το ταλέντο (θέσεις και όψεις, όχι κυβερνήτες). Ένα σημείο
+    «χρωματίζει» το ταλέντο όταν ΔΕΝ είναι η πηγή του: προτεραιότητα 2 αν δεν έχει καθόλου το θέμα,
+    1 αν το έχει αλλά όχι ως κύρια λειτουργία. Γωνίες και Δεσμοί δεν δίνουν απόχρωση· το ζώδιο αργού
+    πλανήτη επίσης όχι (είναι κοινό σε μια γενιά)."""
+    signs = {p.name: p.sign for p in chart.points}
+    out = []
+    for i in t.indicators:
+        keys = []
+        if i.kind == "Όψη":
+            keys = [(p, PLANET_THEMES.get(p)) for p in i.points if p in PLANET_THEMES]
+        elif i.kind == "Θέση":
+            p = i.points[0]
+            keys = [(p, PLANET_THEMES.get(p))]
+            if p not in SLOW and signs.get(p) in SIGN_THEMES:
+                keys.append((signs[p], SIGN_THEMES[signs[p]]))
+        for key, themes in keys:
+            if key not in COLOURS or not themes:
+                continue
+            prio = 2 if t.theme not in themes else (1 if themes[0] != t.theme else 0)
+            if prio:
+                out.append((prio, i.score, key, i.label))
+    out.sort(key=lambda c: (-c[0], -c[1]))
+    return out
+
+
+def _assign_colours(chart, talents: list[Talent]) -> None:
+    """Πρώτα δίνονται οι πιο καθαρές αποχρώσεις (σημείο χωρίς το θέμα, από ισχυρότερο δείκτη)· σε ισοπαλία
+    προηγείται το ισχυρότερο ταλέντο. Πρώτο πέρασμα: κάθε σημείο σε ένα ταλέντο. Δεύτερο πέρασμα (v22.16):
+    τα ταλέντα που έμειναν χωρίς παίρνουν σημείο που χρησιμοποιήθηκε ήδη, με ΑΛΛΗ διατύπωση (έως 3)·
+    έτσι η ίδια φράση δεν επαναλαμβάνεται ποτέ."""
+    pairs = sorted(((-prio, -score, n, key, label, t)
+                    for n, t in enumerate(talents) for prio, score, key, label in _colour_candidates(chart, t)),
+                   key=lambda x: x[:3])
+    uses: dict[str, int] = {}
+    for allow_reuse in (False, True):
+        for _, _, _, key, label, t in pairs:
+            n = uses.get(key, 0)
+            if t.colour or n >= len(COLOURS[key]) or (n and not allow_reuse):
+                continue
+            t.colour, t.colour_from, t.colour_variant = key, label, n
+            uses[key] = n + 1
+
+
 def run_engine(chart) -> EngineResult:
     positions, aspects = _position_indicators(chart), _aspect_indicators(chart)
     rulers = _ruler_indicators(chart)
@@ -344,6 +393,7 @@ def run_engine(chart) -> EngineResult:
     order = {"κυρίαρχο": 0, "βασικό": 1, "αναδυόμενο": 2}
     talents.sort(key=lambda t: (order[t.rank], -t.score, min((i.orb for i in t.indicators if i.kind == "Όψη"),
                                                                    default=99)))
+    _assign_colours(chart, talents)
     # ---- τομείς (Κανόνας 12)
     support: dict[str, dict[str, float]] = {}            # τομέας -> {ταλέντο: συνεισφορά}
     for t in talents:
@@ -373,8 +423,10 @@ def run_engine(chart) -> EngineResult:
         ranked = sorted(THEME_FIELDS.get(t.theme, ()), key=lambda f: -support[f][t.theme])
         for f in [f for f in ranked if f not in main_names][:FIELDS_PER_THEME]:
             brief.setdefault(f, []).append(t.theme)
-    for f, ts in brief.items():
-        fields.append(FieldChoice(f, ts, "ΣΥΝΤΟΜΗ ΑΝΑΦΟΡΑ", score=round(sum(support[f][th] for th in ts), 2)))
+    brief_choices = [FieldChoice(f, ts, "ΣΥΝΤΟΜΗ ΑΝΑΦΟΡΑ", score=round(sum(support[f][th] for th in ts), 2))
+                     for f, ts in brief.items()]
+    brief_choices.sort(key=lambda fc: (-fc.score, fc.name))
+    fields += brief_choices[:MAX_BRIEF_FIELDS]
     # ---- τομείς υγείας (Κανόνας 15): μόνο με δύο ειδικούς δείκτες + σχετικό εγκεκριμένο ταλέντο
     approved = [t.theme for t in talents]
     for name, rule in HEALTH_RULES.items():
