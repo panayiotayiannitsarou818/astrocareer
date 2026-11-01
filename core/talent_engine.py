@@ -6,7 +6,7 @@ core/talent_engine.py -- AstroCheck Career (v22, ΠΡΟΧΕΙΡΟ -- υβριδ�
 πάντα το ίδιο αποτέλεσμα, και κανένας δείκτης δεν «ξεχνιέται».
 
 Ροή:
-  1. Δείκτες Θέσης  (Κανόνες 4–6): πλανήτης σε ζώδιο/βασικό Οίκο που ταιριάζει με
+  1. Δείκτες Θέσης  (Κανόνες 4–6) + Κυβερνήτες βασικών Οίκων (Κανόνας 6, v22.10): πλανήτης σε ζώδιο/βασικό Οίκο που ταιριάζει με
      λειτουργία του πλανήτη· συγκεντρώσεις (3+ πλανήτες) -> κύριο θέμα ζωδίου/Οίκου.
   2. Δείκτες Όψης   (Κανόνας 7): κάθε όψη με προσωπικό σημείο -> θέμα του ζεύγους.
   3. Τεκμηρίωση     (Κανόνας 10): δύο διακριτοί δείκτες (ο ένας Θέση ή Στενή/Κανονική
@@ -29,6 +29,14 @@ from .talent_map import (
 STRONG, NORMAL, WIDE, VERY_WIDE = "Στενή/ισχυρή", "Κανονική", "Πλατιά αλλά έγκυρη", "Πολύ πλατιά/δευτερεύουσα"
 ASPECT_SCORE = {STRONG: 3.0, NORMAL: 2.0, WIDE: 1.0, VERY_WIDE: 0.5}
 POSITION_SCORE = 1.5
+RULER_SCORE = 1.0
+# Θέση κυβερνήτη (v22.12): ΜΟΝΟ υποστηρικτική -- ενισχύει/κατατάσσει ταλέντα που ήδη τεκμηριώνονται,
+# δεν δημιουργεί νέο ταλέντο. Μετρά 1/4 όπως κάθε υποστηρικτικός δείκτης: 0,25 x 2,0 = 0,5 ο καθένας.
+RULER_PLACEMENT_SCORE = 2.0
+# Κανόνας 6 (v22.10): Οίκοι όπου ο κυβερνήτης φέρνει την ΚΥΡΙΑ λειτουργία του πλανήτη του (π.χ. ο
+# κυβερνήτης του Μεσουρανήματος δείχνει τον «τρόπο προσφοράς» στη δουλειά), όχι μόνο τα θέματα του Οίκου.
+RULER_PRIMARY_HOUSES = (1, 10)
+RULER_PLACEMENT_HOUSES = (1, 2, 6, 10)   # Οίκοι σταδιοδρομίας: μετρά και πού βρίσκεται ο κυβερνήτης τους
 CONCENTRATION_BONUS = 0.5
 DOMINANT_MIN, BASIC_MIN = 6.0, 3.5
 VERY_TIGHT_ORB, VERY_TIGHT_BONUS = 1.0, 1.5
@@ -60,6 +68,8 @@ class Indicator:
 
     @property
     def score(self) -> float:
+        if self.kind == "Κυβερνήτης":
+            return RULER_PLACEMENT_SCORE if self.key.startswith("rulpos:") else RULER_SCORE
         if self.kind == "Θέση":
             return POSITION_SCORE + (CONCENTRATION_BONUS if self.concentration else 0.0)
         base = ASPECT_SCORE.get(self.weight, 0.0)
@@ -114,6 +124,7 @@ class FieldChoice:
     decision: str                        # «ΕΠΙΛΕΓΕΤΑΙ» / «ΣΥΝΤΟΜΗ ΑΝΑΦΟΡΑ»
     guarantee: bool = False
     score: float = 0.0
+    coverage: bool = False   # προστέθηκε για κάλυψη ταλέντου (εκτός του ορίου MAX_MAIN_FIELDS)
     health_basis: list[str] = field(default_factory=list)  # Κανόνας 15: «Δείκτης 1:», «Δείκτης 2:»
 
 
@@ -127,9 +138,19 @@ class EngineResult:
 def _position_indicators(chart) -> dict[str, list[Indicator]]:
     by_theme: dict[str, list[Indicator]] = {}
     in_concentration: dict[tuple[str, str], str] = {}  # (πλανήτης, θέμα) -> ετικέτα
+    # v22.11 -- Κανόνας 5: σε συγκέντρωση σε ΖΩΔΙΟ, ένας αργός πλανήτης μετρά μόνο αν συνδέεται με
+    # προσωπικό πλανήτη ή γωνία (Στενή/Κανονική όψη)· και η συγκέντρωση χρειάζεται τουλάχιστον έναν
+    # προσωπικό πλανήτη. Αλλιώς είναι «γενιά» (π.χ. Κρόνος + Πλούτωνας σε Ζυγό, 1981-83), όχι προσωπικό ταλέντο.
+    # Οι συγκεντρώσεις σε ΟΙΚΟ μένουν ως έχουν: οι Οίκοι εξαρτώνται από την ώρα γέννησης.
+    linked = {p for a in chart.aspects if a.weight in (STRONG, NORMAL)
+              and not ({a.first, a.second} & set(NODES))
+              for p, q in ((a.first, a.second), (a.second, a.first)) if q in PERSONAL_OR_ANGLE}
     for label, names in planet_concentrations(chart.points):
         kind, value = label.split(" ", 1)
         if kind == "Ζώδιο":
+            names = [n for n in names if n not in SLOW or n in linked]
+            if len(names) < 3 or not set(names) & set(PERSONAL):
+                continue
             theme = SIGN_THEMES[value][0]
         else:
             themes = HOUSE_THEMES.get(int(value))
@@ -157,6 +178,63 @@ def _position_indicators(chart) -> dict[str, list[Indicator]]:
     return by_theme
 
 
+def _ruler_indicators(chart) -> dict[str, list[Indicator]]:
+    """Κανόνας 6: ο κυβερνήτης κάθε βασικού Οίκου (ζώδιο της ακμής· κύριος και, όπου υπάρχει,
+    παραδοσιακός συγκυβερνήτης). Δίνει δείκτη για τα θέματα του πλανήτη που ταιριάζουν με τον Οίκο,
+    και για τους Οίκους 1 και 10 και για την κύρια λειτουργία του πλανήτη. Δείκτης ΥΠΟΣΤΗΡΙΚΤΙΚΟΥ
+    τύπου: μετρά ως διακριτός, αλλά δεν αρκεί χωρίς έναν κύριο δείκτη (θέση ή Στενή/Κανονική όψη)."""
+    from .astrology import RULERS
+    cusp_sign = {}
+    for c in getattr(chart, "cusps", []) or []:
+        try:
+            cusp_sign[int(c.name.split("ο")[0])] = c.sign
+        except ValueError:
+            continue
+    present = {p.name for p in chart.points}
+    by_theme: dict[str, list[Indicator]] = {}
+    seen = set()
+    for house, house_themes in HOUSE_THEMES.items():
+        sign = cusp_sign.get(house)
+        if not sign:
+            continue
+        for ruler in (r for r in RULERS.get(sign, ()) if r):
+            if ruler not in PLANET_THEMES or ruler not in present:
+                continue
+            themes = {t for t in PLANET_THEMES[ruler] if t in house_themes}
+            if house in RULER_PRIMARY_HOUSES:
+                themes.add(PLANET_THEMES[ruler][0])
+            for t in themes:
+                if (ruler, t) in seen:
+                    continue  # ο ίδιος κυβερνήτης για το ίδιο θέμα μετρά μία φορά
+                seen.add((ruler, t))
+                label = (f"{ruler}, κυβερνήτης του Οίκου {house} ({sign})" if house != 10
+                         else f"{ruler}, κυβερνήτης του Μεσουρανήματος / Οίκου 10 ({sign})")
+                by_theme.setdefault(t, []).append(Indicator("Κυβερνήτης", f"rul:{ruler}", (ruler,), label))
+    # v22.12 -- Κανόνας 6: «πού βρίσκεται» ο κυβερνήτης. Ο κυβερνήτης ενός Οίκου ΣΤΑΔΙΟΔΡΟΜΙΑΣ (1, 2, 6, 10)
+    # «μεταφέρει» το θέμα του εκεί όπου βρίσκεται: στα θέματα του Οίκου του (αν είναι βασικός) και στο κύριο
+    # θέμα του ζωδίου του. Για αργό κυβερνήτη μετρά μόνο ο Οίκος (το ζώδιο του είναι κοινό σε μια γενιά).
+    pts = {p.name: p for p in chart.points}
+    for house in RULER_PLACEMENT_HOUSES:
+        sign = cusp_sign.get(house)
+        if not sign:
+            continue
+        for ruler in (r for r in RULERS.get(sign, ()) if r):
+            p = pts.get(ruler)
+            if p is None or ruler not in PLANET_THEMES:
+                continue
+            themes = set(HOUSE_THEMES.get(p.house, ()))
+            if ruler not in SLOW and p.sign in SIGN_THEMES:
+                themes.add(SIGN_THEMES[p.sign][0])
+            where = "Μεσουρανήματος / Οίκου 10" if house == 10 else f"Οίκου {house}"
+            for t in themes:
+                if (ruler, t) in seen:
+                    continue
+                seen.add((ruler, t))
+                label = f"{ruler}, κυβερνήτης του {where} ({sign}), βρίσκεται στον Οίκο {p.house} σε {p.sign}"
+                by_theme.setdefault(t, []).append(Indicator("Κυβερνήτης", f"rulpos:{ruler}", (ruler,), label))
+    return by_theme
+
+
 def _aspect_indicators(chart) -> dict[str, list[Indicator]]:
     by_theme: dict[str, list[Indicator]] = {}
     seen = set()
@@ -175,18 +253,29 @@ def _aspect_indicators(chart) -> dict[str, list[Indicator]]:
 
 
 def _qualify(indicators: list[Indicator]) -> tuple[list[Indicator], list[Indicator], str | None]:
-    aspects = [i for i in indicators if i.kind == "Όψη"]
-    in_aspects = {p for i in aspects if i.weight != VERY_WIDE for p in i.points}
+    """Κανόνας 10 της εντολής v13 (v22.9: ακριβής εφαρμογή, μετά από σύγκριση με αναφορά AI).
+    Διακριτοί δείκτες: «μία θέση πλανήτη και μία όψη του ίδιου πλανήτη προς διαφορετικό πλανήτη
+    (δύο)». ΔΕΝ μετρούν ως νέοι: «δύο πλανήτες που έχουν ήδη μετρηθεί μέσω της μεταξύ τους όψης,
+    αν παρουσιαστούν ξανά ως ξεχωριστές θέσεις» -- δηλαδή όταν υπάρχουν οι θέσεις ΚΑΙ των δύο.
+    Εξαίρεση πλατιών: δύο «Πλατιά αλλά έγκυρη» με ΚΟΙΝΟ σημείο (οποιοδήποτε), η καθεμία με
+    προσωπικό πλανήτη ή γωνία (όπως το astrology.wide_aspect_clusters)."""
+    aspects = [i for i in indicators if i.kind == "Όψη" and i.weight != VERY_WIDE]
+    positions = {i.points[0] for i in indicators if i.kind == "Θέση"}
+    repeated = {p for a in aspects if set(a.points) <= positions for p in a.points}
     counted, supporting = [], []
     for i in indicators:
         if i.weight == VERY_WIDE:
             supporting.append(i)                       # μόνο απόχρωση
-        elif i.kind == "Θέση" and i.points[0] in in_aspects:
-            supporting.append(i)                       # ήδη μετρημένος μέσω όψης του
+        elif i.kind == "Θέση" and i.points[0] in repeated:
+            supporting.append(i)                       # και οι δύο πλανήτες ήδη μετρημένοι μέσω της όψης τους
+        elif i.kind == "Κυβερνήτης" and i.key.startswith("rulpos:"):
+            supporting.append(i)                       # πού βρίσκεται ο κυβερνήτης: μόνο ενίσχυση (v22.12)
+        elif i.kind == "Κυβερνήτης" and i.points[0] in positions:
+            supporting.append(i)                       # ο ίδιος πλανήτης μετρά ήδη μέσω της θέσης του
         else:
             counted.append(i)
-    primary = [i for i in counted if i.kind == "Θέση" or i.weight in (STRONG, NORMAL)]
-    wide = [i for i in counted if i.weight == WIDE]
+    primary = [i for i in counted if i.kind == "Θέση" or i.weight in (STRONG, NORMAL)]   # ΟΧΙ ο κυβερνήτης
+    wide = [i for i in counted if i.weight == WIDE and set(i.points) & set(PERSONAL_OR_ANGLE)]
     strong_single = [i for i in counted if i.weight == STRONG and set(i.points) & set(PERSONAL_OR_ANGLE)]
     if len(counted) >= 2 and primary:
         return counted, supporting, "δύο δείκτες"
@@ -194,7 +283,7 @@ def _qualify(indicators: list[Indicator]) -> tuple[list[Indicator], list[Indicat
         return counted, supporting, "μοναδικός ισχυρός δείκτης"
     for x in wide:
         for y in wide:
-            if x is not y and set(x.points) & set(y.points) & set(PERSONAL_OR_ANGLE):
+            if x is not y and set(x.points) & set(y.points):
                 return counted, supporting, "δύο πλατιές με κοινό σημείο"
     return counted, supporting, None
 
@@ -239,9 +328,10 @@ def _rank(score: float) -> str:
 
 def run_engine(chart) -> EngineResult:
     positions, aspects = _position_indicators(chart), _aspect_indicators(chart)
+    rulers = _ruler_indicators(chart)
     talents, rejected = [], {}
     for theme in THEMES:
-        indicators = aspects.get(theme, []) + positions.get(theme, [])
+        indicators = aspects.get(theme, []) + positions.get(theme, []) + rulers.get(theme, [])
         if not indicators:
             continue
         counted, supporting, basis = _qualify(indicators)
@@ -273,8 +363,9 @@ def run_engine(chart) -> EngineResult:
                 existing.talents.append(t.theme)
                 existing.score = round(existing.score + support[best][t.theme], 2)
                 existing.guarantee = len(existing.talents) < 2
+                existing.coverage = True
             else:
-                fields.append(FieldChoice(best, [t.theme], "ΕΠΙΛΕΓΕΤΑΙ", guarantee=True,
+                fields.append(FieldChoice(best, [t.theme], "ΕΠΙΛΕΓΕΤΑΙ", guarantee=True, coverage=True,
                                           score=round(support[best][t.theme], 2)))
             main_names.add(best)
     brief: dict[str, list[str]] = {}

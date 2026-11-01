@@ -172,7 +172,9 @@ def client_markdown(result: EngineResult, lang: str = "el", ai: dict | None = No
             ft = field_text(f.name, lang)
             out.append(f"- **{ft['name']}**: {ft['desc']}")
         out.append("")
-    out += [f"## {tx['next']}", ""] + [f"- {line}" for line in tx["next_lines"]] + ["", f"*{tx['closing']}*", "", f"**{tx['dynasai']}**"]
+    # v22.8: αφαιρέθηκαν «Επόμενα βήματα» και η πρόταση «Δεν αντικαθιστά…» (ζήτημα της ιδιοκτήτριας)·
+    # η αναφορά κλείνει με τη γραμμή «Δύνασαι». Η επισήμανση «συμβολικό εργαλείο…» μένει στη σελίδα.
+    out += [f"**{tx['dynasai']}**"]
     return "\n".join(out)
 
 
