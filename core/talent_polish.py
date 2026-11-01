@@ -31,7 +31,7 @@ import re
 import unicodedata
 from dataclasses import dataclass, field
 
-from .talent_map import colour_phrase
+from .talent_map import colour_phrases
 from .talent_engine import EngineResult
 from .talent_texts import field_text, load_texts, talent_text
 from .validator import _absolute_claims, _past_experience_claims, _simple_presentation_technical_terms
@@ -127,7 +127,7 @@ def build_polish_prompt(engine_text: str, result: EngineResult, lang: str, name:
     data = {
         "talents": [{"code": t.theme, "level": t.rank, "title": talent_text(t.theme, lang)["title"],
                      "description": talent_text(t.theme, lang)["text"],
-                     "nuance": colour_phrase(t.colour, t.colour_variant, lang)}
+                     "nuance": "; ".join(colour_phrases(t, lang))}
                     for t in result.talents],
         "fields": [{"field": f.name, "name": field_text(f.name, lang)["name"],
                     "talents": [talent_text(th, lang)["title"] for th in f.talents],
@@ -148,7 +148,7 @@ def build_polish_prompt(engine_text: str, result: EngineResult, lang: str, name:
   μετά την περιγραφή (description): να συνεχίζει φυσικά τη ροή, χωρίς να επαναλαμβάνει λέξεις ή ιδέες της.
   Κάθε πρόταση να ξεκινά διαφορετικά (όχι συνέχεια «Μαζί με…», «Ίσως…», «Μπορεί να…»). Η βασική περιγραφή (description) μένει όπως είναι και μπαίνει πριν από τις προτάσεις σου·
   μην την επαναλάβεις. Μη γράψεις τίτλο, αρίθμηση ή τρόπους καλλιέργειας -- τα βάζει η εφαρμογή. Το "nuance"
-  εμφανίζεται δίπλα στον τίτλο ως δεύτερος τίτλος· μπορείς να το αξιοποιήσεις, αλλά μην το επαναλάβεις αυτούσιο.
+  εμφανίζεται κάτω από τον τίτλο (πώς φαίνεται το ταλέντο)· μπορείς να το αξιοποιήσεις, αλλά μην το επαναλάβεις αυτούσιο.
 - "fields": για ΚΑΘΕ έναν από τους {n_f} τομείς, ΜΙΑ πρόταση: πώς συναντιούνται εκεί τα ταλέντα του. Όταν ο
   τομέας έχει "only_this_talent": true, μίλα ΜΟΝΟ για εκείνο το ένα ταλέντο -- μην αναφέρεις κανένα άλλο.
 
@@ -174,7 +174,7 @@ def build_polish_prompt(engine_text: str, result: EngineResult, lang: str, name:
   the flow naturally, without repeating words or ideas from it. Start each sentence differently (not repeatedly
   "Together with…", "Perhaps…", "You may…"). The
   basic description stays as it is and comes before your sentences; do not repeat it. Do not write a title,
-  numbering or ways to develop it -- the app adds those. The "nuance" is shown next to the title as a subtitle;
+  numbering or ways to develop it -- the app adds those. The "nuance" is shown under the title (how the talent shows);
   you may build on it, but do not repeat it word for word.
 - "fields": for EACH of the {n_f} fields, ONE sentence: how its talents meet there. When a field has
   "only_this_talent": true, speak ONLY about that one talent -- do not mention any other.

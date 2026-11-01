@@ -186,26 +186,40 @@ def test_ruler_placement_only_supports_v22_12():
     assert "ENTRE" in r.candidates_rejected
 
 
-def test_talent_colour_subtitle_v22_15():
-    """Δεύτερος τίτλος (απόχρωση): από το «άλλο» σημείο ενός δείκτη, ποτέ από την ίδια την πηγή του
-    ταλέντου· κάθε απόχρωση μία φορά ανά αναφορά. 11/02/1982: Ηγεσία από Άρη σε Ζυγό -> «με συνεργατικό πνεύμα»."""
-    from core.talent_map import COLOURS, PLANET_THEMES, SIGN_THEMES
+def test_talent_colours_v22_21():
+    """Αποχρώσεις («πώς φαίνεται σε σένα»): από το «άλλο» σημείο ενός δείκτη, ποτέ από την ίδια την πηγή·
+    έως 4 ανά ταλέντο από διαφορετικά σημεία· καμία φράση δύο φορές στην αναφορά."""
+    from core.talent_map import COLOUR_SPECIFIC, COLOURS, PLANET_THEMES, SIGN_THEMES, colour_phrases
+    from core.talent_engine import MAX_COLOURS
     assert set(PLANET_THEMES) | set(SIGN_THEMES) <= set(COLOURS)
     assert all(len(v) == 3 for v in COLOURS.values())
+    texts = [v[0] for v in COLOUR_SPECIFIC.values()]
+    assert len(texts) == len(set(texts)) >= 80
     by = {t.theme: t for t in run_engine(_pafos()).talents}
-    assert by["LEAD"].colour == "Ζυγός" and by["BUILD"].colour == "Αφροδίτη" and by["CARE"].colour == "Ποσειδώνας"
+    assert colour_phrases(by["LEAD"])[0] == "με συνεργατικό πνεύμα"
+    assert colour_phrases(by["DESIGN"])[0] == "με βάθος, πέρα από την επιφάνεια"
+    assert set(colour_phrases(by["CARE"])) == {"με πρακτική βοήθεια και φροντίδα στη λεπτομέρεια",
+                                                "με φαντασία για το τι χρειάζεται ο άλλος"}
+    assert all(t.colours for t in by.values())
     got = n = 0
-    for c in _charts(60, 17):
+    for c in _charts(150, 17):
         talents = run_engine(c).talents
-        keys = [(t.colour, t.colour_variant) for t in talents if t.colour]   # v22.16: ποτέ ίδια φράση
-        assert len(keys) == len(set(keys))
+        for lang in ("el", "en"):
+            shown = [p for t in talents for p in colour_phrases(t, lang)]
+            assert len(shown) == len(set(shown))
         for t in talents:
             n += 1
-            if t.colour:
-                got += 1
-                own = PLANET_THEMES.get(t.colour) or SIGN_THEMES[t.colour]
-                assert own[0] != t.theme and t.colour_from
+            got += bool(t.colours)
+            assert len(t.colours) <= MAX_COLOURS and len({k for k, _, _ in t.colours}) == len(t.colours)
+            for key, _, src in t.colours:
+                own = PLANET_THEMES.get(key) or SIGN_THEMES[key]
+                assert own[0] != t.theme and src
     assert got / n > 0.75
-    by = {t.theme: t for t in run_engine(_pafos()).talents}     # ο Ήλιος χρωματίζει δύο ταλέντα, με άλλη φράση
-    assert (by["ORG"].colour, by["ORG"].colour_variant) == ("Ήλιος", 0)
-    assert (by["INNOV"].colour, by["INNOV"].colour_variant) == ("Ήλιος", 1)
+
+
+def test_sun_supports_its_house_theme_v22_20():
+    """Ο Ήλιος «λάμπει» στον Οίκο του: στηρίζει το κύριο θέμα του βασικού Οίκου όπου βρίσκεται.
+    11/02/1982: Ήλιος στον Οίκο 3 -> η «Επικοινωνία» από αναδυόμενο γίνεται βασικό."""
+    comm = next(t for t in run_engine(_pafos()).talents if t.theme == "COMM")
+    assert comm.rank == "βασικό"
+    assert any(i.kind == "Θέση" and i.points == ("Ήλιος",) for i in comm.indicators)

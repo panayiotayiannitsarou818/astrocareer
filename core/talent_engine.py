@@ -91,9 +91,20 @@ class Talent:
     rank: str = ""                       # κυρίαρχο / βασικό / αναδυόμενο
     score: float = 0.0
     fields: list[str] = field(default_factory=list)
-    colour: str = ""                     # v22.15: κλειδί του COLOURS (πλανήτης ή ζώδιο) -- δεύτερος τίτλος
-    colour_from: str = ""                # ο δείκτης από τον οποίο βγήκε (για το δελτίο)
-    colour_variant: int = 0              # v22.16: ποια από τις 3 διατυπώσεις (0, 1, 2)
+    # v22.15-21: αποχρώσεις («πώς φαίνεται σε σένα»): [(κλειδί COLOURS, διατύπωση 0-2, δείκτης)], έως 4
+    colours: list = field(default_factory=list)
+
+    @property
+    def colour(self) -> str:
+        return self.colours[0][0] if self.colours else ""
+
+    @property
+    def colour_variant(self) -> int:
+        return self.colours[0][1] if self.colours else 0
+
+    @property
+    def colour_from(self) -> str:
+        return self.colours[0][2] if self.colours else ""
 
     @property
     def natural(self) -> bool:
@@ -172,6 +183,9 @@ def _position_indicators(chart) -> dict[str, list[Indicator]]:
         if p.name == "Ήλιος":
             # Ο Ήλιος = δημιουργική ταυτότητα (Κανόνας 4): στηρίζει πάντα το κύριο θέμα του ζωδίου του.
             themes.add(SIGN_THEMES[p.sign][0])
+            # v22.20: ...και το κύριο θέμα του βασικού Οίκου όπου βρίσκεται («πού λάμπει»).
+            if house_themes:
+                themes.add(house_themes[0])
         themes |= {t for (n, t) in in_concentration if n == p.name}
         for t in themes:
             conc = (p.name, t) in in_concentration
@@ -342,6 +356,14 @@ def _colour_candidates(chart, t: Talent):
         keys = []
         if i.kind == "Όψη":
             keys = [(p, PLANET_THEMES.get(p)) for p in i.points if p in PLANET_THEMES]
+            # v22.21: και το ΖΩΔΙΟ ενός προσωπικού πλανήτη της όψης (π.χ. Σελήνη σε Παρθένο στη Σελήνη–
+            # Ποσειδώνας) -- με μισό βάρος, ώστε να προηγούνται οι πλανήτες της όψης.
+            for p in i.points:   # μόνο ο πλανήτης-ΠΗΓΗ (έχει το θέμα): το ζώδιό του δείχνει «πώς»
+                if p in PERSONAL and t.theme in PLANET_THEMES.get(p, ()) and signs.get(p) in SIGN_THEMES:
+                    themes = SIGN_THEMES[signs[p]]
+                    prio = 2 if t.theme not in themes else (1 if themes[0] != t.theme else 0)
+                    if prio and signs[p] in COLOURS:
+                        out.append((prio, i.score * 0.5, signs[p], f"{p} σε {signs[p]} ({i.label})"))
         elif i.kind == "Θέση":
             p = i.points[0]
             keys = [(p, PLANET_THEMES.get(p))]
@@ -357,22 +379,41 @@ def _colour_candidates(chart, t: Talent):
     return out
 
 
+MAX_COLOURS = 4
+
+
 def _assign_colours(chart, talents: list[Talent]) -> None:
-    """Πρώτα δίνονται οι πιο καθαρές αποχρώσεις (σημείο χωρίς το θέμα, από ισχυρότερο δείκτη)· σε ισοπαλία
-    προηγείται το ισχυρότερο ταλέντο. Πρώτο πέρασμα: κάθε σημείο σε ένα ταλέντο. Δεύτερο πέρασμα (v22.16):
-    τα ταλέντα που έμειναν χωρίς παίρνουν σημείο που χρησιμοποιήθηκε ήδη, με ΑΛΛΗ διατύπωση (έως 3)·
-    έτσι η ίδια φράση δεν επαναλαμβάνεται ποτέ."""
+    """Αποχρώσεις («πώς φαίνεται σε σένα»). Η ίδια φράση δεν επαναλαμβάνεται ποτέ στην αναφορά: όταν το ίδιο
+    σημείο χρωματίζει δύο ταλέντα, το δεύτερο παίρνει ΑΛΛΗ διατύπωση (έως 3).
+      1. Πρώτη απόχρωση για ΚΑΘΕ ταλέντο: πρώτα οι πιο καθαρές (σημείο χωρίς το θέμα, από ισχυρότερο δείκτη)·
+         κάθε σημείο σε ένα ταλέντο· όσα μείνουν χωρίς παίρνουν σημείο ήδη χρησιμοποιημένο, με άλλη διατύπωση.
+      2. v22.21: ΟΛΕΣ οι υπόλοιπες αληθινές αποχρώσεις κάθε ταλέντου, από άλλα σημεία, έως MAX_COLOURS."""
+    cands = {t.theme: _colour_candidates(chart, t) for t in talents}
     pairs = sorted(((-prio, -score, n, key, label, t)
-                    for n, t in enumerate(talents) for prio, score, key, label in _colour_candidates(chart, t)),
+                    for n, t in enumerate(talents) for prio, score, key, label in cands[t.theme]),
                    key=lambda x: x[:3])
     uses: dict[str, int] = {}
+    for t in talents:
+        t.colours = []
     for allow_reuse in (False, True):
         for _, _, _, key, label, t in pairs:
             n = uses.get(key, 0)
-            if t.colour or n >= len(COLOURS[key]) or (n and not allow_reuse):
+            if t.colours or n >= len(COLOURS[key]) or (n and not allow_reuse):
                 continue
-            t.colour, t.colour_from, t.colour_variant = key, label, n
+            t.colours.append((key, n, label))
             uses[key] = n + 1
+    for t in talents:
+        for _, _, key, label in cands[t.theme]:
+            n = uses.get(key, 0)
+            if len(t.colours) >= MAX_COLOURS or key in {c[0] for c in t.colours} or n >= len(COLOURS[key]):
+                continue
+            t.colours.append((key, n, label))
+            uses[key] = n + 1
+    for t in talents:   # σειρά εμφάνισης: πρώτα η πιο καθαρή/ισχυρή απόχρωση
+        order: dict[str, int] = {}
+        for i, (_, _, key, _) in enumerate(cands[t.theme]):
+            order.setdefault(key, i)
+        t.colours.sort(key=lambda c: order.get(c[0], 99))
 
 
 def run_engine(chart) -> EngineResult:

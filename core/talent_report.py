@@ -13,7 +13,7 @@ from dataclasses import dataclass
 
 from .docx_builder import build_orientation_audit_docx, build_orientation_client_docx
 from .pipeline import AUDIT_TITLE, audit_docx_filename, client_docx_filename, service_title
-from .talent_map import colour_phrase
+from .talent_map import colour_phrases
 from .talent_engine import EngineResult, run_engine
 from .talent_growth import PHRASES as GROWTH_PHRASES, SEPARATOR
 from .talent_texts import field_text, talent_text
@@ -38,15 +38,30 @@ TXT = {
         "develop": "Πώς να το καλλιεργήσεις:",
         "summary": "Συνοπτικά, τα ταλέντα σου",
         "summary_note": "Όλα αυτά είναι δυνατότητες. Το πόσο θα αναπτυχθεί το καθένα εξαρτάται από τις επιλογές και την εξάσκησή σου.",
+        # v22.18: 4 διατυπώσεις ανά τρόπο ανάπτυξης -- σε κάθε αναφορά δεν επαναλαμβάνεται η ίδια πρόταση.
         "growth_long": {
-            "easy": "Συχνά το κάνεις χωρίς ιδιαίτερη προσπάθεια, σχεδόν από ένστικτο.",
-            "mixed": "Ξεκινά από μια φυσική ευκολία, και η εξάσκηση μπορεί να το κάνει ακόμη πιο δυνατό.",
-            "opportunity": "Δυναμώνει όταν του δίνονται αφορμές, γι' αυτό αξίζει να αναζητάς περιστάσεις για να το δοκιμάσεις.",
-            "practice": ("Ίσως χρειαστεί λίγος χρόνος μέχρι να αναπτυχθεί· αν δεν σου βγαίνει ακόμη εύκολα, αυτό δεν "
-                         "σημαίνει ότι λείπει το ταλέντο, και με τον καιρό συχνά γίνεται από τα πιο δυνατά σου σημεία."),
-            "open": "Η πραγματική του δύναμη θα φανεί όταν το δοκιμάσεις σε πραγματικές καταστάσεις.",
-        },
-        "fields": "Επαγγελματικοί τομείς που αξίζει να εξερευνήσεις",
+            "easy": ["Συχνά το κάνεις χωρίς ιδιαίτερη προσπάθεια, σχεδόν από ένστικτο.",
+                     "Είναι από τα πράγματα που ίσως σου έρχονται φυσικά, χωρίς να το σκεφτείς πολύ.",
+                     "Μπορεί να το χρησιμοποιείς ήδη, συχνά χωρίς καν να το προσέχεις.",
+                     "Οι άλλοι ίσως το βλέπουν σε σένα πριν το αναγνωρίσεις εσύ."],
+            "mixed": ["Ξεκινά από μια φυσική ευκολία, και η εξάσκηση μπορεί να το κάνει ακόμη πιο δυνατό.",
+                      "Έχεις μια καλή αφετηρία· με λίγη δουλειά μπορεί να γίνει πραγματική δύναμη.",
+                      "Κάποια κομμάτια του ίσως σου βγαίνουν εύκολα, ενώ άλλα θέλουν περισσότερη προσπάθεια — και τα δύο μετρούν.",
+                      "Η φυσική κλίση υπάρχει· η τριβή με την πράξη μπορεί να την ακονίσει."],
+            "opportunity": ["Δυναμώνει όταν του δίνονται αφορμές, γι' αυτό αξίζει να αναζητάς περιστάσεις για να το δοκιμάσεις.",
+                            "Κάθε ευκαιρία να το χρησιμοποιήσεις μπορεί να το κάνει πιο σταθερό.",
+                            "Αξίζει να του δίνεις χώρο· όσο περισσότερο το χρησιμοποιείς, τόσο πιο καθαρά μπορεί να φαίνεται.",
+                            "Μια κατάλληλη αφορμή, όπως ένα έργο ή μια ομάδα, μπορεί να το φέρει στην επιφάνεια."],
+            "practice": [("Ίσως χρειαστεί λίγος χρόνος μέχρι να αναπτυχθεί· αν δεν σου βγαίνει ακόμη εύκολα, αυτό δεν "
+                          "σημαίνει ότι λείπει το ταλέντο, και με τον καιρό συχνά γίνεται από τα πιο δυνατά σου σημεία."),
+                         "Μπορεί να μη σου βγαίνει πάντα εύκολα· η σταθερή εξάσκηση συχνά το μετατρέπει σε πραγματική δύναμη.",
+                         "Οι δυσκολίες στην αρχή είναι φυσικές για αυτό το ταλέντο και δεν σημαίνουν ότι δεν το έχεις.",
+                         "Με υπομονή και επανάληψη, ό,τι τώρα ίσως θέλει κόπο μπορεί αργότερα να γίνει δεύτερη φύση σου."],
+            "open": ["Η πραγματική του δύναμη θα φανεί όταν το δοκιμάσεις σε πραγματικές καταστάσεις.",
+                     "Αξίζει να το δοκιμάσεις στην πράξη, για να δεις πόσο σου ταιριάζει.",
+                     "Η εμπειρία μπορεί να σου δείξει πόσο μακριά μπορεί να φτάσει.",
+                     "Αν το δοκιμάσεις σε κάτι συγκεκριμένο, θα καταλάβεις καλύτερα τι μπορεί να σου δώσει."],
+        },        "fields": "Επαγγελματικοί τομείς που αξίζει να εξερευνήσεις",
         "fields_note": "Τομείς όπου συναντιούνται δύο ή περισσότερα από τα ταλέντα σου.",
         "fields_note_g": ("Οι περισσότεροι είναι τομείς όπου συναντιούνται δύο ή περισσότερα από τα ταλέντα σου· "
                           "όπου ένα ταλέντο δεν συναντιέται με άλλο, προστίθεται ο πιο ταιριαστός τομέας γι' αυτό."),
@@ -82,14 +97,28 @@ TXT = {
         "summary": "Your talents at a glance",
         "summary_note": "All of these are possibilities. How far each one develops depends on your choices and practice.",
         "growth_long": {
-            "easy": "You often do it without much effort, almost by instinct.",
-            "mixed": "It starts from a natural ease, and practice can make it even stronger.",
-            "opportunity": "It grows when it is given a chance, so it is worth looking for situations to try it out.",
-            "practice": ("It may take some time to develop; if it does not come easily yet, that does not mean the "
-                         "talent is missing, and over time it often becomes one of your strongest points."),
-            "open": "Its real strength will show when you try it in real situations.",
-        },
-        "fields": "Career fields worth exploring",
+            "easy": ["You often do it without much effort, almost by instinct.",
+                     "It is one of the things that may come naturally to you, without much thought.",
+                     "You may already use it, often without even noticing.",
+                     "Others may see it in you before you recognise it yourself."],
+            "mixed": ["It starts from a natural ease, and practice can make it even stronger.",
+                      "You have a good starting point; with a little work it can become a real strength.",
+                      "Some parts of it may come easily while others take more effort — and both count.",
+                      "The natural inclination is there; practice can sharpen it."],
+            "opportunity": ["It grows when it is given a chance, so it is worth looking for situations to try it out.",
+                            "Every chance to use it can make it steadier.",
+                            "It is worth giving it room; the more you use it, the more clearly it may show.",
+                            "The right occasion, such as a project or a team, can bring it to the surface."],
+            "practice": [("It may take some time to develop; if it does not come easily yet, that does not mean the "
+                          "talent is missing, and over time it often becomes one of your strongest points."),
+                         "It may not always come easily; steady practice often turns it into a real strength.",
+                         "Early difficulties are natural for this talent and do not mean you lack it.",
+                         "With patience and repetition, what takes effort now may later become second nature."],
+            "open": ["Its real strength will show when you try it in real situations.",
+                     "It is worth trying it in practice, to see how well it suits you.",
+                     "Experience can show you how far it can go.",
+                     "If you try it on something specific, you will better understand what it can give you."],
+        },        "fields": "Career fields worth exploring",
         "fields_note": "Fields where two or more of your talents meet.",
         "fields_note_g": ("Most are fields where two or more of your talents meet; where a talent does not meet "
                           "another one, the field that suits it best is added."),
@@ -140,6 +169,7 @@ def client_markdown(result: EngineResult, lang: str = "el", ai: dict | None = No
     out += [f"- {talent_text(t.theme, lang)['title']}{SEPARATOR}*{phrases[t.growth]}*" for t in result.talents]
     out += ["", tx["summary_note"]]
     number = 0
+    growth_used: dict[str, int] = {}
     for rank in RANKS:
         talents = [t for t in result.talents if t.rank == rank]
         if not talents:
@@ -148,11 +178,16 @@ def client_markdown(result: EngineResult, lang: str = "el", ai: dict | None = No
         for t in talents:
             text = talent_text(t.theme, lang)
             number += 1   # η ΕΦΑΡΜΟΓΗ αριθμεί: όσα βρήκε η μηχανή, τόσα και στην αναφορά
-            colour = colour_phrase(t.colour, t.colour_variant, lang)   # v22.15: δεύτερος τίτλος (από τη μηχανή)
-            out.append(f"**{number}. {text['title']}**" + (f" — *{colour}*" if colour else ""))
+            out.append(f"**{number}. {text['title']}**")
+            colours = colour_phrases(t, lang)   # v22.15-21: «πώς φαίνεται σε σένα» -- από τη μηχανή, έως 4
+            if colours:
+                out.append("*" + " · ".join(colours) + "*")
             # Η περιγραφή της βιβλιοθήκης μένει ΣΤΑΘΕΡΗ· το AI (εκδοχή Β) προσθέτει μόνο σύνδεση.
             link = ai.get("talents", {}).get(t.theme, "")
-            out.append(text["text"] + " " + tx["growth_long"][t.growth] + (f" {link}" if link else ""))
+            options = tx["growth_long"][t.growth]
+            n = growth_used.get(t.growth, 0)
+            growth_used[t.growth] = n + 1
+            out.append(text["text"] + " " + options[n % len(options)] + (f" {link}" if link else ""))
             out.append(f"*{tx['develop']}* {text['develop']}")
             out.append("")
     main = [f for f in result.fields if f.decision == "ΕΠΙΛΕΓΕΤΑΙ"]
@@ -188,8 +223,8 @@ def audit_markdown(chart, result: EngineResult) -> str:
            "", "## Ταλέντα"]
     for t in result.talents:
         out.append(f"### {t.title_el} ({t.rank}, βαθμός {t.score}, βάση: {t.basis}, ανάπτυξη: {t.growth})")
-        if t.colour:
-            out.append(f"- Απόχρωση (δεύτερος τίτλος): «{colour_phrase(t.colour, t.colour_variant)}» από {t.colour} ({t.colour_from})")
+        for (key, _, src), phrase in zip(t.colours, colour_phrases(t)):
+            out.append(f"- Απόχρωση: «{phrase}» από {key} ({src})")
         for i in t.indicators:
             out.append(f"- {i.kind}: {i.label}" + (f" | {i.weight}" if i.weight else ""))
         for i in t.supporting:

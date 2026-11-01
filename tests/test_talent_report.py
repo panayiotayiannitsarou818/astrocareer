@@ -80,6 +80,24 @@ def test_report_shows_colour_subtitle_v22_15():
     from core.talent_report import audit_markdown, client_markdown
     chart = compute_chart(datetime(1982, 2, 10, 23, 45, tzinfo=timezone.utc), 34.7754, 32.4218)
     r = run_engine(chart)
-    assert "Ηγεσία και πρωτοβουλία** — *με συνεργατικό πνεύμα*" in client_markdown(r, "el")
-    assert "Leadership and initiative** — *with a cooperative spirit*" in client_markdown(r, "en")
-    assert "Απόχρωση (δεύτερος τίτλος): «με συνεργατικό πνεύμα» από Ζυγός" in audit_markdown(chart, r)
+    el = client_markdown(r, "el")
+    i = el.index("Ηγεσία και πρωτοβουλία**")
+    assert el[i:].split("\n")[1].startswith("*με συνεργατικό πνεύμα · ")
+    assert "*with a cooperative spirit · " in client_markdown(r, "en")
+    assert "Απόχρωση: «με συνεργατικό πνεύμα» από Ζυγός" in audit_markdown(chart, r)
+
+
+def test_growth_sentences_not_repeated_v22_18():
+    """Αναφορά Β (11/02/1982): «Η πραγματική του δύναμη θα φανεί…» βγήκε 4 φορές."""
+    import re
+    from datetime import datetime, timezone
+    from core.ephemeris import compute_chart
+    from core.talent_engine import run_engine
+    from core.talent_report import TXT, client_markdown
+    r = run_engine(compute_chart(datetime(1982, 2, 10, 23, 45, tzinfo=timezone.utc), 34.7754, 32.4218))
+    for lang in ("el", "en"):
+        text = client_markdown(r, lang)
+        for options in TXT[lang]["growth_long"].values():
+            assert len(options) == 4
+            for sentence in options:
+                assert text.count(sentence) <= 1
