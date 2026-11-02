@@ -292,6 +292,7 @@ def _birth_form(prefix: str = "b"):
             st.caption(t["birth_country_none"])
 
     place = None
+    p_pick = None
     if not cc:
         st.caption(t["birth_country_first"])
     else:
@@ -350,6 +351,30 @@ def _birth_form(prefix: str = "b"):
     # v22.25: τι λείπει ακόμα (το δείχνει η σελίδα κάτω από το κουμπί, αντί για ένα απλώς ανενεργό κουμπί)
     ss["form_missing"] = [t[k] for k, miss in (("missing_date", bdate is None), ("missing_time", btime is None),
                                                 ("missing_place", lat is None), ("missing_who", who is None)) if miss]
+    # v22.41: ό,τι λείπει ή είναι λάθος -> κόκκινο περίγραμμα (μόνο αφού ο πελάτης αρχίσει να συμπληρώνει)
+    started = any(v not in (None, "") for v in (name.strip(), day, month, year, hour, minute, p_pick, who))
+    red = []
+    if bdate is None:
+        empty = [k for k, v in (("day", day), ("month", month), ("year", year)) if v is None]
+        red += empty or ["day", "month"]          # όλα γραμμένα αλλά άκυρη ημερομηνία (π.χ. 31 Φεβρουαρίου)
+    red += [k for k, v in (("hour", hour), ("minute", minute)) if v is None]
+    red_keys = [f"{prefix}_{k}_{g}" for k in red]
+    if lat is None:
+        if not cc:
+            red_keys.append(f"{prefix}_cc_{g}_{lang}")
+        elif p_pick and p_pick not in by_label and ss.get(f"{prefix}_pick_{g}_{cc}_{lang}", "") is None:
+            red_keys.append(f"{prefix}_pick_{g}_{cc}_{lang}")
+        else:
+            red_keys.append(f"{prefix}_place_{g}_{cc}_{lang}")
+    if who is None:
+        red_keys.append(f"{prefix}_who_{g}")
+    if started and red_keys:
+        css = "".join(
+            f".st-key-{k} [data-baseweb='select']>div,.st-key-{k} .react-aria-ComboBox [role='group']"
+            f"{{border:2px solid #d92d20 !important;border-radius:8px}}"
+            f".st-key-{k} [role='radiogroup']{{outline:2px solid #d92d20;border-radius:8px;padding:6px 10px}}"
+            for k in red_keys)
+        st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
     if bdate is None or btime is None or lat is None:
         return None, None, None
 
