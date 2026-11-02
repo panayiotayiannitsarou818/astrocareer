@@ -19,11 +19,12 @@ v20: ο πελάτης δίνει ημερομηνία, ώρα, χώρα και 
 Το «Νέα αναφορά» καθαρίζει τα πάντα.
 """
 import hashlib
+import time
 import hmac
 import html
 import re
 import os
-from datetime import date
+from datetime import date, datetime, timezone
 from datetime import time as dtime
 from zoneinfo import available_timezones
 
@@ -44,9 +45,12 @@ from core.pipeline import (
 )
 from core.prompts import build_orientation_source
 from core.teaser import pick_teaser, teaser_instruction
-from core.payments import (PaymentError, case_fingerprint, create_checkout, format_price, is_paid,
+from core.payments import (PaymentError, case_fingerprint, check_paid, create_checkout, format_price,
                            parse_price)
-from core.talent_report import build_engine_report
+from core.emailer import EmailError, send_email, send_report, valid_email
+from core import referral as REF
+from core.talent_report import build_engine_report, service_title
+from core.pdf_builder import build_report_pdf, pdf_filename
 from core.talent_growth import annotate_client_docx
 from core.talent_texts import approval_status, fully_approved
 from core.reference_loader import (
@@ -140,6 +144,18 @@ REQUIRE_APPROVAL = str(_secret("REQUIRE_APPROVAL") or "1").strip() != "0"
 STRIPE_KEY = str(_secret("STRIPE_SECRET_KEY") or "").strip()
 PAYMENTS_ON = STRIPE_KEY.startswith(("sk_test_", "sk_live_", "rk_test_", "rk_live_"))
 REPORT_PRICE_CENTS = parse_price(_secret("REPORT_PRICE") or "20")
+# v22.43: αποστολή της αναφοράς με email (Resend). Χωρίς κλειδί: δεν στέλνεται email.
+RESEND_KEY = str(_secret("RESEND_API_KEY") or "").strip()
+EMAIL_FROM = str(_secret("EMAIL_FROM") or "AstroCheck Career <onboarding@resend.dev>").strip()
+EMAIL_ON = RESEND_KEY.startswith("re_")
+# v22.49: πρόγραμμα παραπομπών (ενεργό μαζί με τις πληρωμές). Ρυθμίσεις στα Secrets (προαιρετικές).
+REF_ON = PAYMENTS_ON
+REF_SECRET = str(_secret("REFERRAL_SECRET") or STRIPE_KEY)
+REF_SET = REF.Settings(discount=parse_price(_secret("REFERRAL_DISCOUNT") or "2", 2.0),
+                       reward=parse_price(_secret("REFERRAL_REWARD") or "2", 2.0),
+                       days=max(0, int(str(_secret("REFERRAL_DAYS") or "1").strip() or 1)),
+                       payout_min=parse_price(_secret("REFERRAL_PAYOUT_MIN") or "20", 20.0),
+                       months=max(1, int(str(_secret("REFERRAL_MONTHS") or "12").strip() or 12)))
 POLISH_MODEL = (os.environ.get("POLISH_MODEL") or
                 ("claude-sonnet-5-5" if provider == "anthropic" else default_model(provider)))
 
@@ -486,7 +502,12 @@ def _engine_report(preview, input_key, with_ai):
     else:
         report = build_engine_report(preview, preview.name, lang)
     p = report.polish
+    try:   # v22.52: και PDF
+        client_pdf = build_report_pdf(service_title(lang), preview.name, report.client_text)
+    except Exception:  # noqa: BLE001 -- χωρίς PDF, μένει το Word
+        client_pdf = None
     return {"case_key": input_key, "lang": lang, "client_docx": report.client_docx,
+            "client_pdf": client_pdf, "client_pdf_name": pdf_filename(report.client_name),
             "engine_docx": report.engine_docx, "audit_docx": report.audit_docx,
             "client_name": report.client_name, "audit_name": report.audit_name,
             "client_text": report.client_text, "engine_text": report.engine_text,
@@ -512,7 +533,7 @@ def _engine_section(input_key, preview):
         _pay_box(input_key, ready)
         return
     clicked = st.button(t["run_button"], type="primary", use_container_width=True, disabled=not ready,
-                        key="engine_run")
+                        key="engine_run") or (ready and ss.pop("auto_run", False))
     if not ready and ss.get("form_missing"):
         st.caption(t["missing_hint"].format(items=", ".join(ss["form_missing"])))
     if clicked:
@@ -525,8 +546,18 @@ def _engine_section(input_key, preview):
         return
     st.markdown(f'<div class="ok">{t["customer_ready"]}</div>', unsafe_allow_html=True)
     st.write("")
-    st.download_button(t["download_final"], res["client_docx"], file_name=res["client_name"],
-                       type="primary", use_container_width=True, key="engine_dl")
+    if res.get("client_pdf"):
+        d1, d2 = st.columns(2)
+        d1.download_button(t["download_pdf"], res["client_pdf"], file_name=res["client_pdf_name"],
+                           mime="application/pdf", type="primary", use_container_width=True, key="engine_pdf_dl")
+        d2.download_button(t["download_final"], res["client_docx"], file_name=res["client_name"],
+                           use_container_width=True, key="engine_dl")
+    else:
+        st.download_button(t["download_final"], res["client_docx"], file_name=res["client_name"],
+                           type="primary", use_container_width=True, key="engine_dl")
+    _email_report(input_key, res)
+    if REF_ON and not is_admin and ss.get("my_code"):
+        _share_box(ss["my_code"])
     if not is_admin:
         return
     version = "B" if res["used_ai"] else "A"
@@ -555,6 +586,35 @@ def _engine_section(input_key, preview):
         st.markdown(res["client_text"])
 
 
+def _email_report(input_key, res):
+    """v22.43: στέλνει ΜΙΑ φορά την αναφορά στο email που δόθηκε στο Stripe."""
+    if not (EMAIL_ON and PAYMENTS_ON) or is_admin or input_key is None:
+        return
+    fp = case_fingerprint(input_key)
+    to = ss.get("pay_email", {}).get(fp, "")
+    if not valid_email(to):
+        return
+    sent = ss.setdefault("emailed", {})
+    tag = (fp, res["lang"])
+    if tag not in sent:
+        try:
+            body = t["email_body"]
+            if ss.get("waiver_ts", {}).get(fp):
+                body += t["email_waiver"].format(ts=ss["waiver_ts"][fp])
+            if REF_ON and ss.get("my_code"):
+                body += t["ref_mail_share"].format(off=format_price(REF_SET.discount),
+                                                   reward=format_price(REF_SET.reward),
+                                                   share=html.escape(_share_link(ss["my_code"])),
+                                                   me=html.escape(_me_link(ss["my_code"])))
+            send_report(RESEND_KEY, sender=EMAIL_FROM, to=to, subject=t["email_subject"],
+                        html=body, filename=res["client_name"], content=res["client_docx"],
+                        extra=[(res["client_pdf_name"], res["client_pdf"])] if res.get("client_pdf") else None)
+            sent[tag] = True
+        except EmailError:
+            sent[tag] = False
+    st.caption((t["email_sent"] if sent[tag] else t["email_failed"]).format(email=html.escape(to)))
+
+
 def _app_url():
     url = str(_secret("APP_URL") or "").strip()
     if not url:
@@ -579,49 +639,253 @@ def _paid(input_key):
             continue
         checked.add((sid, fp))
         try:
-            ok = is_paid(STRIPE_KEY, sid, fp)
+            ok, email = check_paid(STRIPE_KEY, sid, fp)
         except PaymentError as exc:
             ss["pay_error"] = str(exc)
             continue
         if ok:
             ss.paid_fps.add(fp)
+            if email:
+                ss.setdefault("pay_email", {})[fp] = email
+            _after_purchase(sid)
+            ss["auto_run"] = True      # v22.42: η αναφορά φτιάχνεται ΑΜΕΣΩΣ, χωρίς κουμπί
             ss.pop("pay_recheck", None)
             return True
     ss.pop("pay_recheck", None)
     return False
 
 
+def _ref_balance(code, fresh=False):
+    """Υπόλοιπο κωδικού παραπομπής (από το Stripe· μνήμη 60″)."""
+    cache = ss.setdefault("ref_bal", {})
+    hit = cache.get(code)
+    if hit and not fresh and time.time() - hit[0] < 60:
+        return hit[1]
+    b = REF.balance(STRIPE_KEY, code, REF_SET)
+    cache[code] = (time.time(), b)
+    return b
+
+
+def _discount():
+    """(είδος, λεπτά, κουπόνι-ή-None, metadata) -- πίστωση του ίδιου ή έκπτωση από σύνδεσμο φίλου."""
+    if not REF_ON:
+        return None
+    code = ss.get("credit_code")
+    if code:
+        try:
+            b = _ref_balance(code)
+        except PaymentError:
+            b = None
+        if b and b.available > 0:
+            cents = min(b.available, REPORT_PRICE_CENTS)
+            return ("credit", cents, b, {"credit_used_by": code, "credit_used": cents})
+    ref = ss.get("ref_code")
+    if ref and ss.get("ref_deadline") and datetime.now(timezone.utc) <= ss["ref_deadline"]:
+        return ("friend", min(REF_SET.discount, REPORT_PRICE_CENTS - 50), None, {"ref": ref})
+    return None
+
+
 def _pay_box(input_key, ready):
+    disc = _discount()
+    cents = REPORT_PRICE_CENTS - (disc[1] if disc else 0)
     price = format_price(REPORT_PRICE_CENTS)
-    st.markdown(f'<div class="pay">{t["pay_intro"].format(price=price)}</div>', unsafe_allow_html=True)
+    if disc and disc[0] == "friend":
+        st.success(t["ref_friend_banner"].format(off=format_price(disc[1]),
+                                                 until=REF.format_deadline(ss["ref_deadline"], lang)))
+    elif disc and disc[0] == "credit":
+        st.success(t["ref_credit_banner"].format(off=format_price(disc[1])))
+    st.markdown(f'<div class="pay">{t["pay_intro"].format(price=price if not disc else format_price(cents))}</div>',
+                unsafe_allow_html=True)
+    label = t["pay_button"].format(price=format_price(cents) if disc else price)
     if not ready:
-        st.button(t["pay_button"].format(price=price), type="primary", use_container_width=True,
-                  disabled=True, key="pay_disabled")
+        st.button(label, type="primary", use_container_width=True, disabled=True, key="pay_disabled")
         if ss.get("form_missing"):
             st.caption(t["missing_hint"].format(items=", ".join(ss["form_missing"])))
         return
     fp = case_fingerprint(input_key)
+    if disc and disc[0] == "credit" and cents <= 0:
+        # Η πίστωση καλύπτει όλη την τιμή: δωρεάν αναφορά, χωρίς Stripe Checkout.
+        if st.button(t["ref_free_button"], type="primary", use_container_width=True, key="ref_free"):
+            try:
+                REF.spend(STRIPE_KEY, disc[2], REPORT_PRICE_CENTS)
+            except PaymentError as exc:
+                st.error(t["pay_unavailable"])
+                if is_admin:
+                    st.code(str(exc))
+                return
+            ss.setdefault("ref_bal", {}).pop(ss.get("credit_code"), None)
+            ss.pop("credit_code", None)
+            ss.setdefault("paid_fps", set()).add(fp)
+            ss["auto_run"] = True
+            st.rerun()
+        return
+    # v22.51: ρητή συγκατάθεση για άμεση παράδοση και απώλεια του δικαιώματος υπαναχώρησης (Οδηγία 2011/83/ΕΕ,
+    # άρθρο 16(μ)) -- ΠΡΙΝ από την πληρωμή· καταγράφεται με ημερομηνία/ώρα στην πληρωμή του Stripe και στο email.
+    waived = st.checkbox(t["pay_waiver"], key=f"waiver_{fp}")
+    if not waived:
+        st.button(label, type="primary", use_container_width=True, disabled=True, key="pay_need_waiver")
+        st.caption(t["pay_waiver_needed"])
+        return
+    ts = ss.setdefault("waiver_ts", {}).setdefault(fp, datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"))
     links = ss.setdefault("pay_links", {})
-    if fp not in links:
+    lkey = (fp, disc[0] if disc else "", disc[1] if disc else 0)
+    if lkey not in links:
         base = _app_url()
         try:
+            coupon = ""
+            if disc and disc[0] == "friend":
+                coupon = REF.ensure_coupon(STRIPE_KEY, disc[1], coupon_id="ASTRO_FRIEND", name=t["ref_coupon_friend"])
+            elif disc and disc[0] == "credit":
+                coupon = REF.ensure_coupon(STRIPE_KEY, disc[1], name=t["ref_coupon_credit"])
             co = create_checkout(STRIPE_KEY, amount_cents=REPORT_PRICE_CENTS, product_name=t["pay_product"],
                                  fingerprint=fp, success_url=base + "/?paid={CHECKOUT_SESSION_ID}",
-                                 cancel_url=base + "/?pay=cancel", locale=lang)
+                                 cancel_url=base + "/?pay=cancel", locale=lang,
+                                 submit_message=t["pay_stripe_note"] if EMAIL_ON else "",
+                                 coupon=coupon, metadata={**(disc[3] if disc else {}), "withdrawal_waiver": ts})
         except PaymentError as exc:
             st.error(t["pay_unavailable"])
             if is_admin:
                 st.code(str(exc))
             return
-        links[fp] = co.url
+        links[lkey] = co.url
         ss.setdefault("pay_sessions", []).append(co.id)
-    st.link_button(t["pay_button"].format(price=price), links[fp], type="primary", use_container_width=True)
-    st.caption(t["pay_note"])
-    if st.button(t["pay_done"], use_container_width=True, key="pay_done"):
-        ss["pay_recheck"] = True
-        if _paid(input_key):
-            st.rerun()
-        st.warning(t["pay_not_yet"])
+    st.link_button(label, links[lkey], type="primary", use_container_width=True)
+    st.caption(t["pay_note"] + (t["pay_note_email"] if EMAIL_ON else ""))
+    ss.setdefault("pay_wait_start", {}).setdefault(fp, time.time())
+    _pay_watch(input_key)
+
+
+def _after_purchase(session_id):
+    """v22.49: ο αγοραστής παίρνει προσωπικό σύνδεσμο· αν ήρθε από φίλο, ο φίλος παίρνει email «Κέρδισες…»."""
+    if not REF_ON or session_id in ss.setdefault("ref_done", set()):
+        return
+    ss.ref_done.add(session_id)
+    try:
+        info = REF.after_purchase(STRIPE_KEY, session_id, REF_SECRET, REF_SET)
+    except PaymentError as exc:
+        ss["ref_error"] = str(exc)
+        return
+    if info.code:
+        ss["my_code"] = info.code
+    if ss.get("credit_code"):
+        ss.setdefault("ref_bal", {}).pop(ss["credit_code"], None)
+        ss.pop("credit_code", None)
+    if info.referrer_rewarded and EMAIL_ON and valid_email(info.referrer_email):
+        try:
+            send_email(RESEND_KEY, sender=EMAIL_FROM, to=info.referrer_email, subject=t["ref_mail_subject"].format(reward=format_price(REF_SET.reward)),
+                       html=t["ref_mail_body"].format(reward=format_price(REF_SET.reward),
+                                                      total=format_price(info.referrer_balance),
+                                                      me=html.escape(_me_link(info.referrer_code)),
+                                                      share=html.escape(_share_link(info.referrer_code))))
+        except EmailError:
+            pass
+
+
+def _share_link(code):
+    return f"{_app_url()}/?ref={code}"
+
+
+def _me_link(code):
+    return f"{_app_url()}/?me={code}&k={REF.me_signature(code, REF_SECRET)}"
+
+
+def _qr_png(url):
+    try:
+        import io
+        import qrcode
+        img = qrcode.make(url, box_size=6, border=2)
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        return buf.getvalue()
+    except Exception:  # noqa: BLE001 -- χωρίς QR αν λείπει η βιβλιοθήκη
+        return None
+
+
+def _share_box(code):
+    """Μετά την αγορά: ο προσωπικός σύνδεσμος για φίλους (και QR)."""
+    with st.container(border=True):
+        st.markdown(f"**{t['ref_share_title']}**")
+        st.write(t["ref_share_text"].format(off=format_price(REF_SET.discount), reward=format_price(REF_SET.reward)))
+        st.code(_share_link(code), language=None)
+        png = _qr_png(_share_link(code))
+        if png:
+            st.image(png, width=160)
+        st.markdown(f"[{t['ref_my_balance']}]({_me_link(code)})")
+
+
+def _referrer_panel(code):
+    """?me=ΚΩΔΙΚΟΣ&k=ΥΠΟΓΡΑΦΗ -- το υπόλοιπο του αρχικού πελάτη, χρήση ή αίτημα Revolut."""
+    with st.container(border=True):
+        st.markdown(f"### {t['ref_panel_title']}")
+        try:
+            b = _ref_balance(code, fresh=ss.pop("ref_refresh", False))
+        except PaymentError as exc:
+            st.error(t["pay_unavailable"])
+            if is_admin:
+                st.code(str(exc))
+            return
+        st.metric(t["ref_panel_available"], format_price(b.available))
+        st.caption(t["ref_panel_friends"].format(n=b.friends) +
+                   (" " + t["ref_panel_expires"].format(date=REF.format_date(b.expires, lang)) if b.expires and b.available else "") +
+                   (" " + t["ref_panel_expired"] if b.expired else ""))
+        st.write(t["ref_share_text"].format(off=format_price(REF_SET.discount), reward=format_price(REF_SET.reward)))
+        st.code(_share_link(code), language=None)
+        png = _qr_png(_share_link(code))
+        if png:
+            st.image(png, width=160)
+        if b.available > 0 and not b.payout_pending:
+            if ss.get("credit_code") == code:
+                st.info(t["ref_panel_using"])
+            elif st.button(t["ref_panel_use"].format(amount=format_price(min(b.available, REPORT_PRICE_CENTS))),
+                           type="primary", use_container_width=True, key="ref_use"):
+                ss["credit_code"] = code
+                st.rerun()
+        if b.payout_pending:
+            st.info(t["ref_panel_pending"].format(amount=format_price(b.payout_cents), revtag=b.payout_revtag))
+        elif b.available >= REF_SET.payout_min:
+            st.markdown(t["ref_panel_payout_intro"].format(min=format_price(REF_SET.payout_min)))
+            revtag = st.text_input(t["ref_panel_revtag"], key="ref_revtag", placeholder="@maria123")
+            if st.button(t["ref_panel_payout"].format(amount=format_price(b.available)), key="ref_payout"):
+                try:
+                    REF.request_payout(STRIPE_KEY, b, revtag)
+                    ss["ref_refresh"] = True
+                    st.rerun()
+                except PaymentError:
+                    st.warning(t["ref_panel_revtag_bad"])
+        else:
+            st.caption(t["ref_panel_payout_later"].format(min=format_price(REF_SET.payout_min)))
+
+
+def _admin_payouts():
+    """Διαχείριση: αιτήματα πληρωμής στο Revolut -- «Πληρώθηκε» μετά τη μεταφορά."""
+    with st.expander(t["ref_admin_title"]):
+        try:
+            rows = REF.pending_payouts(STRIPE_KEY)
+        except PaymentError as exc:
+            st.code(str(exc))
+            return
+        if not rows:
+            st.caption(t["ref_admin_none"])
+        for i, r in enumerate(rows):
+            c1, c2 = st.columns([3, 1])
+            c1.write(f"**{format_price(r['cents'])}** → Revolut **{r['revtag']}** · {r['email']} · {r['code']}")
+            if c2.button(t["ref_admin_paid"], key=f"ref_paid_{i}"):
+                REF.mark_paid(STRIPE_KEY, r)
+                st.rerun()
+
+
+@st.fragment(run_every=3)
+def _pay_watch(input_key):
+    """v22.42: ελέγχει μόνο του (κάθε 3″) αν έγινε η πληρωμή -- ο πελάτης δεν πατά τίποτα.
+    Σταματά μετά από 30 λεπτά αναμονής (τότε αρκεί ανανέωση της σελίδας)."""
+    fp = case_fingerprint(input_key)
+    started = ss.get("pay_wait_start", {}).get(fp, time.time())
+    if time.time() - started > 30 * 60:
+        return
+    ss["pay_recheck"] = True
+    if _paid(input_key):
+        st.rerun(scope="app")
+    st.caption(t["pay_waiting"])
 
 
 def _auto_tab(input_key, preview, preview_err):
@@ -755,6 +1019,28 @@ def _show_chart_data(chart):
                            mime="text/plain", key="chart_data_dl")
 
 
+@st.cache_data(show_spinner=False)
+def _sample_pdf(lang_code):
+    """v22.52: δείγμα πλήρους αναφοράς για ΦΑΝΤΑΣΤΙΚΟ πρόσωπο -- να δει ο πελάτης τι αγοράζει."""
+    from core.birth_input import chart_from_birth as _cfb
+    tx = TR[lang_code]
+    chart, _ = _cfb(tx["sample_name"], date(1995, 5, 15), dtime(10, 30), 35.1856, 33.3823, "Asia/Nicosia")
+    rep = build_engine_report(chart, chart.name, lang_code)
+    text = f"*{tx['sample_note']}*\n\n" + rep.client_text
+    return build_report_pdf(service_title(lang_code), tx["sample_title"], text)
+
+
+def _sample_button():
+    if REQUIRE_APPROVAL and not fully_approved() and not is_admin:
+        return   # όσο τα κείμενα είναι πρόχειρα, όχι δείγμα στους πελάτες
+    try:
+        pdf = _sample_pdf(lang)
+    except Exception:  # noqa: BLE001
+        return
+    st.download_button(t["sample_button"], pdf, file_name=t["sample_file"], mime="application/pdf",
+                       use_container_width=True, key="sample_dl")
+
+
 def _show_teaser(chart):
     """v21: «Δωρεάν ταλέντο» από έτοιμη βιβλιοθήκη -- χωρίς AI, χωρίς κόστος."""
     # v22.4: όσο ισχύει η έγκριση (REQUIRE_APPROVAL), ο πελάτης βλέπει ΜΟΝΟ εγκεκριμένα κείμενα·
@@ -787,9 +1073,21 @@ if PAYMENTS_ON and _qp_paid.startswith("cs_"):
         st.success(t["pay_returned"])
 elif PAYMENTS_ON and st.query_params.get("pay") == "cancel" and not ss.get("paid_fps"):
     st.info(t["pay_cancelled"])
+# v22.49: σύνδεσμος φίλου (?ref=) και σελίδα υπολοίπου (?me=…&k=…)
+_qp_ref = str(st.query_params.get("ref", "") or "").strip().upper()
+if REF_ON and REF.valid_code(_qp_ref) and ss.get("ref_code") != _qp_ref:
+    ss["ref_code"] = _qp_ref   # η προθεσμία μετρά από το (πρώτο, σε αυτή την καρτέλα) άνοιγμα του συνδέσμου
+    ss["ref_deadline"] = REF.deadline(datetime.now(timezone.utc), REF_SET.days)
+_qp_me = str(st.query_params.get("me", "") or "").strip().upper()
+if REF_ON and REF.valid_me(_qp_me, st.query_params.get("k", ""), REF_SECRET):
+    _referrer_panel(_qp_me)
+if REF_ON and is_admin:
+    _admin_payouts()
 _input_key, _chart, _chart_err = _chart_input()
 _show_teaser(_chart if _input_key else None)
 _show_chart_data(_chart if _input_key else None)
+if PAYMENTS_ON or is_admin:
+    _sample_button()
 if is_admin:
     # v22.17: η χειροκίνητη διαδικασία (ChatGPT/Claude, χωρίς κόστος API) μόνο για τη Διαχείριση.
     st.markdown(f"#### {t['choose_mode']}")
@@ -804,8 +1102,21 @@ else:
 # v22.6: η φιλοσοφία «Δύνασαι» -- μία παράγραφος στο κάτω μέρος της σελίδας, χωρίς τίτλο.
 st.divider()
 st.markdown(f'<div class="mission">{html.escape(t["about_mission"])}</div>', unsafe_allow_html=True)
+# v22.52: συχνές ερωτήσεις, στοιχεία πωλητή και επικοινωνία (Secrets: SELLER_INFO, CONTACT_EMAIL)
+SELLER_INFO = str(_secret("SELLER_INFO") or "").strip()
+CONTACT_EMAIL = str(_secret("CONTACT_EMAIL") or "").strip()
+if CLIENT_PAGE:
+    with st.expander(t["faq_title"]):
+        for _q, _a in t["faq"]:
+            if not PAYMENTS_ON and ("Stripe" in _a or "Revolut" in _a or "υπαναχώρησης" in _a or "withdrawal" in _a
+                                    or "email" in _a.lower()):
+                continue   # χωρίς πληρωμές: μόνο οι γενικές ερωτήσεις
+            st.markdown(f"**{_q}**  \n{_a}")
 if CLIENT_PAGE:   # v22.25: ό,τι ήταν στην πλαϊνή στήλη / στη φόρμα, εδώ με μικρά γράμματα
-    for _note in (t["service_note"], t.get(f"sidebar_privacy_{REPORT_MODE}", t["sidebar_privacy"]), t["places_credit"]):
+    for _note in (t["service_note"], t.get(f"sidebar_privacy_{REPORT_MODE}", t["sidebar_privacy"]),
+                  *((t["privacy_payments"],) if PAYMENTS_ON else ()),
+                  *((t["seller_line"].format(seller=SELLER_INFO),) if SELLER_INFO else ()),
+                  *((t["contact_line"].format(email=CONTACT_EMAIL),) if CONTACT_EMAIL else ()), t["places_credit"]):
         st.markdown(f'<div class="small-note">{html.escape(_note)}</div>', unsafe_allow_html=True)
     _c = st.columns([1.2, 2, 1.2])[1]
     if _c.button(t["sidebar_reset"], use_container_width=True, key="client_reset"):

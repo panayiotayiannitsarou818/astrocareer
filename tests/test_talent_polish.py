@@ -63,7 +63,8 @@ def test_good_segments_are_composed_by_the_app():
     assert "## Τι σε χαρακτηρίζει" in out.text
     for i, t in enumerate(result.talents, 1):                 # αρίθμηση + σταθερή περιγραφή βιβλιοθήκης
         lib = talent_text(t.theme, "el")
-        assert f"**{i}. {lib['title']}**" in out.text and lib["text"] in out.text and lib["develop"] in out.text
+        develop = lib["develop"] if result.minor else lib["develop_adult"]   # v22.48: ενήλικας -> develop_adult
+        assert f"**{i}. {lib['title']}**" in out.text and lib["text"] in out.text and develop in out.text
     assert out.text.strip().endswith("*") and all(v in out.text for v in seg["talents"].values())
 
 
@@ -78,9 +79,11 @@ def test_missing_extra_or_replaced_talent_codes_are_rejected():
     first = result.talents[0].theme
     seg = _good(result); del seg["talents"][first]
     assert any("ταλέντα" in x for x in _reject(seg, result, text))
-    seg = _good(result); seg["talents"]["ART"] = "Μπορεί να έχεις και καλλιτεχνική φλέβα."
+    from core.talent_map import THEMES
+    other = next(k for k in THEMES if k not in {t.theme for t in result.talents})   # ταλέντο που ΔΕΝ επιλέχθηκε
+    seg = _good(result); seg["talents"][other] = "Μπορεί να έχεις και καλλιτεχνική φλέβα."
     assert any("ταλέντα" in x for x in _reject(seg, result, text))
-    seg = _good(result); seg["talents"]["ART"] = seg["talents"].pop(first)          # αντικατάσταση
+    seg = _good(result); seg["talents"][other] = seg["talents"].pop(first)          # αντικατάσταση
     assert any("ταλέντα" in x for x in _reject(seg, result, text))
 
 
@@ -88,8 +91,11 @@ def test_unselected_talent_inside_a_sentence_is_rejected():
     """Εξωτερικός έλεγχος #1: «Μπορεί να έχεις επίσης εξαιρετική μουσική ικανότητα.» περνούσε."""
     _, result, text = _setup()
     seg = _good(result)
-    seg["talents"][result.talents[0].theme] += " Μπορεί να έχεις επίσης εξαιρετική μουσική ικανότητα."
-    assert any("δεν επιλέχθηκε" in x and "ART" in x for x in _reject(seg, result, text))
+    # v22.46: στον χάρτη αυτόν η «Φαντασία και καλλιτεχνική έκφραση» εγκρίνεται πλέον (Ποσειδώνας στον 1ο, βιβλίο)·
+    # το παράδειγμα γίνεται με ταλέντο που ΔΕΝ επιλέχθηκε.
+    assert "HOSP" not in {t.theme for t in result.talents}
+    seg["talents"][result.talents[0].theme] += " Μπορεί να έχεις επίσης εξαιρετική ικανότητα στη φιλοξενία."
+    assert any("δεν επιλέχθηκε" in x and "HOSP" in x for x in _reject(seg, result, text))
 
 
 def test_health_profession_needs_its_own_approved_field():
@@ -163,6 +169,7 @@ def test_single_talent_field_mentions_only_its_talent_v22_13():
                              "δημιουργία, ώστε ό,τι φτιάχνεις να είναι όμορφο και λειτουργικό.")
     issues = check_segments(seg, text, result, "el")
     assert any("τομέας ενός ταλέντου" in x for x in issues)
-    seg["fields"][f.name] = "Εδώ η ματιά σου για το ωραίο μπορεί να βρει χώρο σε εικόνες, σχέδια και φωτογραφία."
+    from core.talent_map import THEMES
+    seg["fields"][f.name] = f"Εδώ το ταλέντο «{THEMES[f.talents[0]][0]}» μπορεί να βρει χώρο."
     assert not any("τομέας ενός ταλέντου" in x for x in check_segments(seg, text, result, "el"))
     assert '"only_this_talent": true' in build_polish_prompt(text, result, "el")

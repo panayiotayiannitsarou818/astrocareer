@@ -44,31 +44,59 @@ TXT = {
         "summary_note": ("Η σειρά δεν είναι τυχαία: πρώτα είναι τα ταλέντα που φαίνονται πιο έντονα στον χάρτη σου. "
                          "Όλα αυτά είναι δυνατότητες. Το πόσο θα αναπτυχθεί το καθένα εξαρτάται από τις επιλογές και "
                          "την εξάσκησή σου."),
-        # v22.18: 4 διατυπώσεις ανά τρόπο ανάπτυξης -- σε κάθε αναφορά δεν επαναλαμβάνεται η ίδια πρόταση.
+        # v22.18/v22.45: 6 διατυπώσεις ανά τρόπο ανάπτυξης -- σε κάθε αναφορά δεν επαναλαμβάνεται η ίδια πρόταση.
         "growth_long": {
             "easy": ["Συχνά το κάνεις χωρίς ιδιαίτερη προσπάθεια, σχεδόν από ένστικτο.",
                      "Είναι από τα πράγματα που ίσως σου έρχονται φυσικά, χωρίς να το σκεφτείς πολύ.",
                      "Μπορεί να το χρησιμοποιείς ήδη, συχνά χωρίς καν να το προσέχεις.",
-                     "Οι άλλοι ίσως το βλέπουν σε σένα πριν το αναγνωρίσεις εσύ."],
+                     "Οι άλλοι ίσως το βλέπουν σε σένα πριν το αναγνωρίσεις εσύ.",
+                     "Ίσως είναι κάτι που κάνεις τόσο φυσικά, ώστε να μην το θεωρείς καν ταλέντο.",
+                     "Μπορεί να είναι ένα από τα σημεία όπου νιώθεις πιο άνετα με τον εαυτό σου."],
             "mixed": ["Ξεκινά από μια φυσική ευκολία, και η εξάσκηση μπορεί να το κάνει ακόμη πιο δυνατό.",
                       "Έχεις μια καλή αφετηρία· με λίγη δουλειά μπορεί να γίνει πραγματική δύναμη.",
                       "Κάποια κομμάτια του ίσως σου βγαίνουν εύκολα, ενώ άλλα θέλουν περισσότερη προσπάθεια — και τα δύο μετρούν.",
-                      "Η φυσική κλίση υπάρχει· η τριβή με την πράξη μπορεί να την ακονίσει."],
+                      "Η φυσική κλίση υπάρχει· η τριβή με την πράξη μπορεί να την ακονίσει.",
+                     "Η βάση είναι καλή· ό,τι λείπει ακόμη μπορεί να συμπληρωθεί με την εμπειρία.",
+                     "Εκεί όπου σου βγαίνει εύκολα, μπορείς να πατήσεις για να δυναμώσεις και τα υπόλοιπα."],
             "opportunity": ["Δυναμώνει όταν του δίνονται αφορμές, γι' αυτό αξίζει να αναζητάς περιστάσεις για να το δοκιμάσεις.",
                             "Κάθε ευκαιρία να το χρησιμοποιήσεις μπορεί να το κάνει πιο σταθερό.",
                             "Αξίζει να του δίνεις χώρο· όσο περισσότερο το χρησιμοποιείς, τόσο πιο καθαρά μπορεί να φαίνεται.",
-                            "Μια κατάλληλη αφορμή, όπως ένα έργο ή μια ομάδα, μπορεί να το φέρει στην επιφάνεια."],
+                            "Μια κατάλληλη αφορμή, όπως ένα έργο ή μια ομάδα, μπορεί να το φέρει στην επιφάνεια.",
+                     "Χρειάζεται το κατάλληλο περιβάλλον· όταν το βρει, μπορεί να σε εκπλήξει.",
+                     "Μπορεί να κρύβεται μέχρι να βρεθεί η σωστή περίσταση για να εκφραστεί."],
             "practice": [("Ίσως χρειαστεί λίγος χρόνος μέχρι να αναπτυχθεί· αν δεν σου βγαίνει ακόμη εύκολα, αυτό δεν "
                           "σημαίνει ότι λείπει το ταλέντο, και με τον καιρό συχνά γίνεται από τα πιο δυνατά σου σημεία."),
                          "Μπορεί να μη σου βγαίνει πάντα εύκολα· η σταθερή εξάσκηση συχνά το μετατρέπει σε πραγματική δύναμη.",
                          "Οι δυσκολίες στην αρχή είναι φυσικές για αυτό το ταλέντο και δεν σημαίνουν ότι δεν το έχεις.",
-                         "Με υπομονή και επανάληψη, ό,τι τώρα ίσως θέλει κόπο μπορεί αργότερα να γίνει δεύτερη φύση σου."],
+                         "Με υπομονή και επανάληψη, ό,τι τώρα ίσως θέλει κόπο μπορεί αργότερα να γίνει δεύτερη φύση σου.",
+                     "Είναι ταλέντο που ωριμάζει σιγά σιγά· κάθε μικρό βήμα μετρά.",
+                     "Ό,τι χτίζεται με κόπο συχνά κρατά περισσότερο από ό,τι έρχεται εύκολα."],
             "open": ["Η πραγματική του δύναμη θα φανεί όταν το δοκιμάσεις σε πραγματικές καταστάσεις.",
                      "Αξίζει να το δοκιμάσεις στην πράξη, για να δεις πόσο σου ταιριάζει.",
                      "Η εμπειρία μπορεί να σου δείξει πόσο μακριά μπορεί να φτάσει.",
-                     "Αν το δοκιμάσεις σε κάτι συγκεκριμένο, θα καταλάβεις καλύτερα τι μπορεί να σου δώσει."],
+                     "Αν το δοκιμάσεις σε κάτι συγκεκριμένο, θα καταλάβεις καλύτερα τι μπορεί να σου δώσει.",
+                     "Μένει να το ανακαλύψεις: οι πραγματικές καταστάσεις θα δείξουν τη μορφή του.",
+                     "Μια πρώτη δοκιμή, ακόμη και μικρή, μπορεί να σου δείξει πολλά για αυτό."],
         },
         "fields": "Επαγγελματικοί τομείς που αξίζει να εξερευνήσεις",
+        # v22.47 (σημειώσεις αστρολόγου): πώς μαθαίνεις -- από τα στοιχεία των 5 προσωπικών πλανητών
+        "learn": "Πώς μαθαίνεις καλύτερα",
+        "learn_note": "Ο τρόπος που μαθαίνεις πιο εύκολα μπορεί να βοηθήσει κάθε ταλέντο σου να αναπτυχθεί.",
+        "learn_items": {
+            "fire": "**Μέσα από τη δράση:** όταν δοκιμάζεις στην πράξη, με κίνηση, προκλήσεις και άμεσο αποτέλεσμα.",
+            "earth": "**Βήμα βήμα:** με σαφή οργάνωση, πρακτικά παραδείγματα και σταθερό ρυθμό, χτίζοντας το ένα πάνω στο άλλο.",
+            "air": "**Μέσα από την αλληλεπίδραση:** συζητώντας, ρωτώντας και ανταλλάσσοντας ιδέες με άλλους.",
+            "water": ("**Μέσα από τη συναισθηματική σύνδεση:** όταν κάτι σε αγγίζει, όταν βλέπεις το νόημά του για "
+                      "τους ανθρώπους ή όταν εμπιστεύεσαι αυτόν που σε διδάσκει."),
+        },
+        "play": "Τι να παρατηρήσεις στο παιχνίδι",
+        "play_note": "Για τον γονιό: μικρές ενδείξεις στο παιχνίδι του παιδιού που μπορεί να επιβεβαιώνουν τα παραπάνω.",
+        "play_items": {
+            "fire": "**Εξερεύνηση και κίνηση:** αν ζητά να βγει έξω, να εξερευνήσει και να δοκιμάσει καινούργια πράγματα.",
+            "earth": "**Δομημένες δραστηριότητες:** αν χαίρεται τις κατασκευές, τους κανόνες και ό,τι γίνεται με σαφή βήματα.",
+            "air": "**Γρίφοι και παιχνίδια λογικής:** αν το τραβούν οι γρίφοι, οι ερωτήσεις και τα παιχνίδια με λέξεις.",
+            "water": "**Παιχνίδι φαντασίας:** αν φτιάχνει ιστορίες, ρόλους και φανταστικούς κόσμους.",
+        },
         # v22.28: εξηγείται και η ΣΕΙΡΑ των τομέων (ιδιοκτήτρια).
         "fields_note": ("Τομείς όπου συναντιούνται δύο ή περισσότερα από τα ταλέντα σου. Η σειρά δεν είναι τυχαία: "
                         "πρώτοι είναι οι τομείς όπου συναντιούνται τα περισσότερα και πιο δυνατά ταλέντα σου."),
@@ -115,26 +143,53 @@ TXT = {
             "easy": ["You often do it without much effort, almost by instinct.",
                      "It is one of the things that may come naturally to you, without much thought.",
                      "You may already use it, often without even noticing.",
-                     "Others may see it in you before you recognise it yourself."],
+                     "Others may see it in you before you recognise it yourself.",
+                     "It may come so naturally that you do not even think of it as a talent.",
+                     "It may be one of the areas where you feel most at ease with yourself."],
             "mixed": ["It starts from a natural ease, and practice can make it even stronger.",
                       "You have a good starting point; with a little work it can become a real strength.",
                       "Some parts of it may come easily while others take more effort — and both count.",
-                      "The natural inclination is there; practice can sharpen it."],
+                      "The natural inclination is there; practice can sharpen it.",
+                     "The foundation is good; whatever is still missing can be filled in with experience.",
+                     "Where it comes easily, you can build on that to strengthen the rest."],
             "opportunity": ["It grows when it is given a chance, so it is worth looking for situations to try it out.",
                             "Every chance to use it can make it steadier.",
                             "It is worth giving it room; the more you use it, the more clearly it may show.",
-                            "The right occasion, such as a project or a team, can bring it to the surface."],
+                            "The right occasion, such as a project or a team, can bring it to the surface.",
+                     "It needs the right environment; once it finds it, it may surprise you.",
+                     "It may stay hidden until the right situation lets it show."],
             "practice": [("It may take some time to develop; if it does not come easily yet, that does not mean the "
                           "talent is missing, and over time it often becomes one of your strongest points."),
                          "It may not always come easily; steady practice often turns it into a real strength.",
                          "Early difficulties are natural for this talent and do not mean you lack it.",
-                         "With patience and repetition, what takes effort now may later become second nature."],
+                         "With patience and repetition, what takes effort now may later become second nature.",
+                     "It is a talent that matures gradually; every small step counts.",
+                     "What is built with effort often lasts longer than what comes easily."],
             "open": ["Its real strength will show when you try it in real situations.",
                      "It is worth trying it in practice, to see how well it suits you.",
                      "Experience can show you how far it can go.",
-                     "If you try it on something specific, you will better understand what it can give you."],
+                     "If you try it on something specific, you will better understand what it can give you.",
+                     "It is still to be discovered: real situations will show its shape.",
+                     "A first try, even a small one, can show you a lot about it."],
         },
         "fields": "Career fields worth exploring",
+        "learn": "How you learn best",
+        "learn_note": "The way you learn most easily can help each of your talents grow.",
+        "learn_items": {
+            "fire": "**Through action:** when you try things out in practice, with movement, challenges and quick results.",
+            "earth": "**Step by step:** with clear organisation, practical examples and a steady pace, building one thing on another.",
+            "air": "**Through interaction:** by discussing, asking questions and exchanging ideas with others.",
+            "water": ("**Through emotional connection:** when something moves you, when you see what it means for people, "
+                      "or when you trust the person teaching you."),
+        },
+        "play": "What to notice in play",
+        "play_note": "For the parent: small signs in the child's play that may confirm the above.",
+        "play_items": {
+            "fire": "**Exploring and moving:** whether they ask to go outside, explore and try new things.",
+            "earth": "**Structured activities:** whether they enjoy building, rules and anything done in clear steps.",
+            "air": "**Puzzles and logic games:** whether they are drawn to puzzles, questions and word games.",
+            "water": "**Imaginative play:** whether they make up stories, roles and imaginary worlds.",
+        },
         "fields_note": ("Fields where two or more of your talents meet. The order is not random: the fields where "
                         "the most and strongest of your talents meet come first."),
         "fields_note_g": ("Most are fields where two or more of your talents meet; where a talent does not meet "
@@ -221,7 +276,18 @@ def client_markdown(result: EngineResult, lang: str = "el", ai: dict | None = No
             n = growth_used.get(g, 0)
             growth_used[g] = n + 1
             out.append(text["text"] + " " + options[n % len(options)] + (f" {link}" if link else ""))
-            out.append(f"*{tx['develop']}* {text['develop']}")
+            # v22.48: για ενήλικες, προτάσεις καλλιέργειας για ενήλικες (develop_adult)· για ανήλικους οι αρχικές
+            develop = text["develop"] if getattr(result, "minor", False) else text.get("develop_adult", text["develop"])
+            out.append(f"*{tx['develop']}* {develop}")
+            out.append("")
+    learning = getattr(result, "learning", None) or []
+    if learning:   # v22.47: πώς μαθαίνεις (και, για ανήλικο, τι να προσέξει ο γονιός στο παιχνίδι)
+        out += [f"## {tx['learn']}", f"*{tx['learn_note']}*", ""]
+        out += [f"- {tx['learn_items'][e]}" for e in learning]
+        out.append("")
+        if getattr(result, "minor", False):
+            out += [f"## {tx['play']}", f"*{tx['play_note']}*", ""]
+            out += [f"- {tx['play_items'][e]}" for e in learning]
             out.append("")
     main = [f for f in result.fields if f.decision == "ΕΠΙΛΕΓΕΤΑΙ"]
     other = [f for f in result.fields if f.decision != "ΕΠΙΛΕΓΕΤΑΙ"]

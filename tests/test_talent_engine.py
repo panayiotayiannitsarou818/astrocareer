@@ -153,14 +153,36 @@ def test_rule10_position_plus_aspect_and_wide_pair_v22_9():
 
 def test_rule6_house_rulers_v22_10():
     """Κανόνας 6: ο Ερμής κυβερνά το Μεσουράνημα (Παρθένος) -> μαζί με το Ερμής–Ωροσκόπος (Κανονική)
-    εγκρίνεται η «Επικοινωνία». Ο κυβερνήτης ΔΕΝ αρκεί ως κύριος δείκτης: με μία μόνο Πλατιά όψη
-    (Ερμής–Δίας) και τον Δία κυβερνήτη του Ωροσκόπου, η «Διδασκαλία» δεν εγκρίνεται."""
+    εγκρίνεται η «Επικοινωνία». (v22.45: η «Διδασκαλία» εγκρίνεται πλέον μέσω του κυβερνήτη του 9ου -- βλ. παρακάτω.)"""
     from core import talent_engine as te
     rul = te._ruler_indicators(_pafos())
     assert any("Μεσουρανήματος" in i.label for i in rul["COMM"])
     r = run_engine(_pafos())
     assert "COMM" in {t.theme for t in r.talents}
-    assert "TEACH" in r.candidates_rejected
+
+
+def test_key_house_ruler_is_primary_v22_45():
+    """v22.45 (μέθοδος αστρολόγου): ο κυβερνήτης του 9ου (Λέων -> Ήλιος) βρίσκεται στον 3ο Οίκο -> ΚΥΡΙΟΣ
+    δείκτης «Διδασκαλία»· μαζί με τη Ερμής–Δίας δίνει αναδυόμενο ταλέντο (11/02/1982, Πάφος)."""
+    from core import talent_engine as te
+    rul = te._ruler_indicators(_pafos())
+    keys = [i for i in rul["TEACH"] if i.key.startswith("rulkey:9:")]
+    assert keys and "Οίκου 9" in keys[0].label and "Οίκο 3" in keys[0].label
+    r = run_engine(_pafos())
+    teach = next(t for t in r.talents if t.theme == "TEACH")
+    # v22.46: ο Ήλιος μετρά πλέον και με τη θέση του (Ήλιος στον 3ο -> διδασκαλία, βιβλίο)· ο κυβερνήτης μένει ενίσχυση
+    assert any(i.key.startswith("rulkey:9:") for i in teach.indicators + teach.supporting)
+    # κυβερνήτης 1ου (Τοξότης -> Δίας) στον 11ο -> κύριο θέμα του 11ου (Ομαδικότητα)
+    assert any(i.key.startswith("rulkey:1:") for i in rul["COMMUNITY"])
+
+
+def test_key_house_ruler_alone_is_not_enough_v22_45():
+    """Ένας δείκτης μόνο (ακόμη και κύριος) δεν αρκεί: ο Κανόνας 10 θέλει δύο διακριτούς."""
+    from core.talent_engine import Indicator, _qualify
+    one = [Indicator("Κυβερνήτης", "rulkey:9:Ήλιος", ("Ήλιος",), "x")]
+    assert _qualify(one)[2] is None
+    two = one + [Indicator("Κυβερνήτης", "rul:Δίας", ("Δίας",), "y")]
+    assert _qualify(two)[2] == "δύο δείκτες"
 
 
 def test_generational_sign_concentration_needs_personal_link_v22_11():
@@ -293,3 +315,23 @@ def test_tenth_house_table_v22_38():
     assert set(TENTH_HOUSE_THEMES) == set(PLANET_THEMES) - {"Χείρωνας"}
     assert all(set(v) <= set(THEMES) for v in TENTH_HOUSE_THEMES.values())
     assert TENTH_HOUSE_THEMES["Πλούτωνας"] == ("ENTRE",) and "ENTRE" in TENTH_HOUSE_THEMES["Άρης"]
+
+
+def test_mutual_house_rulers_klia_v22_45():
+    """Κλία: ο κυβερνήτης του 6ου (Σελήνη) στον 7ο και ο κυβερνήτης του 7ου (Ήλιος) στον 6ο -> «Υποστήριξη»."""
+    from datetime import datetime, timezone
+    from core.ephemeris import compute_chart
+    klia = compute_chart(datetime(1965, 7, 30, 17, 0, tzinfo=timezone.utc), -20.15, 28.6)
+    sup = next(t for t in run_engine(klia).talents if t.theme == "SUPPORT")
+    keys = {i.key for i in sup.indicators}
+    assert "rulkey:6:Σελήνη" in keys and "rulkey:7:Ήλιος" in keys
+
+
+def test_book_planet_in_house_v22_46():
+    """Βιβλίο (Woolfolk): Ήλιος στον 3ο και Ερμής στον 2ο -> διδασκαλία· Ποσειδώνας στον 1ο -> καλλιτεχνική δουλειά."""
+    from core.talent_map import BOOK_HOUSE_THEMES
+    assert "TEACH" in BOOK_HOUSE_THEMES[("Ήλιος", 3)] and "TEACH" in BOOK_HOUSE_THEMES[("Ερμής", 2)]
+    by = {t.theme: t for t in run_engine(_pafos()).talents}
+    assert by["TEACH"].rank in ("βασικό", "κυρίαρχο")
+    assert {"pos:Ήλιος", "pos:Ερμής"} <= {i.key for i in by["TEACH"].indicators}
+    assert "pos:Ποσειδώνας" in {i.key for i in by["ART"].indicators}

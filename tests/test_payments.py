@@ -64,3 +64,44 @@ def test_app_has_no_hardcoded_stripe_key():
     root = pathlib.Path(__file__).resolve().parents[1]
     for path in list(root.glob("*.py")) + list((root / "core").glob("*.py")):
         assert not re.search(r"[sr]k_(test|live)_[A-Za-z0-9]{8,}", path.read_text(encoding="utf-8")), path
+
+
+def test_check_paid_returns_customer_email():
+    from core.payments import check_paid
+    fp = case_fingerprint(("a",))
+    http = lambda *a, **k: {"payment_status": "paid", "client_reference_id": fp,
+                            "customer_details": {"email": "x@example.com"}}
+    assert check_paid("sk_test", "cs_test_1", fp, http=http) == (True, "x@example.com")
+    other = lambda *a, **k: {"payment_status": "paid", "client_reference_id": "zz",
+                             "customer_details": {"email": "x@example.com"}}
+    assert check_paid("sk_test", "cs_test_1", fp, http=other) == (False, "")
+
+
+def test_email_report_attaches_docx():
+    import base64
+    from core.emailer import EmailError, send_report
+    got = {}
+
+    def http(payload, key):
+        got.update(payload=payload, key=key)
+        return {"id": "em_1"}
+
+    assert send_report("re_x", sender="A <a@b.cy>", to="x@example.com", subject="S", html="<p>h</p>",
+                       filename="r.docx", content=b"DOCX", http=http) == "em_1"
+    p = got["payload"]
+    assert p["to"] == ["x@example.com"] and p["attachments"][0]["filename"] == "r.docx"
+    assert base64.b64decode(p["attachments"][0]["content"]) == b"DOCX"
+    with pytest.raises(EmailError):
+        send_report("re_x", sender="a", to="not-an-email", subject="", html="", filename="", content=b"", http=http)
+
+
+def test_checkout_shows_email_note_on_stripe_page():
+    sent = {}
+    http = lambda m, u, k, d=None: (sent.update(d) or {"id": "cs_test_1", "url": "https://checkout.stripe.com/x"})
+    create_checkout("sk_test", amount_cents=2000, product_name="x", fingerprint="f", success_url="u",
+                    cancel_url="u", submit_message="📧 email", http=http)
+    assert sent["custom_text[submit][message]"] == "📧 email"
+    sent.clear()
+    create_checkout("sk_test", amount_cents=2000, product_name="x", fingerprint="f", success_url="u",
+                    cancel_url="u", http=http)
+    assert "custom_text[submit][message]" not in sent

@@ -98,7 +98,7 @@ def test_growth_sentences_not_repeated_v22_18():
     for lang in ("el", "en"):
         text = client_markdown(r, lang)
         for options in TXT[lang]["growth_long"].values():
-            assert len(options) == 4
+            assert len(options) == 6
             for sentence in options:
                 assert text.count(sentence) <= 1
 
@@ -139,3 +139,41 @@ def test_all_emerging_gets_neutral_heading_v22_31():
     text = client_markdown(r, "el")
     assert "### Τα ταλέντα σου" in text and TXT["el"]["rank_note"]["αναδυόμενο"] not in text
     assert '"level": "αναδυόμενο"' not in build_polish_prompt(text, r, "el")
+
+
+def test_learning_and_play_sections_v22_47():
+    """Σημειώσεις αστρολόγου: στοιχεία των 5 προσωπικών πλανητών -> «Πώς μαθαίνεις καλύτερα»·
+    για ανήλικο και «Τι να παρατηρήσεις στο παιχνίδι»."""
+    from datetime import date, time
+    from core.birth_input import chart_from_birth
+    from core.talent_engine import run_engine, is_minor
+    from core.talent_report import client_markdown
+    adult, _ = chart_from_birth("", date(1982, 2, 11), time(1, 45), 34.7768, 32.4245, "Asia/Nicosia")
+    r = run_engine(adult)
+    assert r.learning == ["air", "earth"] and not r.minor     # Ήλιος/Ερμής/Άρης: Αέρας· Σελήνη/Αφροδίτη: Γη
+    el = client_markdown(r, "el")
+    assert "## Πώς μαθαίνεις καλύτερα" in el and "Μέσα από την αλληλεπίδραση" in el and "## Τι να παρατηρήσεις" not in el
+    assert el.index("## Πώς μαθαίνεις") < el.index("## Επαγγελματικοί τομείς")
+    assert "## How you learn best" in client_markdown(r, "en")
+    child, _ = chart_from_birth("", date(2013, 6, 20), time(10, 0), 34.7768, 32.4245, "Asia/Nicosia")
+    rc = run_engine(child)
+    assert rc.minor and "## Τι να παρατηρήσεις στο παιχνίδι" in client_markdown(rc, "el")
+    assert is_minor(child, today=date(2031, 6, 20)) is False    # 18 ετών
+
+
+def test_adult_cultivation_texts_v22_48():
+    """Ενήλικες: προτάσεις καλλιέργειας για ενήλικες (όχι «μαθητικά συμβούλια»)· ανήλικοι: οι αρχικές."""
+    from datetime import date, time
+    from core.birth_input import chart_from_birth
+    from core.talent_engine import run_engine
+    from core.talent_report import client_markdown
+    from core.talent_texts import load_texts
+    for e in load_texts()["talents"].values():
+        assert e["el"]["develop_adult"] and e["en"]["develop_adult"]
+    adult, _ = chart_from_birth("", date(1982, 2, 11), time(1, 45), 34.7768, 32.4245, "Asia/Nicosia")
+    el = client_markdown(run_engine(adult), "el")
+    assert "μαθητικά" not in el and "Σε επιτροπές δεοντολογίας" in el
+    child, _ = chart_from_birth("", date(2013, 6, 20), time(10, 0), 34.7768, 32.4245, "Asia/Nicosia")
+    rc = run_engine(child)
+    first = rc.talents[0].theme
+    assert load_texts()["talents"][first]["el"]["develop"] in client_markdown(rc, "el")

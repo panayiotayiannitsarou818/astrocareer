@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 
 from .astrology import planet_concentrations
 from .talent_map import (
-    ANGLES, COLOURS, CONCENTRATION_ONLY_HOUSES, TENTH_HOUSE_THEMES, colour_options, colour_phrase, HEALTH_RULES, HOUSE_THEMES, NODES, PAIR_THEME, PERSONAL, PLANET_THEMES, SIGN_THEMES, SLOW, THEME_FIELDS, THEMES,
+    ANGLES, BOOK_HOUSE_THEMES, COLOURS, CONCENTRATION_ONLY_HOUSES, TENTH_HOUSE_THEMES, colour_options, colour_phrase, HEALTH_RULES, HOUSE_THEMES, NODES, PAIR_THEME, PERSONAL, PLANET_THEMES, SIGN_THEMES, SLOW, THEME_FIELDS, THEMES,
 )
 
 STRONG, NORMAL, WIDE, VERY_WIDE = "Στενή/ισχυρή", "Κανονική", "Πλατιά αλλά έγκυρη", "Πολύ πλατιά/δευτερεύουσα"
@@ -37,6 +37,11 @@ RULER_PLACEMENT_SCORE = 2.0
 # κυβερνήτης του Μεσουρανήματος δείχνει τον «τρόπο προσφοράς» στη δουλειά), όχι μόνο τα θέματα του Οίκου.
 RULER_PRIMARY_HOUSES = (1, 10)
 RULER_PLACEMENT_HOUSES = (1, 2, 6, 10)   # Οίκοι σταδιοδρομίας: μετρά και πού βρίσκεται ο κυβερνήτης τους
+# v22.45 (ΠΡΟΧΕΙΡΟ, Ε12 -- μέθοδος της αστρολόγου: «Οίκος = πού, ζώδιο = πώς, πλανήτης = τι»· ο Οίκος διαβάζεται
+# μέσα από τον κυβερνήτη του): «όταν σε έναν Οίκο δεν υπάρχει πλανήτης, κοιτάμε τον κυβερνήτη του ζωδίου του,
+# σε ποιον Οίκο είναι· όταν υπάρχει πλανήτης, ελέγχεις και τα δύο». Ο κυβερνήτης κάθε Οίκου ταλέντων ΜΕΤΑΦΕΡΕΙ
+# το θέμα του στον Οίκο όπου βρίσκεται και μετρά ως ΚΥΡΙΟΣ δείκτης (όχι μόνο ενίσχυση).
+KEY_RULER_HOUSES = tuple(sorted(HOUSE_THEMES))
 CONCENTRATION_BONUS = 0.5
 DOMINANT_MIN, BASIC_MIN = 6.0, 3.5
 VERY_TIGHT_ORB, VERY_TIGHT_BONUS = 1.0, 1.5
@@ -148,6 +153,38 @@ class EngineResult:
     talents: list[Talent]
     fields: list[FieldChoice]
     candidates_rejected: dict[str, str]  # θέμα -> λόγος
+    learning: list = field(default_factory=list)   # v22.47: «πώς μαθαίνεις» -- στοιχεία (fire/earth/air/water)
+    minor: bool = False                            # v22.47: η αναφορά αφορά ανήλικο (κάτω των 18)
+
+
+# v22.47 -- σημειώσεις αστρολόγου: τα ταλέντα φαίνονται κυρίως στους 5 προσωπικούς πλανήτες, και το ΣΤΟΙΧΕΙΟ του
+# ζωδίου τους δείχνει ΠΩΣ μαθαίνει κανείς: Φωτιά = μέσα από τη δράση, Γη = βήμα βήμα, Αέρας = μέσα από την
+# αλληλεπίδραση, Νερό = μέσα από τη συναισθηματική σύνδεση (και το βιβλίο Woolfolk: «Elements Formula»).
+ELEMENT_OF = {"Κριός": "fire", "Λέων": "fire", "Τοξότης": "fire", "Ταύρος": "earth", "Παρθένος": "earth",
+              "Αιγόκερως": "earth", "Δίδυμοι": "air", "Ζυγός": "air", "Υδροχόος": "air", "Καρκίνος": "water",
+              "Σκορπιός": "water", "Ιχθύες": "water"}
+LEARNING_PLANETS = ("Ήλιος", "Σελήνη", "Ερμής", "Αφροδίτη", "Άρης")
+
+
+def learning_elements(chart) -> list[str]:
+    """Τα στοιχεία με 2+ από τους 5 προσωπικούς πλανήτες (το πολύ δύο), με σειρά: πλήθος, μετά Ήλιος→Άρης."""
+    pts = {p.name: p for p in chart.points}
+    order = [ELEMENT_OF.get(pts[n].sign) for n in LEARNING_PLANETS if n in pts and pts[n].sign in ELEMENT_OF]
+    counts = {e: order.count(e) for e in order}
+    ranked = sorted(counts, key=lambda e: (-counts[e], order.index(e)))
+    return [e for e in ranked if counts[e] >= 2][:2] or ranked[:1]
+
+
+def is_minor(chart, today=None) -> bool:
+    """Κάτω των 18 σήμερα (από την ημερομηνία του χάρτη «ηη/μμ/εεεε»· αλλιώς False)."""
+    from datetime import date
+    try:
+        d, m, y = (int(x) for x in str(chart.date).strip().split()[0].replace(".", "/").split("/"))
+        born = date(y, m, d)
+    except (ValueError, TypeError, AttributeError):
+        return False
+    today = today or date.today()
+    return (today.year - born.year) - ((today.month, today.day) < (born.month, born.day)) < 18
 
 
 def _position_indicators(chart) -> dict[str, list[Indicator]]:
@@ -188,6 +225,8 @@ def _position_indicators(chart) -> dict[str, list[Indicator]]:
             # v22.37-38 (ΠΡΟΧΕΙΡΟ, Ε11): ο 10ος είναι ο Οίκος της καριέρας -- ΚΑΘΕ πλανήτης εκεί δίνει ταλέντο
             # καριέρας, κατά τον πίνακα TENTH_HOUSE_THEMES (βιβλίο Woolfolk + αστρολόγος ιδιοκτήτριας).
             themes |= set(TENTH_HOUSE_THEMES.get(p.name, ()))
+        # v22.46 (ΠΡΟΧΕΙΡΟ, Ε13): ο πλανήτης φέρνει το δικό του «τι» στον Οίκο, όπου το βιβλίο το λέει ρητά.
+        themes |= set(BOOK_HOUSE_THEMES.get((p.name, p.house), ()))
         if p.name == "Ήλιος":
             # Ο Ήλιος = δημιουργική ταυτότητα (Κανόνας 4): στηρίζει πάντα το κύριο θέμα του ζωδίου του.
             themes.add(SIGN_THEMES[p.sign][0])
@@ -219,6 +258,33 @@ def _ruler_indicators(chart) -> dict[str, list[Indicator]]:
     present = {p.name for p in chart.points}
     by_theme: dict[str, list[Indicator]] = {}
     seen = set()
+    pts = {p.name: p for p in chart.points}
+    # v22.45 -- κυβερνήτης Οίκου ταλέντων σε άλλον Οίκο ταλέντων = ΚΥΡΙΟΣ δείκτης:
+    #   Οίκος 1 (ο εαυτός -- «πού βάζεις την ενέργειά σου»): το κύριο θέμα του Οίκου όπου βρίσκεται ο κυβερνήτης·
+    #   οι υπόλοιποι: τα θέματα του Οίκου-προορισμού που ταιριάζουν με τον Οίκο-αφετηρία ή με τον πλανήτη.
+    #   π.χ. κυβερνήτης 1ου στον 11ο -> Ομαδικότητα· κυβερνήτης 9ου στον 3ο -> Διδασκαλία.
+    for house in KEY_RULER_HOUSES:
+        sign = cusp_sign.get(house)
+        if not sign:
+            continue
+        for ruler in (r for r in RULERS.get(sign, ()) if r):
+            p = pts.get(ruler)
+            if p is None or ruler not in PLANET_THEMES or p.house == house:
+                continue
+            dest = HOUSE_THEMES.get(p.house, ())
+            if not dest:
+                continue
+            if house == 1:
+                themes = {dest[0]}
+            else:
+                themes = {t for t in dest if t in HOUSE_THEMES.get(house, ()) or t in PLANET_THEMES[ruler]}
+            where = "Μεσουρανήματος / Οίκου 10" if house == 10 else f"Οίκου {house}"
+            for t in themes:
+                if (ruler, t) in seen:
+                    continue
+                seen.add((ruler, t))
+                label = f"{ruler}, κυβερνήτης του {where} ({sign}), βρίσκεται στον Οίκο {p.house}"
+                by_theme.setdefault(t, []).append(Indicator("Κυβερνήτης", f"rulkey:{house}:{ruler}", (ruler,), label))
     for house, house_themes in HOUSE_THEMES.items():
         sign = cusp_sign.get(house)
         if not sign:
@@ -239,7 +305,6 @@ def _ruler_indicators(chart) -> dict[str, list[Indicator]]:
     # v22.12 -- Κανόνας 6: «πού βρίσκεται» ο κυβερνήτης. Ο κυβερνήτης ενός Οίκου ΣΤΑΔΙΟΔΡΟΜΙΑΣ (1, 2, 6, 10)
     # «μεταφέρει» το θέμα του εκεί όπου βρίσκεται: στα θέματα του Οίκου του (αν είναι βασικός) και στο κύριο
     # θέμα του ζωδίου του. Για αργό κυβερνήτη μετρά μόνο ο Οίκος (το ζώδιο του είναι κοινό σε μια γενιά).
-    pts = {p.name: p for p in chart.points}
     for house in RULER_PLACEMENT_HOUSES:
         sign = cusp_sign.get(house)
         if not sign:
@@ -318,7 +383,8 @@ def _qualify(indicators: list[Indicator]) -> tuple[list[Indicator], list[Indicat
             supporting.append(i)                       # ο ίδιος πλανήτης μετρά ήδη μέσω της θέσης του
         else:
             counted.append(i)
-    primary = [i for i in counted if i.kind == "Θέση" or i.weight in (STRONG, NORMAL)]   # ΟΧΙ ο κυβερνήτης
+    # ΟΧΙ ο κυβερνήτης -- εκτός από τον κυβερνήτη Οίκου ταλέντων σε άλλον Οίκο ταλέντων (v22.45, «rulkey:»)
+    primary = [i for i in counted if i.kind == "Θέση" or i.weight in (STRONG, NORMAL) or i.key.startswith("rulkey:")]
     wide = [i for i in counted if i.weight == WIDE and set(i.points) & set(PERSONAL_OR_ANGLE)]
     strong_single = [i for i in counted if i.weight == STRONG and set(i.points) & set(PERSONAL_OR_ANGLE)]
     if len(counted) >= 2 and primary:
@@ -552,4 +618,4 @@ def run_engine(chart) -> EngineResult:
     fields.sort(key=lambda fc: (fc.decision != "ΕΠΙΛΕΓΕΤΑΙ", fc.guarantee, -len(fc.talents), -fc.score))
     for t in talents:
         t.fields = [fc.name for fc in fields if t.theme in fc.talents]  # περιλαμβάνει τομείς υγείας
-    return EngineResult(talents, fields, rejected)
+    return EngineResult(talents, fields, rejected, learning_elements(chart), is_minor(chart))

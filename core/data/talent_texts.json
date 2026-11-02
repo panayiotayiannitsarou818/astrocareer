@@ -4,7 +4,8 @@
   "Επεξεργασία: άλλαξε ελεύθερα title/text/develop/desc. ΜΗΝ αλλάξεις τα κλειδιά (LEAD, ORG...) ή τα ελληνικά ονόματα τομέων.",
   "Κανόνες: απλή γλώσσα, «μπορεί να» και όχι «είσαι», ΧΩΡΙΣ ονόματα πλανητών/ζωδίων, «Οίκος», ονόματα όψεων.",
   "Οι 3 τομείς υγείας εμφανίζονται μόνο όταν περάσει ο φραγμός υγείας (Κανόνας 15, core/talent_map.py HEALTH_RULES).",
-  "status: «draft» = πρόχειρο, «approved» = εγκρίθηκε από αστρολόγο."
+  "status: «draft» = πρόχειρο, «approved» = εγκρίθηκε από αστρολόγο.",
+  "v22.48: develop = προτάσεις καλλιέργειας για παιδιά/νέους (κάτω των 18)· develop_adult = για ενήλικες."
  ],
  "talents": {
   "LEAD": {
@@ -12,12 +13,14 @@
    "el": {
     "title": "Ηγεσία και πρωτοβουλία",
     "text": "Μπορεί να νιώθεις άνετα όταν παίρνεις την πρωτοβουλία και δίνεις κατεύθυνση σε μια ομάδα. Συχνά βλέπεις τι χρειάζεται να γίνει και μπορείς να κινητοποιήσεις τους άλλους να το κάνουν μαζί σου, με αυτοπεποίθηση και ζεστασιά.",
-    "develop": "Αναλαμβάνοντας μικρές ευθύνες συντονισμού – ένα έργο, μια εκδήλωση, μια ομάδα εργασίας – και ζητώντας ανατροφοδότηση για το πώς εμπνέεις τους άλλους."
+    "develop": "Αναλαμβάνοντας μικρές ευθύνες συντονισμού – ένα έργο, μια εκδήλωση, μια ομάδα εργασίας – και ζητώντας ανατροφοδότηση για το πώς εμπνέεις τους άλλους.",
+    "develop_adult": "Αναλαμβάνοντας τον συντονισμό ενός έργου ή μιας ομάδας στη δουλειά ή σε έναν σύλλογο, και ζητώντας ανατροφοδότηση για το πώς εμπνέεις τους άλλους."
    },
    "en": {
     "title": "Leadership and initiative",
     "text": "You may feel at ease taking the initiative and giving direction to a group. You can often see what needs to be done and motivate others to do it with you, with confidence and warmth.",
-    "develop": "By taking on small coordinating roles – a project, an event, a working group – and asking for feedback on how you inspire others."
+    "develop": "By taking on small coordinating roles – a project, an event, a working group – and asking for feedback on how you inspire others.",
+    "develop_adult": "By coordinating a project or a team at work or in an association, and asking for feedback on how you inspire others."
    }
   },
   "ORG": {
@@ -25,12 +28,14 @@
    "el": {
     "title": "Οργάνωση και συνέπεια",
     "text": "Μπορεί να έχεις την ικανότητα να βάζεις τάξη, να χωρίζεις μια μεγάλη δουλειά σε βήματα και να τη φέρνεις σε πέρας με συνέπεια. Οι άλλοι μπορεί να βασίζονται πάνω σου επειδή κρατάς τα χρονοδιαγράμματα και δεν αφήνεις εκκρεμότητες.",
-    "develop": "Μαθαίνοντας εργαλεία σχεδιασμού και παρακολούθησης έργων και αναλαμβάνοντας ρόλους όπου η αξιοπιστία μετρά περισσότερο από την ταχύτητα."
+    "develop": "Μαθαίνοντας εργαλεία σχεδιασμού και παρακολούθησης έργων και αναλαμβάνοντας ρόλους όπου η αξιοπιστία μετρά περισσότερο από την ταχύτητα.",
+    "develop_adult": "Με εργαλεία οργάνωσης και διαχείρισης έργων, και αναλαμβάνοντας ρόλους όπου μετρούν η αξιοπιστία και η τήρηση προθεσμιών."
    },
    "en": {
     "title": "Organisation and consistency",
     "text": "You may have the ability to bring order, break a large task into steps and see it through with consistency. Others may rely on you because you keep to schedules and do not leave loose ends.",
-    "develop": "By learning project planning and tracking tools and by taking on roles where reliability matters more than speed."
+    "develop": "By learning project planning and tracking tools and by taking on roles where reliability matters more than speed.",
+    "develop_adult": "With organisation and project-management tools, and by taking on roles where reliability and meeting deadlines matter."
    }
   },
   "ANALYSIS": {
@@ -38,12 +43,14 @@
    "el": {
     "title": "Αναλυτική σκέψη και ακρίβεια",
     "text": "Μπορεί να σου αρέσει να εξετάζεις τα πράγματα λεπτομερώς, να βρίσκεις τη λογική τους και να εντοπίζεις λάθη που άλλοι προσπερνούν. Η ακρίβεια και η καθαρή σκέψη μπορεί να είναι από τα δυνατά σου σημεία όταν χρειάζεται να ληφθεί μια τεκμηριωμένη απόφαση.",
-    "develop": "Με προβλήματα, γρίφους, δεδομένα και μαθήματα που ζητούν συστηματική σκέψη, όπως μαθηματικά, προγραμματισμό ή στατιστική."
+    "develop": "Με προβλήματα, γρίφους, δεδομένα και μαθήματα που ζητούν συστηματική σκέψη, όπως μαθηματικά, προγραμματισμό ή στατιστική.",
+    "develop_adult": "Με επιμόρφωση στην ανάλυση δεδομένων ή στη στατιστική, και αναλαμβάνοντας στη δουλειά σου προβλήματα που ζητούν συστηματική σκέψη."
    },
    "en": {
     "title": "Analytical thinking and precision",
     "text": "You may enjoy examining things in detail, finding their logic and spotting mistakes others overlook. Precision and clear thinking can be among your strengths when a well-founded decision is needed.",
-    "develop": "Through problems, puzzles, data and subjects that call for systematic thinking, such as mathematics, programming or statistics."
+    "develop": "Through problems, puzzles, data and subjects that call for systematic thinking, such as mathematics, programming or statistics.",
+    "develop_adult": "With training in data analysis or statistics, and by taking on problems at work that call for systematic thinking."
    }
   },
   "COMM": {
@@ -51,12 +58,14 @@
    "el": {
     "title": "Επικοινωνία και λόγος",
     "text": "Μπορεί να έχεις ευκολία στον λόγο: να εξηγείς, να περιγράφεις, να πείθεις και να βρίσκεις τις σωστές λέξεις για κάθε ακροατή. Η περιέργειά σου για ιδέες και ανθρώπους μπορεί να σε κάνει καλό σύνδεσμο ανάμεσα σε διαφορετικές ομάδες.",
-    "develop": "Γράφοντας, παρουσιάζοντας, συμμετέχοντας σε συζητήσεις ή μαθαίνοντας ξένες γλώσσες."
+    "develop": "Γράφοντας, παρουσιάζοντας, συμμετέχοντας σε συζητήσεις ή μαθαίνοντας ξένες γλώσσες.",
+    "develop_adult": "Γράφοντας άρθρα ή αναρτήσεις, κάνοντας παρουσιάσεις στη δουλειά, συμμετέχοντας σε συζητήσεις ή μαθαίνοντας μια νέα γλώσσα."
    },
    "en": {
     "title": "Communication and expression in words",
     "text": "You may have a way with words: explaining, describing, persuading and finding the right words for each listener. Your curiosity about ideas and people can make you a good link between different groups.",
-    "develop": "By writing, presenting, joining discussions or learning foreign languages."
+    "develop": "By writing, presenting, joining discussions or learning foreign languages.",
+    "develop_adult": "By writing articles or posts, giving presentations at work, joining discussions or learning a new language."
    }
   },
   "TEACH": {
@@ -64,12 +73,14 @@
    "el": {
     "title": "Διδασκαλία και μετάδοση γνώσης",
     "text": "Μπορεί να σου βγαίνει φυσικά να μοιράζεσαι όσα ξέρεις και να κάνεις τα δύσκολα να φαίνονται απλά. Ίσως χαίρεσαι όταν κάποιος καταλαβαίνει κάτι χάρη σε σένα, και έχεις υπομονή με τον ρυθμό του καθενός.",
-    "develop": "Με ιδιαίτερα μαθήματα, καθοδήγηση νεότερων, εργαστήρια ή εκπαιδευτικό περιεχόμενο στο διαδίκτυο."
+    "develop": "Με ιδιαίτερα μαθήματα, καθοδήγηση νεότερων, εργαστήρια ή εκπαιδευτικό περιεχόμενο στο διαδίκτυο.",
+    "develop_adult": "Με σεμινάρια ή εργαστήρια για ενήλικες, καθοδήγηση νέων συναδέλφων ή εκπαιδευτικό περιεχόμενο στο διαδίκτυο."
    },
    "en": {
     "title": "Teaching and sharing knowledge",
     "text": "Sharing what you know and making difficult things look simple may come naturally to you. Seeing someone understand something thanks to you can be a real pleasure, and you often have patience with each person's pace.",
-    "develop": "Through tutoring, mentoring younger people, workshops or educational content online."
+    "develop": "Through tutoring, mentoring younger people, workshops or educational content online.",
+    "develop_adult": "With seminars or workshops for adults, mentoring newer colleagues or creating educational content online."
    }
   },
   "RESEARCH": {
@@ -77,12 +88,14 @@
    "el": {
     "title": "Έρευνα σε βάθος",
     "text": "Μπορεί να έχεις την ανάγκη να φτάνεις στη ρίζα των πραγμάτων και να μη μένεις στην επιφάνεια. Η επιμονή, η συγκέντρωση και η διάθεση να ψάχνεις για πολύ ώρα ένα ερώτημα μπορεί να σε οδηγούν σε ευρήματα που άλλοι δεν φτάνουν.",
-    "develop": "Με μικρές έρευνες, εργασίες βιβλιογραφίας, πειράματα ή ερευνητικά προγράμματα σε σχολείο ή πανεπιστήμιο."
+    "develop": "Με μικρές έρευνες, εργασίες βιβλιογραφίας, πειράματα ή ερευνητικά προγράμματα σε σχολείο ή πανεπιστήμιο.",
+    "develop_adult": "Με μεταπτυχιακές σπουδές, ερευνητικά προγράμματα, άρθρα ή μια προσωπική μελέτη σε ένα θέμα που σε ενδιαφέρει βαθιά."
    },
    "en": {
     "title": "In-depth research",
     "text": "You may feel the need to get to the root of things rather than stay on the surface. Persistence, focus and the willingness to stay with a question for a long time can lead you to findings others do not reach.",
-    "develop": "Through small investigations, literature reviews, experiments or research programmes at school or university."
+    "develop": "Through small investigations, literature reviews, experiments or research programmes at school or university.",
+    "develop_adult": "With postgraduate study, research projects, articles or a personal study of a subject that deeply interests you."
    }
   },
   "INNOV": {
@@ -90,12 +103,14 @@
    "el": {
     "title": "Πρωτότυπη σκέψη και νέες ιδέες",
     "text": "Μπορεί να βλέπεις τα πράγματα από διαφορετική οπτική γωνία και να σε τραβούν οι ιδέες που δεν έχουν δοκιμαστεί ακόμα. Συχνά ψάχνεις εναλλακτικές λύσεις αντί να ακολουθείς αυτόματα τον πιο προφανή δρόμο, και το να ξεφύγεις από το συνηθισμένο ίσως δεν σε φοβίζει.",
-    "develop": "Με δραστηριότητες που ζητούν νέες λύσεις: διαγωνισμούς καινοτομίας, δικά σου μικρά πειραματικά έργα, ρομποτική ή προγραμματισμό."
+    "develop": "Με δραστηριότητες που ζητούν νέες λύσεις: διαγωνισμούς καινοτομίας, δικά σου μικρά πειραματικά έργα, ρομποτική ή προγραμματισμό.",
+    "develop_adult": "Προτείνοντας νέες λύσεις στη δουλειά σου, με ομάδες καινοτομίας, hackathons ή ένα δικό σου πειραματικό έργο."
    },
    "en": {
     "title": "Original thinking and new ideas",
     "text": "You may see things from a different angle and be drawn to ideas that have not been tried yet. You often look for alternative solutions instead of automatically taking the most obvious path, and stepping away from the usual perhaps does not frighten you.",
-    "develop": "Through activities that call for new solutions: innovation competitions, small experimental projects of your own, robotics or programming."
+    "develop": "Through activities that call for new solutions: innovation competitions, small experimental projects of your own, robotics or programming.",
+    "develop_adult": "By proposing new solutions at work, joining innovation teams or hackathons, or running a small experimental project of your own."
    }
   },
   "ART": {
@@ -103,12 +118,14 @@
    "el": {
     "title": "Φαντασία και καλλιτεχνική έκφραση",
     "text": "Μπορεί να έχεις πλούσια φαντασία και την ανάγκη να εκφράζεις όσα νιώθεις μέσα από εικόνες, ήχους, κίνηση ή ιστορίες. Η ευαισθησία σου μπορεί να σε βοηθά να αγγίζεις τους άλλους με τρόπους που οι λέξεις μόνες δεν καταφέρνουν.",
-    "develop": "Με τακτική δημιουργική πρακτική – ζωγραφική, μουσική, θέατρο, φωτογραφία – και δείχνοντας τη δουλειά σου σε άλλους."
+    "develop": "Με τακτική δημιουργική πρακτική – ζωγραφική, μουσική, θέατρο, φωτογραφία – και δείχνοντας τη δουλειά σου σε άλλους.",
+    "develop_adult": "Με τακτική δημιουργική πρακτική – εργαστήρια ζωγραφικής, μουσικής, θεάτρου ή φωτογραφίας – και δείχνοντας τη δουλειά σου σε άλλους."
    },
    "en": {
     "title": "Imagination and artistic expression",
     "text": "You may have a rich imagination and a need to express what you feel through images, sound, movement or stories. Your sensitivity can help you touch others in ways words alone do not.",
-    "develop": "Through regular creative practice – drawing, music, theatre, photography – and by showing your work to others."
+    "develop": "Through regular creative practice – drawing, music, theatre, photography – and by showing your work to others.",
+    "develop_adult": "With regular creative practice – painting, music, theatre or photography workshops – and by showing your work to others."
    }
   },
   "DESIGN": {
@@ -116,12 +133,14 @@
    "el": {
     "title": "Αισθητική και σχεδιασμός",
     "text": "Μπορεί να έχεις ματιά για το ωραίο: τα χρώματα, τις αναλογίες, την αρμονία ενός χώρου ή ενός αντικειμένου. Ίσως σε ευχαριστεί να κάνεις τα πράγματα όμορφα και λειτουργικά ταυτόχρονα.",
-    "develop": "Με σχέδιο, γραφιστικά προγράμματα, διακόσμηση, μόδα ή δημιουργία αντικειμένων."
+    "develop": "Με σχέδιο, γραφιστικά προγράμματα, διακόσμηση, μόδα ή δημιουργία αντικειμένων.",
+    "develop_adult": "Με σεμινάρια σχεδιασμού ή γραφιστικής, φροντίζοντας την εικόνα έργων στη δουλειά σου ή διαμορφώνοντας χώρους."
    },
    "en": {
     "title": "Aesthetics and design",
     "text": "You may have an eye for beauty: colours, proportions, the harmony of a space or an object. Making things both beautiful and functional at the same time can bring you real satisfaction.",
-    "develop": "Through drawing, graphic design software, interior styling, fashion or making objects."
+    "develop": "Through drawing, graphic design software, interior styling, fashion or making objects.",
+    "develop_adult": "With design or graphics courses, taking care of how projects look at work, or arranging spaces."
    }
   },
   "DIPLO": {
@@ -129,12 +148,14 @@
    "el": {
     "title": "Συνεργασία και διπλωματία",
     "text": "Μπορεί να έχεις την ικανότητα να ακούς όλες τις πλευρές, να βρίσκεις κοινό έδαφος και να μαλακώνεις τις εντάσεις. Οι άλλοι μπορεί να σε εμπιστεύονται ως κάποιον που φέρνει τους ανθρώπους πιο κοντά.",
-    "develop": "Με ομαδικές εργασίες, διαπραγματεύσεις, προγράμματα προσομοίωσης (π.χ. μοντέλα Ηνωμένων Εθνών) ή εθελοντισμό."
+    "develop": "Με ομαδικές εργασίες, διαπραγματεύσεις, προγράμματα προσομοίωσης (π.χ. μοντέλα Ηνωμένων Εθνών) ή εθελοντισμό.",
+    "develop_adult": "Αναλαμβάνοντας ρόλους διαμεσολάβησης ή διαπραγμάτευσης, συνεργασίες ανάμεσα σε ομάδες ή εθελοντισμό σε οργανώσεις."
    },
    "en": {
     "title": "Cooperation and diplomacy",
     "text": "You may have the ability to listen to every side, find common ground and ease tensions. Others may trust you as someone who brings people closer together.",
-    "develop": "Through group work, negotiation, simulation programmes (e.g. Model United Nations) or volunteering."
+    "develop": "Through group work, negotiation, simulation programmes (e.g. Model United Nations) or volunteering.",
+    "develop_adult": "By taking on mediation or negotiation roles, partnerships between teams, or volunteering in organisations."
    }
   },
   "JUSTICE": {
@@ -142,12 +163,14 @@
    "el": {
     "title": "Αίσθηση του δικαίου",
     "text": "Μπορεί να έχεις έντονη αίσθηση του τι είναι δίκαιο και να σε ενοχλεί όταν κάποιος αδικείται. Συχνά ζυγίζεις προσεκτικά τα επιχειρήματα και υπερασπίζεσαι αξίες και κανόνες που προστατεύουν όλους.",
-    "develop": "Με αντιλογίες, μαθητικά ή φοιτητικά συμβούλια, εθελοντισμό για δικαιώματα ή γνωριμία με τον χώρο της νομικής."
+    "develop": "Με αντιλογίες, μαθητικά ή φοιτητικά συμβούλια, εθελοντισμό για δικαιώματα ή γνωριμία με τον χώρο της νομικής.",
+    "develop_adult": "Σε επιτροπές δεοντολογίας, σε ρόλους διαμεσολάβησης, σε συλλόγους ή οργανώσεις για δικαιώματα, ή με σεμινάρια νομικής."
    },
    "en": {
     "title": "A sense of fairness and justice",
     "text": "You may have a strong sense of what is fair and feel bothered when someone is treated unjustly. You often weigh arguments carefully and stand up for values and rules that protect everyone.",
-    "develop": "Through debating, student councils, rights-based volunteering or getting to know the legal field."
+    "develop": "Through debating, student councils, rights-based volunteering or getting to know the legal field.",
+    "develop_adult": "On ethics committees, in mediation roles, in associations or organisations for rights, or with law courses."
    }
   },
   "CARE": {
@@ -155,12 +178,14 @@
    "el": {
     "title": "Ενσυναίσθηση και φροντίδα",
     "text": "Μπορεί να καταλαβαίνεις εύκολα πώς νιώθουν οι άλλοι και να θέλεις να τους φροντίσεις. Η ζεστασιά και η διαίσθησή σου μπορεί να κάνουν τους ανθρώπους να νιώθουν ασφάλεια κοντά σου.",
-    "develop": "Με εθελοντισμό, φροντίδα μικρότερων παιδιών ή ηλικιωμένων και δραστηριότητες όπου η προσοχή στον άλλον κάνει τη διαφορά."
+    "develop": "Με εθελοντισμό, φροντίδα μικρότερων παιδιών ή ηλικιωμένων και δραστηριότητες όπου η προσοχή στον άλλον κάνει τη διαφορά.",
+    "develop_adult": "Με εθελοντισμό, στήριξη ανθρώπων που το χρειάζονται και ρόλους όπου η προσοχή στον άλλον κάνει τη διαφορά."
    },
    "en": {
     "title": "Empathy and care",
     "text": "You may easily understand how others feel and want to look after them. Your warmth and intuition can make people feel safe around you.",
-    "develop": "Through volunteering, caring for younger children or older people, and activities where attention to others makes the difference."
+    "develop": "Through volunteering, caring for younger children or older people, and activities where attention to others makes the difference.",
+    "develop_adult": "Through volunteering, supporting people in need, and roles where attention to others makes the difference."
    }
   },
   "HOSP": {
@@ -168,12 +193,14 @@
    "el": {
     "title": "Φιλοξενία και εξυπηρέτηση",
     "text": "Μπορεί να σου αρέσει να κάνεις τους άλλους να νιώθουν ευπρόσδεκτοι και να φροντίζεις ώστε όλα να κυλούν ευχάριστα. Η ευγένεια και η προσοχή σου στη λεπτομέρεια μπορεί να αφήνουν στους ανθρώπους μια καλή ανάμνηση.",
-    "develop": "Με καλοκαιρινή εργασία σε τουρισμό ή εστίαση, οργάνωση εκδηλώσεων ή υποδοχή επισκεπτών."
+    "develop": "Με καλοκαιρινή εργασία σε τουρισμό ή εστίαση, οργάνωση εκδηλώσεων ή υποδοχή επισκεπτών.",
+    "develop_adult": "Με την οργάνωση εκδηλώσεων, την υποδοχή επισκεπτών ή την εξυπηρέτηση πελατών και συνεργατών."
    },
    "en": {
     "title": "Hospitality and service",
     "text": "You may enjoy making others feel welcome and making sure everything runs pleasantly. Your courtesy and attention to detail can leave people with a good memory.",
-    "develop": "Through summer work in tourism or catering, organising events or welcoming visitors."
+    "develop": "Through summer work in tourism or catering, organising events or welcoming visitors.",
+    "develop_adult": "By organising events, welcoming visitors, or taking care of customers and partners."
    }
   },
   "ACTION": {
@@ -181,12 +208,14 @@
    "el": {
     "title": "Δράση και φυσική ενέργεια",
     "text": "Μπορεί να έχεις πολλή ενέργεια, να σου αρέσει η κίνηση και να αντιδράς γρήγορα όταν χρειάζεται. Ίσως αποδίδεις καλύτερα όταν δουλεύεις με το σώμα σου, σε εξωτερικό χώρο ή σε καταστάσεις με ρυθμό.",
-    "develop": "Με αθλητισμό, ομάδες διάσωσης ή προσκοπισμό και δραστηριότητες που ζητούν ετοιμότητα και αντοχή."
+    "develop": "Με αθλητισμό, ομάδες διάσωσης ή προσκοπισμό και δραστηριότητες που ζητούν ετοιμότητα και αντοχή.",
+    "develop_adult": "Με τακτική άσκηση, ομαδικά αθλήματα, ορειβασία ή εθελοντισμό σε ομάδες διάσωσης και δραστηριότητες που ζητούν ετοιμότητα."
    },
    "en": {
     "title": "Action and physical energy",
     "text": "You may have a lot of energy, enjoy movement and react quickly when needed. Perhaps you perform best when working with your body, outdoors or in fast-paced situations.",
-    "develop": "Through sport, rescue teams or scouting, and activities that call for readiness and stamina."
+    "develop": "Through sport, rescue teams or scouting, and activities that call for readiness and stamina.",
+    "develop_adult": "With regular exercise, team sports, hiking or volunteering in rescue teams and activities that call for readiness."
    }
   },
   "BUILD": {
@@ -194,12 +223,14 @@
    "el": {
     "title": "Πρακτική δημιουργία και κατασκευή",
     "text": "Μπορεί να σε ευχαριστεί να φτιάχνεις κάτι απτό με τα χέρια ή με τεχνικά μέσα και να βλέπεις το αποτέλεσμα μπροστά σου. Η υπομονή και η πρακτική σκέψη μπορεί να σε βοηθούν να κάνεις μια ιδέα πραγματικότητα.",
-    "develop": "Με κατασκευές, επισκευές, κηπουρική, μακέτες ή εργαστήρια τεχνολογίας."
+    "develop": "Με κατασκευές, επισκευές, κηπουρική, μακέτες ή εργαστήρια τεχνολογίας.",
+    "develop_adult": "Με κατασκευές, επισκευές, κηπουρική ή εργαστήρια χειροτεχνίας, και αναλαμβάνοντας πρακτικά έργα στη δουλειά ή στο σπίτι."
    },
    "en": {
     "title": "Practical making and building",
     "text": "You may enjoy making something tangible with your hands or with technical tools and seeing the result in front of you. Patience and practical thinking can help you turn an idea into reality.",
-    "develop": "Through building, repairing, gardening, model-making or technology workshops."
+    "develop": "Through building, repairing, gardening, model-making or technology workshops.",
+    "develop_adult": "With building, repairs, gardening or craft workshops, and by taking on practical projects at work or at home."
    }
   },
   "ENTRE": {
@@ -207,12 +238,14 @@
    "el": {
     "title": "Επιχειρηματικότητα και διαχείριση πόρων",
     "text": "Μπορεί να έχεις αίσθηση της αξίας των πραγμάτων και να βλέπεις ευκαιρίες εκεί που άλλοι δεν τις βλέπουν. Συχνά διαχειρίζεσαι καλά χρήματα, χρόνο και μέσα, και ίσως σε τραβά η ιδέα να χτίσεις κάτι δικό σου.",
-    "develop": "Με μια μικρή δική σου δραστηριότητα, μαθητικές εταιρείες, προγράμματα επιχειρηματικότητας ή βασικά μαθήματα οικονομικών."
+    "develop": "Με μια μικρή δική σου δραστηριότητα, μαθητικές εταιρείες, προγράμματα επιχειρηματικότητας ή βασικά μαθήματα οικονομικών.",
+    "develop_adult": "Με μια μικρή δική σου δραστηριότητα, σεμινάρια επιχειρηματικότητας ή αναλαμβάνοντας την ευθύνη ενός προϋπολογισμού."
    },
    "en": {
     "title": "Enterprise and managing resources",
     "text": "You may have a sense of the value of things and spot opportunities where others do not. You often manage money, time and resources well, and the idea of building something of your own may appeal to you.",
-    "develop": "Through a small venture of your own, student company programmes, entrepreneurship schemes or basic economics courses."
+    "develop": "Through a small venture of your own, student company programmes, entrepreneurship schemes or basic economics courses.",
+    "develop_adult": "With a small venture of your own, entrepreneurship courses, or by taking responsibility for a budget."
    }
   },
   "STRAT": {
@@ -220,12 +253,14 @@
    "el": {
     "title": "Στρατηγική σκέψη",
     "text": "Μπορεί να σκέφτεσαι μακροπρόθεσμα, να βλέπεις τη μεγάλη εικόνα και να σχεδιάζεις πώς θα φτάσεις σε έναν στόχο βήμα βήμα. Ίσως προβλέπεις δυσκολίες πριν εμφανιστούν και κρατάς έτοιμο ένα εναλλακτικό σχέδιο.",
-    "develop": "Με παιχνίδια στρατηγικής, σκάκι, σχεδιασμό έργων ή μελέτη περιπτώσεων από τον χώρο των επιχειρήσεων και της πολιτικής."
+    "develop": "Με παιχνίδια στρατηγικής, σκάκι, σχεδιασμό έργων ή μελέτη περιπτώσεων από τον χώρο των επιχειρήσεων και της πολιτικής.",
+    "develop_adult": "Με σχεδιασμό έργων και μακροπρόθεσμων στόχων στη δουλειά, μελέτη περιπτώσεων ή παιχνίδια στρατηγικής όπως το σκάκι."
    },
    "en": {
     "title": "Strategic thinking",
     "text": "You may think long-term, see the big picture and plan how to reach a goal step by step. Perhaps you foresee difficulties before they appear and keep an alternative plan ready.",
-    "develop": "Through strategy games, chess, project planning or case studies from business and politics."
+    "develop": "Through strategy games, chess, project planning or case studies from business and politics.",
+    "develop_adult": "By planning projects and long-term goals at work, studying case studies, or playing strategy games such as chess."
    }
   },
   "STORY": {
@@ -233,12 +268,14 @@
    "el": {
     "title": "Δημιουργική γραφή και αφήγηση",
     "text": "Μπορεί να έχεις χάρισμα στο να αφηγείσαι και να δίνεις ζωή σε ιστορίες, χαρακτήρες και ιδέες. Συχνά βρίσκεις εικόνες και λέξεις που κρατούν το ενδιαφέρον και αγγίζουν τον αναγνώστη ή τον ακροατή.",
-    "develop": "Γράφοντας τακτικά – ιστορίες, σενάρια, ημερολόγιο, blog – και συμμετέχοντας σε εργαστήρια ή διαγωνισμούς γραφής."
+    "develop": "Γράφοντας τακτικά – ιστορίες, σενάρια, ημερολόγιο, blog – και συμμετέχοντας σε εργαστήρια ή διαγωνισμούς γραφής.",
+    "develop_adult": "Γράφοντας τακτικά – ιστορίες, άρθρα, blog ή ημερολόγιο – και συμμετέχοντας σε εργαστήρια ή διαγωνισμούς γραφής."
    },
    "en": {
     "title": "Creative writing and storytelling",
     "text": "You may have a gift for telling stories and bringing characters and ideas to life. You often find images and words that hold attention and move the reader or listener.",
-    "develop": "By writing regularly – stories, scripts, a journal, a blog – and joining writing workshops or competitions."
+    "develop": "By writing regularly – stories, scripts, a journal, a blog – and joining writing workshops or competitions.",
+    "develop_adult": "By writing regularly – stories, articles, a blog or a journal – and joining writing workshops or competitions."
    }
   },
   "COMMUNITY": {
@@ -246,12 +283,14 @@
    "el": {
     "title": "Ομαδικότητα και κοινωνική οργάνωση",
     "text": "Μπορεί να σε κινητοποιεί η ομάδα και ο κοινός σκοπός περισσότερο από την προσωπική διάκριση. Ίσως έχεις την ικανότητα να ενώνεις ανθρώπους γύρω από μια ιδέα και να οργανώνεις δίκτυα που λειτουργούν.",
-    "develop": "Σε συλλόγους, εθελοντικές ομάδες, μαθητικά συμβούλια ή διαδικτυακές κοινότητες με κοινό στόχο."
+    "develop": "Σε συλλόγους, εθελοντικές ομάδες, μαθητικά συμβούλια ή διαδικτυακές κοινότητες με κοινό στόχο.",
+    "develop_adult": "Σε συλλόγους, εθελοντικές οργανώσεις, επαγγελματικά δίκτυα ή διαδικτυακές κοινότητες με κοινό στόχο."
    },
    "en": {
     "title": "Teamwork and community building",
     "text": "You may be motivated more by the group and a shared purpose than by personal distinction. Perhaps you are able to unite people around an idea and organise networks that work.",
-    "develop": "In clubs, volunteer groups, student councils or online communities with a shared goal."
+    "develop": "In clubs, volunteer groups, student councils or online communities with a shared goal.",
+    "develop_adult": "In associations, volunteer organisations, professional networks or online communities with a shared goal."
    }
   },
   "SUPPORT": {
@@ -259,12 +298,14 @@
    "el": {
     "title": "Υποστήριξη και ενθάρρυνση",
     "text": "Μπορεί να έχεις την ικανότητα να ενθαρρύνεις τους άλλους, να βλέπεις τις δυνατότητές τους και να τους βοηθάς να προχωρήσουν. Η παρουσία σου μπορεί να δίνει κουράγιο και σταθερότητα σε όσους δουλεύουν δίπλα σου.",
-    "develop": "Ως καθοδηγητής νεότερων, προπονητής, βοηθός σε ομάδες ή εθελοντής σε προγράμματα στήριξης."
+    "develop": "Ως καθοδηγητής νεότερων, προπονητής, βοηθός σε ομάδες ή εθελοντής σε προγράμματα στήριξης.",
+    "develop_adult": "Ως μέντορας νεότερων συναδέλφων, προπονητής, συντονιστής ομάδων στήριξης ή εθελοντής σε προγράμματα στήριξης."
    },
    "en": {
     "title": "Supporting and encouraging others",
     "text": "You may be able to encourage others, see their potential and help them move forward. Your presence can give courage and stability to those working alongside you.",
-    "develop": "As a mentor to younger people, a coach, a team assistant or a volunteer in support programmes."
+    "develop": "As a mentor to younger people, a coach, a team assistant or a volunteer in support programmes.",
+    "develop_adult": "As a mentor to newer colleagues, a coach, a support-group facilitator or a volunteer in support programmes."
    }
   },
   "PERFORM": {
@@ -272,12 +313,14 @@
    "el": {
     "title": "Παρουσίαση και δημόσια έκφραση",
     "text": "Μπορεί να νιώθεις άνετα μπροστά σε κοινό και να έχεις την ικανότητα να τραβάς την προσοχή και να μεταδίδεις ενθουσιασμό. Η εκφραστικότητά σου μπορεί να κάνει ένα μήνυμα να μένει στη μνήμη.",
-    "develop": "Με θέατρο, μουσική σκηνή, παρουσιάσεις, ρητορικούς αγώνες ή δημιουργία βίντεο."
+    "develop": "Με θέατρο, μουσική σκηνή, παρουσιάσεις, ρητορικούς αγώνες ή δημιουργία βίντεο.",
+    "develop_adult": "Με παρουσιάσεις και ομιλίες, ερασιτεχνικό θέατρο, εκπομπές, podcast ή δημιουργία βίντεο."
    },
    "en": {
     "title": "Presenting and public expression",
     "text": "You may feel comfortable in front of an audience and be able to draw attention and pass on enthusiasm. Your expressiveness can make a message memorable.",
-    "develop": "Through theatre, performing music, presentations, public-speaking contests or making videos."
+    "develop": "Through theatre, performing music, presentations, public-speaking contests or making videos.",
+    "develop_adult": "With presentations and talks, amateur theatre, broadcasts, podcasts or making videos."
    }
   },
   "EXPLORE": {
@@ -285,12 +328,14 @@
    "el": {
     "title": "Εξερεύνηση και διεθνείς ορίζοντες",
     "text": "Μπορεί να σε τραβούν τα ταξίδια, οι άλλοι πολιτισμοί και οι μεγάλες ερωτήσεις. Η ανάγκη σου να διευρύνεις τους ορίζοντές σου μπορεί να σε κάνει ανοιχτό σε νέες εμπειρίες και ιδέες από όλο τον κόσμο.",
-    "develop": "Με ξένες γλώσσες, ανταλλαγές μαθητών ή φοιτητών (π.χ. Erasmus), ταξίδια και διάβασμα για άλλους πολιτισμούς."
+    "develop": "Με ξένες γλώσσες, ανταλλαγές μαθητών ή φοιτητών (π.χ. Erasmus), ταξίδια και διάβασμα για άλλους πολιτισμούς.",
+    "develop_adult": "Με ξένες γλώσσες, διεθνή προγράμματα ή συνεργασίες, ταξίδια και διάβασμα για άλλους πολιτισμούς."
    },
    "en": {
     "title": "Exploration and wider horizons",
     "text": "You may be drawn to travel, other cultures and big questions. Your need to broaden your horizons can make you open to new experiences and ideas from all over the world.",
-    "develop": "Through foreign languages, student exchanges (e.g. Erasmus), travel and reading about other cultures."
+    "develop": "Through foreign languages, student exchanges (e.g. Erasmus), travel and reading about other cultures.",
+    "develop_adult": "With foreign languages, international programmes or partnerships, travel and reading about other cultures."
    }
   },
   "TECH": {
@@ -298,12 +343,14 @@
    "el": {
     "title": "Τεχνολογία, υπολογιστές και δίκτυα",
     "text": "Μπορεί να νιώθεις άνετα με υπολογιστές, ψηφιακά εργαλεία και συστήματα που συνδέουν ανθρώπους και πληροφορίες. Συχνά καταλαβαίνεις γρήγορα πώς λειτουργεί ένα πρόγραμμα ή ένα δίκτυο, και ίσως σε ευχαριστεί να βρίσκεις τρόπους να το κάνεις πιο χρήσιμο.",
-    "develop": "Με προγραμματισμό, δημιουργία ιστοσελίδων ή εφαρμογών, ρομποτική και μαθήματα πληροφορικής ή δικτύων."
+    "develop": "Με προγραμματισμό, δημιουργία ιστοσελίδων ή εφαρμογών, ρομποτική και μαθήματα πληροφορικής ή δικτύων.",
+    "develop_adult": "Με σεμινάρια πληροφορικής, εργαλεία αυτοματοποίησης στη δουλειά σου ή φτιάχνοντας μια δική σου ιστοσελίδα ή εφαρμογή."
    },
    "en": {
     "title": "Technology, computers and networks",
     "text": "You may feel at ease with computers, digital tools and systems that connect people and information. You often quickly understand how a program or a network works, and perhaps you enjoy finding ways to make it more useful.",
-    "develop": "Through programming, building websites or apps, robotics and courses in computing or networks."
+    "develop": "Through programming, building websites or apps, robotics and courses in computing or networks.",
+    "develop_adult": "With computing courses, automation tools at work, or by building your own website or app."
    }
   }
  },

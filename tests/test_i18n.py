@@ -27,6 +27,9 @@ def test_tr_el_and_en_have_identical_keys():
 def test_tr_values_are_non_empty_strings():
     for lang in ("el", "en"):
         for key, value in TR[lang].items():
+            if key == "faq":   # v22.52: λίστα (ερώτηση, απάντηση)
+                assert value and all(isinstance(q, str) and q and isinstance(a, str) and a for q, a in value)
+                continue
             assert isinstance(value, str) and value.strip(), f"{lang}.{key} is empty or not a string"
 
 
