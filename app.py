@@ -235,17 +235,18 @@ def _birth_form(prefix: str = "b"):
     # «Κύπρος»· το «Δεν βρίσκω τον τόπο μου» κάτω από τον τόπο.
     st.markdown(f"**{t['step_when']}**")
     d1, d2, d3, d4, d5 = st.columns([1, 1.7, 1.2, 1, 1])
-    day = d1.number_input(t["birth_day"], min_value=1, max_value=31, value=None, step=1,
-                          placeholder=t["birth_day_ph"], key=f"{prefix}_day_{g}")
+    # v22.40: ΟΛΑ με βελάκι (λίστα), όπως ο μήνας -- και πληκτρολόγηση για γρήγορη εύρεση.
+    day = d1.selectbox(t["birth_day"], list(range(1, 32)), index=None, key=f"{prefix}_day_{g}",
+                       placeholder=t["birth_day_ph"])
     month = d2.selectbox(t["birth_month"], list(range(1, 13)), index=None, key=f"{prefix}_month_{g}",
                          placeholder=t["birth_month_ph"], format_func=lambda m: t["months"].split(",")[m - 1])
-    year = d3.number_input(t["birth_year"], min_value=1, max_value=9999, value=None, step=1,
-                           placeholder=t["birth_year_ph"], key=f"{prefix}_year_{g}",
-                           help=t["birth_years"].format(min_year=min_year))
-    hour = d4.number_input(t["birth_hour"], min_value=0, max_value=23, value=None, step=1,
-                           placeholder=t["birth_hour_ph"], key=f"{prefix}_hour_{g}", help=t["birth_time_help"])
-    minute = d5.number_input(t["birth_minute"], min_value=0, max_value=59, value=None, step=1,
-                             placeholder=t["birth_minute_ph"], key=f"{prefix}_minute_{g}")
+    year = d3.selectbox(t["birth_year"], list(range(today.year, min_year - 1, -1)), index=None,
+                        placeholder=t["birth_year_ph"], key=f"{prefix}_year_{g}",
+                        help=t["birth_years"].format(min_year=min_year))
+    hour = d4.selectbox(t["birth_hour"], list(range(24)), index=None, format_func=lambda h: f"{h:02d}",
+                        placeholder=t["birth_hour_ph"], key=f"{prefix}_hour_{g}", help=t["birth_time_help"])
+    minute = d5.selectbox(t["birth_minute"], list(range(60)), index=None, format_func=lambda m: f"{m:02d}",
+                          placeholder=t["birth_minute_ph"], key=f"{prefix}_minute_{g}")
     bdate = None
     if year and not (min_year <= int(year) <= today.year):
         st.caption("⚠️ " + t["birth_years"].format(min_year=min_year))
