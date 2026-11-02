@@ -44,6 +44,8 @@ from core.pipeline import (
 )
 from core.prompts import build_orientation_source
 from core.teaser import pick_teaser, teaser_instruction
+from core.payments import (PaymentError, case_fingerprint, create_checkout, format_price, is_paid,
+                           parse_price)
 from core.talent_report import build_engine_report
 from core.talent_growth import annotate_client_docx
 from core.talent_texts import approval_status, fully_approved
@@ -63,10 +65,16 @@ st.markdown("""<style>[data-testid="stNumberInputStepUp"],[data-testid="stNumber
 .small-note{color:#7a6d86;font-size:.82rem;text-align:center;max-width:760px;margin:0 auto 10px;line-height:1.5}</style>""",
             unsafe_allow_html=True)
 if CLIENT_PAGE:   # σελίδα πελάτη: καθόλου πλαϊνή στήλη
+    # v22.33: πιο ψηλά η φόρμα -- χωρίς τη γραμμή εργαλείων του Streamlit (Share, ☆, ✏️), λιγότερο κενό πάνω,
+    # μικρότερο μωβ πλαίσιο, η γλώσσα χωρίς τίτλο.
     st.markdown("""<style>[data-testid="stSidebar"],[data-testid="stExpandSidebarButton"],
-[data-testid="stSidebarCollapseButton"]{display:none!important}</style>""", unsafe_allow_html=True)
+[data-testid="stSidebarCollapseButton"]{display:none!important}
+header[data-testid="stHeader"]{display:none!important}
+.block-container{padding-top:1.2rem!important}
+.hero{padding:18px 26px!important;margin-bottom:10px!important}.hero h1{font-size:32px!important;margin:0 0 4px!important}
+.hero p{margin:2px 0!important}</style>""", unsafe_allow_html=True)
 st.markdown("""<style>
-.stApp{background:#f6f2fa}.block-container{max-width:1100px;padding-top:4.5rem}.hero{background:#3d2350;color:white;border-radius:22px;padding:30px 34px;margin-bottom:18px}.hero h1{margin:0 0 8px;font-family:Georgia;font-size:42px}.hero p{color:#e6d9f2}.mission{color:#5b4a6b;font-style:italic;text-align:center;max-width:760px;margin:0 auto 24px;line-height:1.6}.hero .motto{font-family:Georgia;font-style:italic;font-size:1.05rem;color:#f3e9fb;margin:6px 0 0}.ok{padding:14px 16px;background:#e5f2e7;border-left:5px solid #39704c;border-radius:8px}.warn{padding:14px 16px;background:#fff1dd;border-left:5px solid #b7791f;border-radius:8px}.teaser{padding:18px 20px;background:#fff;border:2px solid #b9a3cf;border-radius:14px;margin:14px 0}.teaser-head{color:#3d2350;font-weight:600;margin-bottom:6px}.teaser-title{font-family:Georgia;font-size:1.35rem;color:#3d2350;margin-bottom:8px}.teaser-more{margin-top:12px;color:#5b4a6b;font-style:italic}.stay{padding:16px 18px;background:#fde8e8;border:2px solid #b42318;border-radius:10px;font-weight:600;font-size:1.05rem;color:#7a1a12}</style>""", unsafe_allow_html=True)
+.stApp{background:#f6f2fa}.block-container{max-width:1100px;padding-top:4.5rem}.hero{background:#3d2350;color:white;border-radius:22px;padding:30px 34px;margin-bottom:18px}.hero h1{margin:0 0 8px;font-family:Georgia;font-size:42px}.hero p{color:#e6d9f2}.mission{color:#5b4a6b;font-style:italic;text-align:center;max-width:760px;margin:0 auto 24px;line-height:1.6}.hero .motto{font-family:Georgia;font-style:italic;font-size:1.05rem;color:#f3e9fb;margin:6px 0 0}.ok{padding:14px 16px;background:#e5f2e7;border-left:5px solid #39704c;border-radius:8px}.warn{padding:14px 16px;background:#fff1dd;border-left:5px solid #b7791f;border-radius:8px}.teaser{padding:18px 20px;background:#fff;border:2px solid #b9a3cf;border-radius:14px;margin:14px 0}.teaser-head{color:#3d2350;font-weight:600;margin-bottom:6px}.teaser-title{font-family:Georgia;font-size:1.35rem;color:#3d2350;margin-bottom:8px}.teaser-more{margin-top:12px;color:#5b4a6b;font-style:italic}.pay{padding:14px 16px;background:#fff;border:2px solid #b9a3cf;border-radius:12px;margin:6px 0 10px;color:#3d2350}.stay{padding:16px 18px;background:#fde8e8;border:2px solid #b42318;border-radius:10px;font-weight:600;font-size:1.05rem;color:#7a1a12}</style>""", unsafe_allow_html=True)
 
 
 def _secret(name):
@@ -96,7 +104,8 @@ for _name in ("ANTHROPIC_MODEL", "OPENAI_MODEL", "AUTO_MAX_ATTEMPTS", "AUTO_FRES
 
 _, lang_col = st.columns([6, 1.6])
 with lang_col:
-    site_language = st.selectbox("Γλώσσα / Language", ["Ελληνικά", "English"], key="site_language")
+    site_language = st.selectbox("Γλώσσα / Language", ["Ελληνικά", "English"], key="site_language",
+                                 label_visibility="collapsed" if CLIENT_PAGE else "visible")
 lang = "el" if site_language == "Ελληνικά" else "en"
 t = TR[lang]
 
@@ -127,6 +136,10 @@ if REPORT_MODE not in ("engine", "hybrid"):
 # v22.2: REQUIRE_APPROVAL (Secret, προεπιλογή "1"): όσο οι πίνακες/τα κείμενα της μηχανής είναι
 # πρόχειρα, ο ΠΕΛΑΤΗΣ δεν παίρνει πλήρη αναφορά (μόνο η Διαχείριση). "0" = επιτρέπεται (π.χ. δοκιμές).
 REQUIRE_APPROVAL = str(_secret("REQUIRE_APPROVAL") or "1").strip() != "0"
+# v22.39: Πληρωμή (Stripe). Χωρίς STRIPE_SECRET_KEY η σελίδα δουλεύει όπως πριν (χωρίς πληρωμή).
+STRIPE_KEY = str(_secret("STRIPE_SECRET_KEY") or "").strip()
+PAYMENTS_ON = STRIPE_KEY.startswith(("sk_test_", "sk_live_", "rk_test_", "rk_live_"))
+REPORT_PRICE_CENTS = parse_price(_secret("REPORT_PRICE") or "20")
 POLISH_MODEL = (os.environ.get("POLISH_MODEL") or
                 ("claude-sonnet-5-5" if provider == "anthropic" else default_model(provider)))
 
@@ -469,6 +482,9 @@ def _engine_section(input_key, preview):
             st.info(t["draft_client"] if has_teaser else t["draft_client_no_teaser"])
             return
     ready = preview is not None and input_key is not None
+    if PAYMENTS_ON and not is_admin and not _paid(input_key):
+        _pay_box(input_key, ready)
+        return
     clicked = st.button(t["run_button"], type="primary", use_container_width=True, disabled=not ready,
                         key="engine_run")
     if not ready and ss.get("form_missing"):
@@ -511,6 +527,75 @@ def _engine_section(input_key, preview):
             st.rerun()
     with st.expander(t["engine_preview"]):
         st.markdown(res["client_text"])
+
+
+def _app_url():
+    url = str(_secret("APP_URL") or "").strip()
+    if not url:
+        try:
+            url = str(st.context.url or "")
+        except Exception:  # noqa: BLE001
+            url = ""
+    url = url.split("?")[0].rstrip("/")
+    return url or "https://astrocheck-career.streamlit.app"
+
+
+def _paid(input_key):
+    """v22.39: έχει πληρωθεί η αναφορά ΓΙ' ΑΥΤΑ τα στοιχεία; (έλεγχος στο Stripe, με μνήμη)"""
+    if input_key is None:
+        return False
+    fp = case_fingerprint(input_key)
+    if fp in ss.setdefault("paid_fps", set()):
+        return True
+    checked = ss.setdefault("pay_checked", set())
+    for sid in list(ss.setdefault("pay_sessions", [])):
+        if (sid, fp) in checked and not ss.get("pay_recheck"):
+            continue
+        checked.add((sid, fp))
+        try:
+            ok = is_paid(STRIPE_KEY, sid, fp)
+        except PaymentError as exc:
+            ss["pay_error"] = str(exc)
+            continue
+        if ok:
+            ss.paid_fps.add(fp)
+            ss.pop("pay_recheck", None)
+            return True
+    ss.pop("pay_recheck", None)
+    return False
+
+
+def _pay_box(input_key, ready):
+    price = format_price(REPORT_PRICE_CENTS)
+    st.markdown(f'<div class="pay">{t["pay_intro"].format(price=price)}</div>', unsafe_allow_html=True)
+    if not ready:
+        st.button(t["pay_button"].format(price=price), type="primary", use_container_width=True,
+                  disabled=True, key="pay_disabled")
+        if ss.get("form_missing"):
+            st.caption(t["missing_hint"].format(items=", ".join(ss["form_missing"])))
+        return
+    fp = case_fingerprint(input_key)
+    links = ss.setdefault("pay_links", {})
+    if fp not in links:
+        base = _app_url()
+        try:
+            co = create_checkout(STRIPE_KEY, amount_cents=REPORT_PRICE_CENTS, product_name=t["pay_product"],
+                                 fingerprint=fp, success_url=base + "/?paid={CHECKOUT_SESSION_ID}",
+                                 cancel_url=base + "/?pay=cancel", locale=lang)
+        except PaymentError as exc:
+            st.error(t["pay_unavailable"])
+            if is_admin:
+                st.code(str(exc))
+            return
+        links[fp] = co.url
+        ss.setdefault("pay_sessions", []).append(co.id)
+    st.link_button(t["pay_button"].format(price=price), links[fp], type="primary", use_container_width=True)
+    st.caption(t["pay_note"])
+    if st.button(t["pay_done"], use_container_width=True, key="pay_done"):
+        ss["pay_recheck"] = True
+        if _paid(input_key):
+            st.rerun()
+        st.warning(t["pay_not_yet"])
 
 
 def _auto_tab(input_key, preview, preview_err):
@@ -667,6 +752,15 @@ def _show_teaser(chart):
 # v20.14: πρώτα τα κοινά στοιχεία, μετά ο τρόπος δημιουργίας.
 if is_admin:   # v22.24: να φαίνεται καθαρά ότι ΔΕΝ είναι η σελίδα του πελάτη
     st.warning(t["admin_banner"])
+# v22.39: επιστροφή από τη σελίδα πληρωμής του Stripe
+_qp_paid = str(st.query_params.get("paid", "") or "")
+if PAYMENTS_ON and _qp_paid.startswith("cs_"):
+    if _qp_paid not in ss.setdefault("pay_sessions", []):
+        ss.pay_sessions.append(_qp_paid)
+    if not ss.get("paid_fps"):
+        st.success(t["pay_returned"])
+elif PAYMENTS_ON and st.query_params.get("pay") == "cancel" and not ss.get("paid_fps"):
+    st.info(t["pay_cancelled"])
 _input_key, _chart, _chart_err = _chart_input()
 _show_teaser(_chart if _input_key else None)
 _show_chart_data(_chart if _input_key else None)

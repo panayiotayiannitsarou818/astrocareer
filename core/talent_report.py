@@ -40,7 +40,10 @@ TXT = {
                          "Ταλέντα που φαίνονται στον χάρτη σου και δυναμώνουν όσο τα δοκιμάζεις στην πράξη."),
         "develop": "Πώς να το καλλιεργήσεις:",
         "summary": "Συνοπτικά, τα ταλέντα σου",
-        "summary_note": "Όλα αυτά είναι δυνατότητες. Το πόσο θα αναπτυχθεί το καθένα εξαρτάται από τις επιλογές και την εξάσκησή σου.",
+        # v22.34: εξηγείται και η ΣΕΙΡΑ των ταλέντων (ιδιοκτήτρια).
+        "summary_note": ("Η σειρά δεν είναι τυχαία: πρώτα είναι τα ταλέντα που φαίνονται πιο έντονα στον χάρτη σου. "
+                         "Όλα αυτά είναι δυνατότητες. Το πόσο θα αναπτυχθεί το καθένα εξαρτάται από τις επιλογές και "
+                         "την εξάσκησή σου."),
         # v22.18: 4 διατυπώσεις ανά τρόπο ανάπτυξης -- σε κάθε αναφορά δεν επαναλαμβάνεται η ίδια πρόταση.
         "growth_long": {
             "easy": ["Συχνά το κάνεις χωρίς ιδιαίτερη προσπάθεια, σχεδόν από ένστικτο.",
@@ -74,6 +77,8 @@ TXT = {
                           "Η σειρά δεν είναι τυχαία: πρώτοι είναι οι τομείς όπου συναντιούνται τα περισσότερα και πιο "
                           "δυνατά ταλέντα σου, και τελευταίοι όσοι ταιριάζουν σε ένα μόνο ταλέντο."),
         "best_for": "Ο πιο ταιριαστός τομέας για το ταλέντο «{t}».",
+        "glance": "Με μια ματιά",
+        "glance_note": "Κάθε ● είναι ένα από τα ταλέντα σου που οδηγεί σε αυτόν τον τομέα.",
         "based_on": "Στηρίζεται σε",
         "other": "Άλλες κατευθύνσεις",
         "other_note": "Τομείς που συνδέονται με ένα από τα ταλέντα σου και αξίζει να τους έχεις υπόψη.",
@@ -104,7 +109,8 @@ TXT = {
         "all_emerging": ("Your talents", "Talents that show in your chart and grow stronger as you try them out in practice."),
         "develop": "How to develop it:",
         "summary": "Your talents at a glance",
-        "summary_note": "All of these are possibilities. How far each one develops depends on your choices and practice.",
+        "summary_note": ("The order is not random: the talents that show most strongly in your chart come first. "
+                         "All of these are possibilities. How far each one develops depends on your choices and practice."),
         "growth_long": {
             "easy": ["You often do it without much effort, almost by instinct.",
                      "It is one of the things that may come naturally to you, without much thought.",
@@ -136,6 +142,8 @@ TXT = {
                           "where the most and strongest of your talents meet come first, and those that suit a single "
                           "talent come last."),
         "best_for": "The field that best suits the talent \"{t}\".",
+        "glance": "At a glance",
+        "glance_note": "Each ● is one of your talents that leads to this field.",
         "based_on": "Draws on",
         "other": "Other directions",
         "other_note": "Fields linked to one of your talents that are worth keeping in mind.",
@@ -220,6 +228,10 @@ def client_markdown(result: EngineResult, lang: str = "el", ai: dict | None = No
     if main:
         note = tx["fields_note_g"] if any(f.guarantee for f in main) else tx["fields_note"]
         out += [f"## {tx['fields']}", f"*{note}*", ""]
+        # v22.34: «με μια ματιά» -- πόσα ταλέντα οδηγούν σε κάθε τομέα (λίστα, όχι πίνακας: Κανόνας 3).
+        out += [f"**{tx['glance']}**"]
+        out += [f"- {field_text(f.name, lang)['name']}  {'●' * len(f.talents)}" for f in main]
+        out += [f"*{tx['glance_note']}*", ""]
         for f in main:
             ft = field_text(f.name, lang)
             names = ", ".join(talent_text(th, lang)["title"] for th in f.talents)

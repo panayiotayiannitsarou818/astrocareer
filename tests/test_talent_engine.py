@@ -269,3 +269,27 @@ def test_houses_4_8_12_count_only_for_concentrations_v22_32():
                         used += 1
                         assert i.concentration and set(houses[h]) & set(PERSONAL)
     assert used
+
+
+def test_luminary_dispositor_only_supports_v22_36():
+    """Διαχειριστής Ήλιου/Σελήνης: μόνο υποστηρικτικά. Κλία: Σελήνη σε Παρθένο -> Ερμής -> Επικοινωνία (υποστήριξη)."""
+    klia = compute_chart(datetime(1965, 7, 30, 17, 0, tzinfo=timezone.utc), -20.15, 28.6)
+    comm = next(t for t in run_engine(klia).talents if t.theme == "COMM")
+    assert any("κυβερνήτης του ζωδίου της Σελήνης" in i.label for i in comm.supporting)
+    for c in _charts(60, 24):
+        for t in run_engine(c).talents:
+            assert not any("κυβερνήτης του ζωδίου" in i.label for i in t.indicators)
+
+
+def test_planets_in_tenth_give_their_primary_function_v22_37():
+    """Woolfolk: κάθε πλανήτης στον 10ο (καριέρα) δίνει τη λειτουργία του. 11/02/1982: Σελήνη στον 10ο -> Ενσυναίσθηση."""
+    care = next(t for t in run_engine(_pafos()).talents if t.theme == "CARE")
+    assert any(i.kind == "Θέση" and i.points == ("Σελήνη",) and "Οίκος 10" in i.label for i in care.indicators)
+
+
+def test_tenth_house_table_v22_38():
+    """Πίνακας 10ου Οίκου: κάθε πλανήτης έχει ταλέντο καριέρας· ο Πλούτωνας στον 10ο -> Επιχειρηματικότητα (βιβλίο)."""
+    from core.talent_map import PLANET_THEMES, TENTH_HOUSE_THEMES, THEMES
+    assert set(TENTH_HOUSE_THEMES) == set(PLANET_THEMES) - {"Χείρωνας"}
+    assert all(set(v) <= set(THEMES) for v in TENTH_HOUSE_THEMES.values())
+    assert TENTH_HOUSE_THEMES["Πλούτωνας"] == ("ENTRE",) and "ENTRE" in TENTH_HOUSE_THEMES["Άρης"]

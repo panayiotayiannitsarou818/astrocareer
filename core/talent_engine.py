@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 
 from .astrology import planet_concentrations
 from .talent_map import (
-    ANGLES, COLOURS, CONCENTRATION_ONLY_HOUSES, colour_options, colour_phrase, HEALTH_RULES, HOUSE_THEMES, NODES, PAIR_THEME, PERSONAL, PLANET_THEMES, SIGN_THEMES, SLOW, THEME_FIELDS, THEMES,
+    ANGLES, COLOURS, CONCENTRATION_ONLY_HOUSES, TENTH_HOUSE_THEMES, colour_options, colour_phrase, HEALTH_RULES, HOUSE_THEMES, NODES, PAIR_THEME, PERSONAL, PLANET_THEMES, SIGN_THEMES, SLOW, THEME_FIELDS, THEMES,
 )
 
 STRONG, NORMAL, WIDE, VERY_WIDE = "Στενή/ισχυρή", "Κανονική", "Πλατιά αλλά έγκυρη", "Πολύ πλατιά/δευτερεύουσα"
@@ -184,6 +184,10 @@ def _position_indicators(chart) -> dict[str, list[Indicator]]:
         sign_themes = () if p.name in SLOW else SIGN_THEMES.get(p.sign, ())   # αργοί: το ζώδιο είναι γενεακό
         house_themes = HOUSE_THEMES.get(p.house, ())
         themes = {t for t in PLANET_THEMES[p.name] if t in sign_themes or t in house_themes}
+        if p.house == 10:
+            # v22.37-38 (ΠΡΟΧΕΙΡΟ, Ε11): ο 10ος είναι ο Οίκος της καριέρας -- ΚΑΘΕ πλανήτης εκεί δίνει ταλέντο
+            # καριέρας, κατά τον πίνακα TENTH_HOUSE_THEMES (βιβλίο Woolfolk + αστρολόγος ιδιοκτήτριας).
+            themes |= set(TENTH_HOUSE_THEMES.get(p.name, ()))
         if p.name == "Ήλιος":
             # Ο Ήλιος = δημιουργική ταυτότητα (Κανόνας 4): στηρίζει πάντα το κύριο θέμα του ζωδίου του.
             themes.add(SIGN_THEMES[p.sign][0])
@@ -254,6 +258,24 @@ def _ruler_indicators(chart) -> dict[str, list[Indicator]]:
                 seen.add((ruler, t))
                 label = f"{ruler}, κυβερνήτης του {where} ({sign}), βρίσκεται στον Οίκο {p.house} σε {p.sign}"
                 by_theme.setdefault(t, []).append(Indicator("Κυβερνήτης", f"rulpos:{ruler}", (ruler,), label))
+    # v22.36 (ΠΡΟΧΕΙΡΟ, Ε10) -- «διαχειριστής» (dispositor): ο κυβερνήτης του ζωδίου του ΗΛΙΟΥ «ενισχύει τη
+    # δύναμη του Ήλιου» και ο κυβερνήτης του ζωδίου της ΣΕΛΗΝΗΣ δείχνει πώς κινητοποιούν τα συναισθήματα
+    # (J. M. Woolfolk, The Only Astrology Book You'll Ever Need). Ενισχύει ΥΠΟΣΤΗΡΙΚΤΙΚΑ την κύρια λειτουργία
+    # του κυβερνήτη -- όπως η θέση κυβερνήτη (v22.12): δεν δημιουργεί νέο ταλέντο. Αν ο φωτεινός κυβερνά το
+    # ζώδιό του (π.χ. Ήλιος σε Λέοντα), δεν προστίθεται τίποτα.
+    for luminary in ("Ήλιος", "Σελήνη"):
+        lp = pts.get(luminary)
+        if lp is None:
+            continue
+        for ruler in (r for r in RULERS.get(lp.sign, ()) if r):
+            if ruler == luminary or ruler not in PLANET_THEMES or ruler not in pts:
+                continue
+            t = PLANET_THEMES[ruler][0]
+            if (ruler, t) in seen:
+                continue
+            seen.add((ruler, t))
+            label = f"{ruler}, κυβερνήτης του ζωδίου {'του Ήλιου' if luminary == 'Ήλιος' else 'της Σελήνης'} ({lp.sign})"
+            by_theme.setdefault(t, []).append(Indicator("Κυβερνήτης", f"rulpos:disp:{luminary}:{ruler}", (ruler,), label))
     return by_theme
 
 
@@ -386,7 +408,7 @@ def _colour_candidates(chart, t: Talent):
 MAX_COLOURS = 4
 
 
-_COLOUR_STOP = {"αλλους", "αλλου", "αλλον", "αλλοι", "αλλων", "ειναι", "δινει", "πραγματα", "πραγματων", "εαυτου", "others", "other",
+_COLOUR_STOP = {"κανει", "κανεις", "αλλους", "αλλου", "αλλον", "αλλοι", "αλλων", "ειναι", "δινει", "πραγματα", "πραγματων", "εαυτου", "others", "other",
                 "things", "which", "where", "yourself"}
 
 
