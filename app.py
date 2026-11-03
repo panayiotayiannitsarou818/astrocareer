@@ -580,8 +580,17 @@ def _engine_section(input_key, preview):
     if PAYMENTS_ON and not is_admin and not _paid(input_key):
         _pay_box(input_key, ready, preview)
         return
-    clicked = st.button(t["run_button"], type="primary", use_container_width=True, disabled=not ready,
-                        key="engine_run") or (ready and ss.pop("auto_run", False))
+    # v22.69: μετά την πληρωμή η αναφορά φτιάχνεται ΜΟΝΗ της -- χωρίς το κουμπί «Δημιουργία», που μπέρδευε·
+    # και όταν η αναφορά για αυτά τα στοιχεία είναι ήδη έτοιμη, ο πελάτης δεν βλέπει ξανά το κουμπί.
+    _auto = ready and ss.pop("auto_run", False)
+    _have = (ss.get("engine_result") or {}).get("case_key") == input_key and (ss.get("engine_result") or {}).get("lang") == lang
+    if _auto:
+        clicked = True
+    elif _have and not is_admin and PAYMENTS_ON:
+        clicked = False
+    else:
+        clicked = st.button(t["run_button"], type="primary", use_container_width=True, disabled=not ready,
+                            key="engine_run")
     if not ready and ss.get("form_missing"):
         st.caption(t["missing_hint"].format(items=", ".join(ss["form_missing"])))
     if clicked:
