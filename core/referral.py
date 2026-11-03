@@ -44,6 +44,7 @@ class Settings:
     days: int = 1              # μέχρι τα μεσάνυχτα της «επόμενης» μέρας
     payout_min: int = 2000     # λεπτά -- ελάχιστο για αποστολή στο Revolut
     months: int = 12           # λήξη υπολοίπου μετά το τελευταίο κέρδος
+    max_per_year: int = 50     # v22.59: ανώτατο φίλων που ανταμείβονται ανά ημερολογιακό έτος (0 = χωρίς όριο)
 
 
 @dataclass
@@ -51,6 +52,8 @@ class Balance:
     code: str
     earned: int = 0
     used: int = 0
+    capped: int = 0                # v22.59: φίλοι πάνω από το ετήσιο όριο (δεν ανταμείβονται)
+    friend_ids: list = field(default_factory=list)   # v22.59: πληρωμές φίλων που ανταμείφθηκαν
     friends: int = 0
     last_earned: datetime | None = None
     expires: datetime | None = None
@@ -63,9 +66,15 @@ class Balance:
     payout_cents: int = 0
     spent: int = 0
 
+    reserved: int = 0              # v22.56: πίστωση δεσμευμένη σε ανοιχτή (μη πληρωμένη) πληρωμή
+
     @property
     def available(self) -> int:
-        return 0 if self.expired else max(0, self.earned - self.used)
+        """Διαθέσιμο = κερδισμένα − χρησιμοποιημένα − δεσμευμένα σε ανοιχτές πληρωμές − αίτημα Revolut σε αναμονή."""
+        if self.expired:
+            return 0
+        pending = self.payout_cents if self.payout_pending else 0
+        return max(0, self.earned - self.used - self.reserved - pending)
 
 
 # ------------------------------------------------------------------ κωδικοί και υπογραφές
@@ -190,22 +199,52 @@ def balance(secret_key, code: str, settings: Settings, http=None, now: datetime 
         b.payout_pending = md.get("payout_pending") == "1"
         b.payout_revtag = md.get("payout_revtag", "")
         b.payout_cents = int(md.get("payout_cents") or 0)
+    rewarded = []
     for p in _search(secret_key, f"metadata['ref']:'{code}'", http):
         if _charge(p).get("refunded") or int(_charge(p).get("amount_refunded") or 0) > 0:
             continue   # v22.50: αγορά φίλου που επιστράφηκε -> δεν μετρά
         if _email(p) in own_emails or (_card(p) and _card(p) in own_cards):
             continue   # ο «φίλος» είναι ο ίδιος: ο φίλος κράτησε την έκπτωση, ο κωδικός δεν κερδίζει
+        when = datetime.fromtimestamp(int(p.get("created", 0)), tz=timezone.utc)
+        rewarded.append((when, p))
+    b.friend_ids = []
+    # v22.59: ανώτατο ανά έτος -- μετρούν οι πρώτοι max_per_year φίλοι κάθε ημερολογιακού έτους
+    per_year: dict = {}
+    for when, p in sorted(rewarded, key=lambda w: w[0]):
+        per_year[when.year] = per_year.get(when.year, 0) + 1
+        if settings.max_per_year and per_year[when.year] > settings.max_per_year:
+            b.capped += 1
+            continue
         b.friends += 1
         b.earned += settings.reward
-        when = datetime.fromtimestamp(int(p.get("created", 0)), tz=timezone.utc)
+        b.friend_ids.append(p.get("id", ""))
         b.last_earned = max(b.last_earned, when) if b.last_earned else when
     used = sum(int((p.get("metadata") or {}).get("credit_used") or 0)
                for p in _search(secret_key, f"metadata['credit_used_by']:'{code}'", http))
     b.used = used + b.spent
+    try:   # v22.56: ανοιχτές πληρωμές με πίστωση (λήγουν σε 30′) -- να μη χρησιμοποιηθεί το ίδιο ποσό δύο φορές
+        res = (http or _default_http)("GET", f"{API}/checkout/sessions", secret_key, {"status": "open", "limit": "100"})
+        b.reserved = sum(int((cs.get("metadata") or {}).get("credit_used") or 0) for cs in res.get("data", [])
+                         if (cs.get("metadata") or {}).get("credit_used_by") == code)
+    except PaymentError:
+        b.reserved = 0
     if b.last_earned:
         b.expires = b.last_earned + timedelta(days=round(settings.months * 30.44))
         b.expired = (now or datetime.now(timezone.utc)) > b.expires
     return b
+
+
+def _would_reward(secret_key, ref, pi_id, settings: Settings, b: Balance, http) -> bool:
+    """v22.59: ανταμείβεται αυτή η αγορά φίλου; (ετήσιο όριο max_per_year)"""
+    if not settings.max_per_year:
+        return True
+    if any(True for p in _search(secret_key, f"metadata['ref']:'{ref}'", http) if p.get("id") == pi_id):
+        return pi_id in b.friend_ids          # ήδη ευρετηριασμένη: η balance() το αποφάσισε
+    year = datetime.now(timezone.utc).year
+    this_year = sum(1 for p in _search(secret_key, f"metadata['ref']:'{ref}'", http)
+                    if p.get("id") in b.friend_ids and
+                    datetime.fromtimestamp(int(p.get("created", 0)), tz=timezone.utc).year == year)
+    return this_year < settings.max_per_year
 
 
 @dataclass
@@ -218,6 +257,7 @@ class PurchaseInfo:
     referrer_email: str = ""
     referrer_balance: int = 0
     self_referral: bool = False
+    capped: bool = False
     notes: list = field(default_factory=list)
 
 
@@ -247,6 +287,8 @@ def after_purchase(secret_key, session_id: str, secret: str, settings: Settings,
         card = _card(pi)
         if (info.email and info.email in own) or (card and card in b.owner_cards):
             info.self_referral = True
+        elif not _would_reward(secret_key, ref, info.pi_id, settings, b, h):
+            info.capped = True     # v22.59: ετήσιο όριο -- χωρίς ανταμοιβή, χωρίς email «Κέρδισες»
         else:
             info.referrer_rewarded = True
             info.referrer_email = b.owner_email

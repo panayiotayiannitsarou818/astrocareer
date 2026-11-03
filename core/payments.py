@@ -77,7 +77,7 @@ def _default_http(method, url, secret_key, data=None, timeout=20):
 
 def create_checkout(secret_key: str, *, amount_cents: int, product_name: str, fingerprint: str,
                     success_url: str, cancel_url: str, locale: str = "el", submit_message: str = "",
-                    coupon: str = "", metadata: dict | None = None, http=None) -> Checkout:
+                    coupon: str = "", metadata: dict | None = None, expires_in: int = 0, http=None) -> Checkout:
     data = {
         "mode": "payment",
         "line_items[0][quantity]": "1",
@@ -97,6 +97,9 @@ def create_checkout(secret_key: str, *, amount_cents: int, product_name: str, fi
     if coupon:           # v22.49: έκπτωση παραπομπής / πίστωσης -- το Stripe δεν δέχεται ΚΑΙ τα δύο μαζί
         data.pop("allow_promotion_codes")
         data["discounts[0][coupon]"] = coupon
+    if expires_in:       # v22.56: πληρωμή με πίστωση -- η δέσμευση λήγει γρήγορα (ελάχιστο Stripe: 30′)
+        import time as _t
+        data["expires_at"] = str(int(_t.time()) + max(1800, int(expires_in)) + 60)
     for k, v in (metadata or {}).items():
         data[f"metadata[{k}]"] = str(v)
         data[f"payment_intent_data[metadata][{k}]"] = str(v)
@@ -119,3 +122,17 @@ def check_paid(secret_key: str, session_id: str, fingerprint: str, http=None):
 def is_paid(secret_key: str, session_id: str, fingerprint: str, http=None) -> bool:
     """True μόνο αν η συνεδρία πληρώθηκε ΚΑΙ αφορά αυτά ακριβώς τα στοιχεία."""
     return check_paid(secret_key, session_id, fingerprint, http=http)[0]
+
+
+def find_paid_sessions(secret_key: str, email: str, http=None, limit: int = 20) -> list[dict]:
+    """v22.56: οι πληρωμένες συνεδρίες Checkout ενός email (για «Έχασες την αναφορά σου;»), νεότερες πρώτα."""
+    res = (http or _default_http)("GET", f"{API}/checkout/sessions", secret_key,
+                                  {"customer_details[email]": email.strip(), "status": "complete", "limit": str(limit)})
+    return [cs for cs in res.get("data", []) if cs.get("payment_status") == "paid"]
+
+
+def return_token_of(session: dict) -> str:
+    """Το «εισιτήριο» r=… από το success_url μιας συνεδρίας."""
+    url = str(session.get("success_url") or "")
+    q = urllib.parse.parse_qs(urllib.parse.urlsplit(url).query)
+    return (q.get("r") or [""])[0]
