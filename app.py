@@ -594,15 +594,20 @@ def _engine_section(input_key, preview):
         return
     st.markdown(f'<div class="ok">{t["customer_ready"]}</div>', unsafe_allow_html=True)
     st.write("")
-    if res.get("client_pdf"):
+    if res.get("client_pdf") and not is_admin:
+        # v22.68: ο πελάτης παίρνει ΜΟΝΟ PDF (απόφαση ιδιοκτήτριας)· η Διαχείριση βλέπει και το Word
+        st.download_button(t["download_pdf"], res["client_pdf"], file_name=res["client_pdf_name"],
+                           mime="application/pdf", type="primary", use_container_width=True, on_click="ignore",
+                           key="engine_pdf_dl")
+    elif res.get("client_pdf"):
         d1, d2 = st.columns(2)
         d1.download_button(t["download_pdf"], res["client_pdf"], file_name=res["client_pdf_name"],
-                           mime="application/pdf", type="primary", use_container_width=True, key="engine_pdf_dl")
+                           mime="application/pdf", type="primary", use_container_width=True, on_click="ignore", key="engine_pdf_dl")
         d2.download_button(t["download_final"], res["client_docx"], file_name=res["client_name"],
-                           use_container_width=True, key="engine_dl")
+                           use_container_width=True, on_click="ignore", key="engine_dl")
     else:
         st.download_button(t["download_final"], res["client_docx"], file_name=res["client_name"],
-                           type="primary", use_container_width=True, key="engine_dl")
+                           type="primary", use_container_width=True, on_click="ignore", key="engine_dl")
     _email_report(input_key, res)
     if REF_ON and not is_admin and ss.get("my_code"):
         _share_box(ss["my_code"])
@@ -658,8 +663,9 @@ def _email_report(input_key, res):
                                                    me=html.escape(_me_link(ss["my_code"])))
                 body += _ref_mail_extra(ss["my_code"], t)
             send_report(RESEND_KEY, sender=EMAIL_FROM, to=to, subject=t["email_subject"],
-                        html=body, filename=res["client_name"], content=res["client_docx"],
-                        extra=[(res["client_pdf_name"], res["client_pdf"])] if res.get("client_pdf") else None)
+                        html=body,   # v22.68: μόνο PDF (Word μόνο αν για κάποιο λόγο δεν φτιάχτηκε PDF)
+                        filename=res["client_pdf_name"] if res.get("client_pdf") else res["client_name"],
+                        content=res["client_pdf"] if res.get("client_pdf") else res["client_docx"])
             sent[tag] = True
         except EmailError:
             sent[tag] = False
@@ -1170,7 +1176,7 @@ def _sample_button():
     except Exception:  # noqa: BLE001
         return
     st.download_button(t["sample_button"], pdf, file_name=t["sample_file"], mime="application/pdf",
-                       use_container_width=True, key="sample_dl")
+                       use_container_width=True, on_click="ignore", key="sample_dl")
 
 
 def _show_teaser(chart):
@@ -1307,7 +1313,7 @@ def _recover_reports(email):
                                                     share=html.escape(_share_link(code)), me=html.escape(_me_link(code)))
             body += _ref_mail_extra(code, TR[lg])
         send_report(RESEND_KEY, sender=EMAIL_FROM, to=email, subject=TR[lg]["email_subject"], html=body,
-                    filename=rep.client_name, content=rep.client_docx, extra=[(pdf_filename(rep.client_name), pdf)])
+                    filename=pdf_filename(rep.client_name), content=pdf)   # v22.68: μόνο PDF
         sent += 1
     return sent
 
