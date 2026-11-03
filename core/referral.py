@@ -299,6 +299,47 @@ def after_purchase(secret_key, session_id: str, secret: str, settings: Settings,
     return info
 
 
+# v22.65: «κλείδωμα» ανά κωδικό, ώστε η ίδια πίστωση να ΜΗ χρησιμοποιηθεί από δύο καρτέλες ταυτόχρονα.
+# Χωρίς βάση δεδομένων: γράφουμε ένα τυχαίο «εισιτήριο» στην πληρωμή-άγκυρα, περιμένουμε λίγο και το ξαναδιαβάζουμε.
+# Αν δύο καρτέλες γράψουν σχεδόν μαζί, μένει ΜΟΝΟ του τελευταίου -- η άλλη βλέπει ξένο εισιτήριο και σταματά.
+LOCK_WAIT = 1.5      # δευτερόλεπτα (στα tests 0)
+LOCK_TTL = 120       # ένα ξεχασμένο κλείδωμα λήγει μόνο του
+
+
+class CreditBusy(PaymentError):
+    """Η ίδια πίστωση χρησιμοποιείται αυτή τη στιγμή αλλού."""
+
+
+def acquire_lock(secret_key, b: Balance, http=None) -> str:
+    import secrets as _s
+    import time as _t
+    h = http or _default_http
+    if not b.anchor_pi:
+        raise PaymentError("δεν βρέθηκε η πληρωμή του αρχικού πελάτη")
+    md = (h("GET", f"{API}/payment_intents/{b.anchor_pi}", secret_key) or {}).get("metadata") or {}
+    now = int(_t.time())
+    if md.get("lock") and now - int(md.get("lock_ts") or 0) < LOCK_TTL:
+        raise CreditBusy("πίστωση σε χρήση")
+    nonce = _s.token_hex(8)
+    _set_metadata(secret_key, b.anchor_pi, {"lock": nonce, "lock_ts": now}, h)
+    if LOCK_WAIT:
+        _t.sleep(LOCK_WAIT)
+    md = (h("GET", f"{API}/payment_intents/{b.anchor_pi}", secret_key) or {}).get("metadata") or {}
+    if md.get("lock") != nonce:
+        raise CreditBusy("πίστωση σε χρήση")
+    return nonce
+
+
+def release_lock(secret_key, b: Balance, nonce: str, http=None):
+    h = http or _default_http
+    try:
+        md = (h("GET", f"{API}/payment_intents/{b.anchor_pi}", secret_key) or {}).get("metadata") or {}
+        if md.get("lock") == nonce:
+            _set_metadata(secret_key, b.anchor_pi, {"lock": "", "lock_ts": "0"}, h)
+    except PaymentError:
+        pass   # λήγει μόνο του σε LOCK_TTL
+
+
 def spend(secret_key, b: Balance, cents: int, http=None):
     """Δωρεάν αναφορά ή πληρωμή Revolut: προσθέτει στο «spent» της άγκυρας."""
     if not b.anchor_pi:

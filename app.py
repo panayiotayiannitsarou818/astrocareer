@@ -178,7 +178,10 @@ EMAIL_ON = RESEND_KEY.startswith("re_")
 EMAIL_TEST = EMAIL_ON and "resend.dev" in EMAIL_FROM.lower()
 EMAIL_LIVE = EMAIL_ON and not EMAIL_TEST
 # v22.49: πρόγραμμα παραπομπών (ενεργό μαζί με τις πληρωμές). Ρυθμίσεις στα Secrets (προαιρετικές).
-REF_ON = PAYMENTS_ON
+# v22.65: το «Φέρε έναν φίλο» είναι ΠΑΓΩΜΕΝΟ εκτός αν REFERRAL_ON = "1" στα Secrets (απόφαση ιδιοκτήτριας:
+# πρώτες πωλήσεις με την απλή διαδρομή). Οι πιστώσεις που έχουν ήδη δοθεί μένουν στο Stripe -- δεν σβήνεται τίποτα.
+FREE_REPORTS = str(_secret("FREE_REPORTS") or "0").strip().lower() in ("1", "true", "yes", "on")
+REF_ON = PAYMENTS_ON and str(_secret("REFERRAL_ON") or "0").strip().lower() in ("1", "true", "yes", "on")
 REF_SECRET = str(_secret("REFERRAL_SECRET") or STRIPE_KEY)
 RETURN_SECRET = str(_secret("RETURN_SECRET") or STRIPE_KEY)   # v22.56: κλειδί του εισιτηρίου επιστροφής
 # v22.57: προεπιλογή ΧΩΡΙΣ έκπτωση για τον φίλο (απόφαση ιδιοκτήτριας: «η τιμή μένει σταθερά 20 € για όλους»)·
@@ -570,6 +573,10 @@ def _engine_section(input_key, preview):
             st.info(t["draft_client"] if has_teaser else t["draft_client_no_teaser"])
             return
     ready = preview is not None and input_key is not None
+    if CLIENT_PAGE and not PAYMENTS_ON and not is_admin and not FREE_REPORTS:
+        # v22.65: σελίδα πελάτη χωρίς (σωστό) κλειδί Stripe -> ΟΧΙ δωρεάν αναφορά· μόνο με FREE_REPORTS = "1"
+        st.warning(t["pay_offline"])
+        return
     if PAYMENTS_ON and not is_admin and not _paid(input_key):
         _pay_box(input_key, ready, preview)
         return
@@ -599,6 +606,8 @@ def _engine_section(input_key, preview):
     _email_report(input_key, res)
     if REF_ON and not is_admin and ss.get("my_code"):
         _share_box(ss["my_code"])
+    elif not is_admin and PAYMENTS_ON:
+        _recommend_box()   # v22.66: χωρίς πρόγραμμα πιστώσεων -- απλή σύσταση σε φίλο, χωρίς ανταμοιβή
     if not is_admin:
         return
     version = "B" if res["used_ai"] else "A"
@@ -761,8 +770,20 @@ def _pay_box(input_key, ready, preview=None):
     if disc and disc[0] == "credit" and cents <= 0:
         # Η πίστωση καλύπτει όλη την τιμή: δωρεάν αναφορά, χωρίς Stripe Checkout.
         if st.button(t["ref_free_button"], type="primary", use_container_width=True, key="ref_free"):
-            try:
-                REF.spend(STRIPE_KEY, disc[2], REPORT_PRICE_CENTS)
+            try:   # v22.65: κλείδωμα + φρέσκο υπόλοιπο -> η ίδια πίστωση δεν περνά από δύο καρτέλες
+                _nonce = REF.acquire_lock(STRIPE_KEY, disc[2])
+                try:
+                    _fresh = REF.balance(STRIPE_KEY, ss.get("credit_code", ""), REF_SET)
+                    if _fresh.available < REPORT_PRICE_CENTS:
+                        ss.setdefault("ref_bal", {}).pop(ss.get("credit_code"), None)
+                        st.warning(t["ref_credit_changed"])
+                        return
+                    REF.spend(STRIPE_KEY, _fresh, REPORT_PRICE_CENTS)
+                finally:
+                    REF.release_lock(STRIPE_KEY, disc[2], _nonce)
+            except REF.CreditBusy:
+                st.warning(t["ref_credit_busy"])
+                return
             except PaymentError as exc:
                 st.error(t["pay_unavailable"])
                 if is_admin:
@@ -791,6 +812,12 @@ def _pay_box(input_key, ready, preview=None):
             if disc and disc[0] == "friend" and disc[1] > 0:
                 coupon = REF.ensure_coupon(STRIPE_KEY, disc[1], coupon_id="ASTRO_FRIEND", name=t["ref_coupon_friend"])
             elif disc and disc[0] == "credit":
+                # v22.65: κλείδωμα + φρέσκο υπόλοιπο πριν από τη δέσμευση της πίστωσης (ανοιχτή συνεδρία Stripe)
+                _nonce = REF.acquire_lock(STRIPE_KEY, disc[2])
+                ss["_credit_lock"] = (disc[2], _nonce)
+                _fresh = REF.balance(STRIPE_KEY, ss.get("credit_code", ""), REF_SET)
+                if _fresh.available < disc[1]:
+                    raise REF.CreditBusy("άλλαξε το υπόλοιπο")
                 coupon = REF.ensure_coupon(STRIPE_KEY, disc[1], name=t["ref_coupon_credit"])
             # v22.56: στην επιστροφή από το Stripe τα στοιχεία ξαναβρίσκονται από το «εισιτήριο» r=…: τα στοιχεία
             # γέννησης ΚΡΥΠΤΟΓΡΑΦΗΜΕΝΑ μέσα στο URL (όχι σε μνήμη/αρχείο) -- αντέχει επανεκκίνηση και καθυστέρηση.
@@ -802,11 +829,19 @@ def _pay_box(input_key, ready, preview=None):
                                  submit_message=t["pay_stripe_note"] if EMAIL_LIVE else "",
                                  coupon=coupon, metadata={**(disc[3] if disc else {}), "withdrawal_waiver": ts},
                                  expires_in=1800 if disc and disc[0] == "credit" else 0)
+        except REF.CreditBusy:
+            ss.setdefault("ref_bal", {}).pop(ss.get("credit_code"), None)
+            st.warning(t["ref_credit_busy"])
+            return
         except PaymentError as exc:
             st.error(t["pay_unavailable"])
             if is_admin:
                 st.code(str(exc))
             return
+        finally:
+            _lk = ss.pop("_credit_lock", None)
+            if _lk:
+                REF.release_lock(STRIPE_KEY, _lk[0], _lk[1])
         links[lkey] = co.url
         ss.setdefault("pay_sessions", []).append(co.id)
     # v22.55: ΝΕΑ καρτέλα -- το Streamlit Cloud δεν επιτρέπει αλλαγή της ίδιας καρτέλας (δοκιμή ιδιοκτήτριας).
@@ -884,6 +919,23 @@ def _ref_mail_extra(code, tx):
         reward=format_price(REF_SET.reward), link=_share_link(code))))
 
 
+def _recommend_box():
+    """v22.66: «Σε βοήθησε; Σύστησέ μας σε έναν φίλο» -- ο σύνδεσμος της σελίδας, WhatsApp/Viber, QR. Χωρίς πιστώσεις."""
+    import urllib.parse as _up
+    link = _app_url()
+    msg = t["rec_msg"].format(link=link)
+    with st.container(border=True):
+        st.markdown(f"**{t['rec_title']}**")
+        st.code(msg, language=None, wrap_lines=True)
+        q = _up.quote(msg)
+        c1, c2 = st.columns(2)
+        c1.link_button(t["ref_send_whatsapp"], f"https://wa.me/?text={q}", use_container_width=True)
+        c2.link_button(t["ref_send_viber"], f"viber://forward?text={q}", use_container_width=True)
+        png = _qr_png(link)
+        if png:
+            st.image(png, width=140)
+
+
 def _share_box(code):
     """Μετά την αγορά: ο προσωπικός σύνδεσμος για φίλους (και QR)."""
     with st.container(border=True):
@@ -929,10 +981,20 @@ def _referrer_panel(code):
             st.markdown(t["ref_panel_payout_intro"].format(min=format_price(REF_SET.payout_min)))
             revtag = st.text_input(t["ref_panel_revtag"], key="ref_revtag", placeholder="@maria123")
             if st.button(t["ref_panel_payout"].format(amount=format_price(b.available)), key="ref_payout"):
-                try:
-                    REF.request_payout(STRIPE_KEY, b, revtag)
+                try:   # v22.65: κλείδωμα + φρέσκο υπόλοιπο
+                    _nonce = REF.acquire_lock(STRIPE_KEY, b)
+                    try:
+                        _fresh = REF.balance(STRIPE_KEY, code, REF_SET)
+                        if _fresh.available < REF_SET.payout_min or _fresh.payout_pending:
+                            raise REF.CreditBusy("άλλαξε το υπόλοιπο")
+                        REF.request_payout(STRIPE_KEY, _fresh, revtag)
+                    finally:
+                        REF.release_lock(STRIPE_KEY, b, _nonce)
                     ss["ref_refresh"] = True
                     st.rerun()
+                except REF.CreditBusy:
+                    ss["ref_refresh"] = True
+                    st.warning(t["ref_credit_busy"])
                 except PaymentError:
                     st.warning(t["ref_panel_revtag_bad"])
         else:
