@@ -158,6 +158,11 @@ REPORT_PRICE_CENTS = parse_price(_secret("REPORT_PRICE") or "20")
 RESEND_KEY = str(_secret("RESEND_API_KEY") or "").strip()
 EMAIL_FROM = str(_secret("EMAIL_FROM") or "AstroCheck Career <onboarding@resend.dev>").strip()
 EMAIL_ON = RESEND_KEY.startswith("re_")
+# v22.62: χωρίς δικό σου domain (αποστολέας onboarding@resend.dev) το Resend στέλνει ΜΟΝΟ στο email του λογαριασμού.
+# Τότε η σελίδα ΔΕΝ υπόσχεται email στους πελάτες και δεν δείχνει «Δεν μπορέσαμε…»· η αποστολή γίνεται σιωπηλά
+# (για τη δοκιμή της ιδιοκτήτριας). Με EMAIL_FROM από δικό σου domain -> όλα κανονικά.
+EMAIL_TEST = EMAIL_ON and "resend.dev" in EMAIL_FROM.lower()
+EMAIL_LIVE = EMAIL_ON and not EMAIL_TEST
 # v22.49: πρόγραμμα παραπομπών (ενεργό μαζί με τις πληρωμές). Ρυθμίσεις στα Secrets (προαιρετικές).
 REF_ON = PAYMENTS_ON
 REF_SECRET = str(_secret("REFERRAL_SECRET") or STRIPE_KEY)
@@ -635,6 +640,9 @@ def _email_report(input_key, res):
             sent[tag] = True
         except EmailError:
             sent[tag] = False
+    if EMAIL_TEST and not sent[tag]:
+        st.caption(t["email_test_hint"])   # δοκιμαστική λειτουργία: χωρίς «Δεν μπορέσαμε…» στον πελάτη
+        return
     st.caption((t["email_sent"] if sent[tag] else t["email_failed"]).format(email=html.escape(to)))
     if not sent[tag] and st.button(t["email_retry"], key="email_retry"):   # v22.56: επανάληψη αποστολής
         sent.pop(tag, None)
@@ -777,7 +785,7 @@ def _pay_box(input_key, ready, preview=None):
             co = create_checkout(STRIPE_KEY, amount_cents=REPORT_PRICE_CENTS, product_name=t["pay_product"],
                                  fingerprint=fp, success_url=base + "/?paid={CHECKOUT_SESSION_ID}&r=" + tok,
                                  cancel_url=base + "/?pay=cancel&r=" + tok, locale=lang,
-                                 submit_message=t["pay_stripe_note"] if EMAIL_ON else "",
+                                 submit_message=t["pay_stripe_note"] if EMAIL_LIVE else "",
                                  coupon=coupon, metadata={**(disc[3] if disc else {}), "withdrawal_waiver": ts},
                                  expires_in=1800 if disc and disc[0] == "credit" else 0)
         except PaymentError as exc:
@@ -791,7 +799,7 @@ def _pay_box(input_key, ready, preview=None):
     # Στη νέα καρτέλα, μετά την πληρωμή, η αναφορά εμφανίζεται αμέσως (?paid=…&r=…).
     st.markdown(f'<a class="paylink" href="{html.escape(links[lkey])}" target="_blank">{html.escape(label)}</a>',
                 unsafe_allow_html=True)
-    st.caption(t["pay_note"] + (t["pay_note_email"] if EMAIL_ON else ""))
+    st.caption(t["pay_note"] + (t["pay_note_email"] if EMAIL_LIVE else ""))
     # v22.55: χωρίς έλεγχο κάθε 3″ (καθυστερούσε τη σελίδα) -- με την πληρωμή στην ίδια καρτέλα, η επιστροφή
     # από το Stripe φέρνει μόνη της την αναφορά (?paid=…&r=…).
 
@@ -1190,6 +1198,15 @@ if CLIENT_PAGE:
                 _a = "\n".join(x for x in _a.split("\n") if "{off}" not in x)
             _a = _a.replace("{off}", format_price(REF_SET.discount)).replace("{reward}", format_price(REF_SET.reward)) \
                    .replace("{min}", format_price(REF_SET.payout_min))
+            if not EMAIL_LIVE:   # v22.62: χωρίς δικό σου domain -> χωρίς υποσχέσεις για email στις ερωτήσεις
+                if "Έχασα" in _q or "lost my" in _q.lower():
+                    continue
+                for _old, _new in ((", στη σελίδα και στο email σου", ", στη σελίδα"),
+                                   (", on the page and in your email", ", on the page"),
+                                   (" Αν δεν τη βρίσκεις, δοκίμασε πρώτα το «Έχασες την αναφορά σου;» πιο κάτω στη σελίδα.", ""),
+                                   (" If you cannot find it, first try \u201cLost your report?\u201d further down the page.", ""),
+                                   (", και σου έρχεται email κάθε φορά", ""), (", and you get an email each time", "")):
+                    _a = _a.replace(_old, _new)
             if not REF_SET.max_per_year:
                 _a = "\n".join(x for x in _a.split("\n") if "{cap}" not in x)
             _a = _a.replace("{cap}", str(REF_SET.max_per_year))
@@ -1219,7 +1236,7 @@ def _recover_reports(email):
     return sent
 
 
-if CLIENT_PAGE and PAYMENTS_ON and EMAIL_ON:
+if CLIENT_PAGE and PAYMENTS_ON and EMAIL_LIVE:
     with st.expander(t["recover_title"]):
         st.caption(t["recover_intro"])
         _rec_email = st.text_input(t["recover_email"], key="recover_email", placeholder="name@example.com")
