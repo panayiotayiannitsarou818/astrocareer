@@ -19,6 +19,7 @@ v20: ο πελάτης δίνει ημερομηνία, ώρα, χώρα και 
 Το «Νέα αναφορά» καθαρίζει τα πάντα.
 """
 import hashlib
+import secrets as _secrets_mod
 import time
 import hmac
 import html
@@ -66,7 +67,9 @@ st.set_page_config(page_title="AstroCheck Career", page_icon="✦", layout="wide
                    initial_sidebar_state="collapsed" if CLIENT_PAGE else "auto")
 # v22.25: χωρίς τα κουμπάκια «− +» στα αριθμητικά πεδία (ημέρα, έτος, ώρα, λεπτά) -- ο χρήστης απλώς γράφει.
 st.markdown("""<style>[data-testid="stNumberInputStepUp"],[data-testid="stNumberInputStepDown"]{display:none}
-.small-note{color:#7a6d86;font-size:.82rem;text-align:center;max-width:760px;margin:0 auto 10px;line-height:1.5}</style>""",
+.small-note{color:#7a6d86;font-size:.82rem;text-align:center;max-width:760px;margin:0 auto 10px;line-height:1.5}
+/* v22.53: τα αόρατα μπλοκ με <style> δεν πιάνουν χώρο (έδιναν ~50px κενό πάνω από τη γλώσσα) */
+[data-testid="stElementContainer"]:has(style){display:none}</style>""",
             unsafe_allow_html=True)
 if CLIENT_PAGE:   # σελίδα πελάτη: καθόλου πλαϊνή στήλη
     # v22.33: πιο ψηλά η φόρμα -- χωρίς τη γραμμή εργαλείων του Streamlit (Share, ☆, ✏️), λιγότερο κενό πάνω,
@@ -74,11 +77,11 @@ if CLIENT_PAGE:   # σελίδα πελάτη: καθόλου πλαϊνή στ�
     st.markdown("""<style>[data-testid="stSidebar"],[data-testid="stExpandSidebarButton"],
 [data-testid="stSidebarCollapseButton"]{display:none!important}
 header[data-testid="stHeader"]{display:none!important}
-.block-container{padding-top:1.2rem!important}
+.block-container,[data-testid="stMainBlockContainer"]{padding-top:.6rem!important}
 .hero{padding:18px 26px!important;margin-bottom:10px!important}.hero h1{font-size:32px!important;margin:0 0 4px!important}
 .hero p{margin:2px 0!important}</style>""", unsafe_allow_html=True)
 st.markdown("""<style>
-.stApp{background:#f6f2fa}.block-container{max-width:1100px;padding-top:4.5rem}.hero{background:#3d2350;color:white;border-radius:22px;padding:30px 34px;margin-bottom:18px}.hero h1{margin:0 0 8px;font-family:Georgia;font-size:42px}.hero p{color:#e6d9f2}.mission{color:#5b4a6b;font-style:italic;text-align:center;max-width:760px;margin:0 auto 24px;line-height:1.6}.hero .motto{font-family:Georgia;font-style:italic;font-size:1.05rem;color:#f3e9fb;margin:6px 0 0}.ok{padding:14px 16px;background:#e5f2e7;border-left:5px solid #39704c;border-radius:8px}.warn{padding:14px 16px;background:#fff1dd;border-left:5px solid #b7791f;border-radius:8px}.teaser{padding:18px 20px;background:#fff;border:2px solid #b9a3cf;border-radius:14px;margin:14px 0}.teaser-head{color:#3d2350;font-weight:600;margin-bottom:6px}.teaser-title{font-family:Georgia;font-size:1.35rem;color:#3d2350;margin-bottom:8px}.teaser-more{margin-top:12px;color:#5b4a6b;font-style:italic}.pay{padding:14px 16px;background:#fff;border:2px solid #b9a3cf;border-radius:12px;margin:6px 0 10px;color:#3d2350}.stay{padding:16px 18px;background:#fde8e8;border:2px solid #b42318;border-radius:10px;font-weight:600;font-size:1.05rem;color:#7a1a12}</style>""", unsafe_allow_html=True)
+.stApp{background:#f6f2fa}.block-container{max-width:1100px;padding-top:4.5rem}.hero{background:#3d2350;color:white;border-radius:22px;padding:30px 34px;margin-bottom:18px}.hero h1{margin:0 0 8px;font-family:Georgia;font-size:42px}.hero p{color:#e6d9f2}.mission{color:#5b4a6b;font-style:italic;text-align:center;max-width:760px;margin:0 auto 24px;line-height:1.6}.hero .motto{font-family:Georgia;font-style:italic;font-size:1.05rem;color:#f3e9fb;margin:6px 0 0}.ok{padding:14px 16px;background:#e5f2e7;border-left:5px solid #39704c;border-radius:8px}.warn{padding:14px 16px;background:#fff1dd;border-left:5px solid #b7791f;border-radius:8px}.teaser{padding:18px 20px;background:#fff;border:2px solid #b9a3cf;border-radius:14px;margin:14px 0}.teaser-head{color:#3d2350;font-weight:600;margin-bottom:6px}.teaser-title{font-family:Georgia;font-size:1.35rem;color:#3d2350;margin-bottom:8px}.teaser-more{margin-top:12px;color:#5b4a6b;font-style:italic}.paylink{display:block;text-align:center;background:#6b3f8f;color:#fff!important;text-decoration:none!important;padding:10px 14px;border-radius:8px;font-weight:600;margin:4px 0}.paylink:hover{background:#56306f}.pay{padding:14px 16px;background:#fff;border:2px solid #b9a3cf;border-radius:12px;margin:6px 0 10px;color:#3d2350}.stay{padding:16px 18px;background:#fde8e8;border:2px solid #b42318;border-radius:10px;font-weight:600;font-size:1.05rem;color:#7a1a12}</style>""", unsafe_allow_html=True)
 
 
 def _secret(name):
@@ -166,6 +169,11 @@ def _new_case():
     ss.cases = {}
     ss.current_case = None
     ss.uploader_gen += 1
+    try:   # v22.54: η επιστροφή από το Stripe (?paid=…&r=…) δεν ξαναφορτώνει την παλιά αναφορά
+        for _k in ("paid", "r", "pay"):
+            st.query_params.pop(_k, None)
+    except Exception:  # noqa: BLE001
+        pass
     # v20.2: καθαρίζονται και τα στοιχεία γέννησης, οι υπολογισμένοι χάρτες και τα
     # παλιά πεδία της φόρμας (b_*), τα αναγνωσμένα PDF και οι εκτιμήσεις κόστους.
     for key in list(ss.keys()):
@@ -530,7 +538,7 @@ def _engine_section(input_key, preview):
             return
     ready = preview is not None and input_key is not None
     if PAYMENTS_ON and not is_admin and not _paid(input_key):
-        _pay_box(input_key, ready)
+        _pay_box(input_key, ready, preview)
         return
     clicked = st.button(t["run_button"], type="primary", use_container_width=True, disabled=not ready,
                         key="engine_run") or (ready and ss.pop("auto_run", False))
@@ -655,6 +663,25 @@ def _paid(input_key):
     return False
 
 
+@st.cache_resource
+def _pending_store():
+    """Μνήμη διακομιστή: εισιτήριο -> στοιχεία της αναφοράς που πληρώνεται (έως 2 ώρες). Όχι αρχείο, όχι Stripe."""
+    return {}
+
+
+def _pending_put(tok, data):
+    store = _pending_store()
+    now = time.time()
+    for k in [k for k, v in store.items() if now - v["t"] > 2 * 3600]:
+        store.pop(k, None)
+    store[tok] = {**data, "t": now}
+
+
+def _pending_get(tok):
+    v = _pending_store().get(str(tok or ""))
+    return v if v and time.time() - v["t"] <= 2 * 3600 else None
+
+
 def _ref_balance(code, fresh=False):
     """Υπόλοιπο κωδικού παραπομπής (από το Stripe· μνήμη 60″)."""
     cache = ss.setdefault("ref_bal", {})
@@ -685,7 +712,7 @@ def _discount():
     return None
 
 
-def _pay_box(input_key, ready):
+def _pay_box(input_key, ready, preview=None):
     disc = _discount()
     cents = REPORT_PRICE_CENTS - (disc[1] if disc else 0)
     price = format_price(REPORT_PRICE_CENTS)
@@ -737,9 +764,12 @@ def _pay_box(input_key, ready):
                 coupon = REF.ensure_coupon(STRIPE_KEY, disc[1], coupon_id="ASTRO_FRIEND", name=t["ref_coupon_friend"])
             elif disc and disc[0] == "credit":
                 coupon = REF.ensure_coupon(STRIPE_KEY, disc[1], name=t["ref_coupon_credit"])
+            # v22.54: ίδια καρτέλα -- στην επιστροφή από το Stripe τα στοιχεία ξαναβρίσκονται από ένα τυχαίο
+            # «εισιτήριο» (r=…) που κρατιέται ΜΟΝΟ στη μνήμη του διακομιστή, για λίγη ώρα (όχι στο Stripe).
+            tok = _secrets_mod.token_urlsafe(12)
             co = create_checkout(STRIPE_KEY, amount_cents=REPORT_PRICE_CENTS, product_name=t["pay_product"],
-                                 fingerprint=fp, success_url=base + "/?paid={CHECKOUT_SESSION_ID}",
-                                 cancel_url=base + "/?pay=cancel", locale=lang,
+                                 fingerprint=fp, success_url=base + "/?paid={CHECKOUT_SESSION_ID}&r=" + tok,
+                                 cancel_url=base + "/?pay=cancel&r=" + tok, locale=lang,
                                  submit_message=t["pay_stripe_note"] if EMAIL_ON else "",
                                  coupon=coupon, metadata={**(disc[3] if disc else {}), "withdrawal_waiver": ts})
         except PaymentError as exc:
@@ -749,7 +779,12 @@ def _pay_box(input_key, ready):
             return
         links[lkey] = co.url
         ss.setdefault("pay_sessions", []).append(co.id)
-    st.link_button(label, links[lkey], type="primary", use_container_width=True)
+        _pending_put(tok, {"key": input_key, "chart": preview, "lang": lang, "sid": co.id, "waiver": ts,
+                           "email_seen": ss.get("pay_email", {}).get(fp, "")})
+    # v22.54: ΙΔΙΑ καρτέλα (target=_top: η σελίδα του Streamlit Cloud είναι σε πλαίσιο)
+    st.markdown(f'<a class="paylink" href="{html.escape(links[lkey])}" target="_top">{html.escape(label)}</a>'
+                f'<div class="small-note"><a href="{html.escape(links[lkey])}" target="_blank">{t["pay_newtab"]}</a></div>',
+                unsafe_allow_html=True)
     st.caption(t["pay_note"] + (t["pay_note_email"] if EMAIL_ON else ""))
     ss.setdefault("pay_wait_start", {}).setdefault(fp, time.time())
     _pay_watch(input_key)
@@ -1066,10 +1101,14 @@ if is_admin:   # v22.24: να φαίνεται καθαρά ότι ΔΕΝ είν
     st.warning(t["admin_banner"])
 # v22.39: επιστροφή από τη σελίδα πληρωμής του Stripe
 _qp_paid = str(st.query_params.get("paid", "") or "")
+_restored = _pending_get(st.query_params.get("r")) if PAYMENTS_ON else None   # v22.54: επιστροφή στην ίδια καρτέλα
 if PAYMENTS_ON and _qp_paid.startswith("cs_"):
     if _qp_paid not in ss.setdefault("pay_sessions", []):
         ss.pay_sessions.append(_qp_paid)
-    if not ss.get("paid_fps"):
+    if _restored:
+        ss.setdefault("waiver_ts", {})[case_fingerprint(_restored["key"])] = _restored["waiver"]
+        st.success(t["pay_returned_here"])
+    elif not ss.get("paid_fps"):
         st.success(t["pay_returned"])
 elif PAYMENTS_ON and st.query_params.get("pay") == "cancel" and not ss.get("paid_fps"):
     st.info(t["pay_cancelled"])
@@ -1083,8 +1122,15 @@ if REF_ON and REF.valid_me(_qp_me, st.query_params.get("k", ""), REF_SECRET):
     _referrer_panel(_qp_me)
 if REF_ON and is_admin:
     _admin_payouts()
-_input_key, _chart, _chart_err = _chart_input()
+if _restored and (_qp_paid.startswith("cs_") or st.query_params.get("pay") == "cancel"):
+    # Μετά την πληρωμή: η αναφορά για τα ίδια στοιχεία, χωρίς ξανά τη φόρμα.
+    _input_key, _chart, _chart_err = _restored["key"], _restored["chart"], None
+    st.caption(t["pay_for"].format(who=html.escape(_chart_summary(_chart))))
+else:
+    _input_key, _chart, _chart_err = _chart_input()
 _show_teaser(_chart if _input_key else None)
+if CLIENT_PAGE and not _input_key:   # v22.53: να ξέρει ο πελάτης ότι υπάρχει δωρεάν ταλέντο
+    st.info(t["teaser_hint"])
 _show_chart_data(_chart if _input_key else None)
 if PAYMENTS_ON or is_admin:
     _sample_button()
@@ -1111,6 +1157,8 @@ if CLIENT_PAGE:
             if not PAYMENTS_ON and ("Stripe" in _a or "Revolut" in _a or "υπαναχώρησης" in _a or "withdrawal" in _a
                                     or "email" in _a.lower()):
                 continue   # χωρίς πληρωμές: μόνο οι γενικές ερωτήσεις
+            _a = _a.replace("{off}", format_price(REF_SET.discount)).replace("{reward}", format_price(REF_SET.reward)) \
+                   .replace("{min}", format_price(REF_SET.payout_min))
             st.markdown(f"**{_q}**  \n{_a}")
 if CLIENT_PAGE:   # v22.25: ό,τι ήταν στην πλαϊνή στήλη / στη φόρμα, εδώ με μικρά γράμματα
     for _note in (t["service_note"], t.get(f"sidebar_privacy_{REPORT_MODE}", t["sidebar_privacy"]),
