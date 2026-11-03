@@ -74,13 +74,17 @@ st.markdown("""<style>[data-testid="stNumberInputStepUp"],[data-testid="stNumber
 /* v22.53: τα αόρατα μπλοκ με <style> δεν πιάνουν χώρο (έδιναν ~50px κενό πάνω από τη γλώσσα) */
 [data-testid="stElementContainer"]:has(style){display:none}</style>""",
             unsafe_allow_html=True)
+# v22.61: SHOW_TOOLBAR = "1" στα Secrets -> φαίνεται η μπάρα του Streamlit (GitHub, ⋮) και στη σελίδα πελάτη
+try:
+    _show_toolbar = str(st.secrets.get("SHOW_TOOLBAR") or os.environ.get("SHOW_TOOLBAR") or "").strip() in ("1", "true", "yes")
+except Exception:  # noqa: BLE001
+    _show_toolbar = str(os.environ.get("SHOW_TOOLBAR") or "").strip() in ("1", "true", "yes")
 if CLIENT_PAGE:   # σελίδα πελάτη: καθόλου πλαϊνή στήλη
     # v22.33: πιο ψηλά η φόρμα -- χωρίς τη γραμμή εργαλείων του Streamlit (Share, ☆, ✏️), λιγότερο κενό πάνω,
     # μικρότερο μωβ πλαίσιο, η γλώσσα χωρίς τίτλο.
     st.markdown("""<style>[data-testid="stSidebar"],[data-testid="stExpandSidebarButton"],
 [data-testid="stSidebarCollapseButton"]{display:none!important}
-header[data-testid="stHeader"]{display:none!important}
-.block-container,[data-testid="stMainBlockContainer"]{padding-top:.6rem!important}
+""" + ("" if _show_toolbar else 'header[data-testid="stHeader"]{display:none!important}\n') + """.block-container,[data-testid="stMainBlockContainer"]{padding-top:.6rem!important}
 .hero{padding:18px 26px!important;margin-bottom:10px!important}.hero h1{font-size:32px!important;margin:0 0 4px!important}
 .hero p{margin:2px 0!important}</style>""", unsafe_allow_html=True)
 st.markdown("""<style>
@@ -729,6 +733,9 @@ def _pay_box(input_key, ready, preview=None):
             st.caption(t["missing_hint"].format(items=", ".join(ss["form_missing"])))
         return
     fp = case_fingerprint(input_key)
+    _c = globals().get("_chart")
+    if _c is not None:   # v22.60: έλεγχος στοιχείων πριν από την πληρωμή (λάθος ώρα/τόπος = άλλη αναφορά)
+        st.info(t["pay_check_data"].format(who=html.escape(_chart_summary(_c))))
     if disc and disc[0] == "credit" and cents <= 0:
         # Η πίστωση καλύπτει όλη την τιμή: δωρεάν αναφορά, χωρίς Stripe Checkout.
         if st.button(t["ref_free_button"], type="primary", use_container_width=True, key="ref_free"):
@@ -1066,8 +1073,9 @@ def _sample_pdf(lang_code):
     tx = TR[lang_code]
     chart, _ = _cfb(tx["sample_name"], date(1995, 5, 15), dtime(10, 30), 35.1856, 33.3823, "Asia/Nicosia")
     rep = build_engine_report(chart, chart.name, lang_code)
-    text = f"*{tx['sample_note']}*\n\n" + rep.client_text
-    return build_report_pdf(service_title(lang_code), tx["sample_title"], text)
+    # v22.60: χωρίς την ένδειξη «ΔΕΙΓΜΑ» και τη σημείωση μέσα στο PDF (απόφαση ιδιοκτήτριας)·
+    # το κουμπί και το όνομα αρχείου λένε ήδη ότι είναι δείγμα.
+    return build_report_pdf(service_title(lang_code), tx["sample_name"], rep.client_text)
 
 
 def _sample_button():
