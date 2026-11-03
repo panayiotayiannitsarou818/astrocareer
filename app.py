@@ -66,7 +66,9 @@ from core.validator import validate_orientation
 # καθαρή σελίδα πελάτη, χωρίς Διαχείριση και χωρίς πλαϊνή στήλη. Το app.py μόνο του = σελίδα Διαχείρισης.
 CLIENT_PAGE = bool(globals().get("CLIENT_PAGE", False))
 
-st.set_page_config(page_title="AstroCheck Career", page_icon="✦", layout="wide",
+_ASSETS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "core", "assets")   # v22.64: λογότυπο (σπόρος)
+_FAVICON = os.path.join(_ASSETS, "favicon.png")
+st.set_page_config(page_title="AstroCheck Career", page_icon=_FAVICON if os.path.exists(_FAVICON) else "✦", layout="wide",
                    initial_sidebar_state="collapsed" if CLIENT_PAGE else "auto")
 # v22.25: χωρίς τα κουμπάκια «− +» στα αριθμητικά πεδία (ημέρα, έτος, ώρα, λεπτά) -- ο χρήστης απλώς γράφει.
 st.markdown("""<style>[data-testid="stNumberInputStepUp"],[data-testid="stNumberInputStepDown"]{display:none}
@@ -85,10 +87,11 @@ if CLIENT_PAGE:   # σελίδα πελάτη: καθόλου πλαϊνή στ�
     st.markdown("""<style>[data-testid="stSidebar"],[data-testid="stExpandSidebarButton"],
 [data-testid="stSidebarCollapseButton"]{display:none!important}
 """ + ("" if _show_toolbar else 'header[data-testid="stHeader"]{display:none!important}\n') + """.block-container,[data-testid="stMainBlockContainer"]{padding-top:.6rem!important}
-.hero{padding:18px 26px!important;margin-bottom:10px!important}.hero h1{font-size:32px!important;margin:0 0 4px!important}
+.hero{padding:16px 24px!important;margin-bottom:10px!important}.hero h1{font-size:40px!important;margin:0!important}
 .hero p{margin:2px 0!important}</style>""", unsafe_allow_html=True)
 st.markdown("""<style>
-.stApp{background:#f6f2fa}.block-container{max-width:1100px;padding-top:4.5rem}.hero{background:#3d2350;color:white;border-radius:22px;padding:30px 34px;margin-bottom:18px}.hero h1{margin:0 0 8px;font-family:Georgia;font-size:42px}.hero p{color:#e6d9f2}.mission{color:#5b4a6b;font-style:italic;text-align:center;max-width:760px;margin:0 auto 24px;line-height:1.6}.hero .motto{font-family:Georgia;font-style:italic;font-size:1.05rem;color:#f3e9fb;margin:6px 0 0}.ok{padding:14px 16px;background:#e5f2e7;border-left:5px solid #39704c;border-radius:8px}.warn{padding:14px 16px;background:#fff1dd;border-left:5px solid #b7791f;border-radius:8px}.teaser{padding:18px 20px;background:#fff;border:2px solid #b9a3cf;border-radius:14px;margin:14px 0}.teaser-head{color:#3d2350;font-weight:600;margin-bottom:6px}.teaser-title{font-family:Georgia;font-size:1.35rem;color:#3d2350;margin-bottom:8px}.teaser-more{margin-top:12px;color:#5b4a6b;font-style:italic}.paylink{display:block;text-align:center;background:#6b3f8f;color:#fff!important;text-decoration:none!important;padding:10px 14px;border-radius:8px;font-weight:600;margin:4px 0}.paylink:hover{background:#56306f}.pay{padding:14px 16px;background:#fff;border:2px solid #b9a3cf;border-radius:12px;margin:6px 0 10px;color:#3d2350}.stay{padding:16px 18px;background:#fde8e8;border:2px solid #b42318;border-radius:10px;font-weight:600;font-size:1.05rem;color:#7a1a12}</style>""", unsafe_allow_html=True)
+@import url("https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:ital@0;1&display=swap");
+.stApp{background:#f6f2fa}.block-container{max-width:1100px;padding-top:4.5rem}.hero{background:#efe4f8;color:#4a1d4f;border-radius:22px;padding:26px 30px;margin-bottom:18px;text-align:center}.hero h1{margin:0;padding:0!important;font-family:"Libre Caslon Text",Georgia,serif;font-weight:400;font-size:48px;color:#4a1d4f;letter-spacing:-.3px;line-height:1.05}.hero .career{display:flex;align-items:center;justify-content:center;gap:16px;margin:-2px 0 6px}.hero .career span{font-family:"Libre Caslon Text",Georgia,serif;font-style:italic;font-size:26px;color:#4a1d4f}.hero .career i{display:block;width:90px;height:1px;background:#9b7bb8}.hero img.logo{height:74px;display:block;margin:0 auto 6px}.hero p{color:#4a1d4f;margin:2px 0}.hero p.sub{color:#7a6088;font-size:.9rem;margin-top:6px}.mission{color:#5b4a6b;font-style:italic;text-align:center;max-width:760px;margin:0 auto 24px;line-height:1.6}.hero .motto{font-family:Georgia,serif;font-size:1.15rem;color:#4a1d4f;margin:4px 0 0}.ok{padding:14px 16px;background:#e5f2e7;border-left:5px solid #39704c;border-radius:8px}.warn{padding:14px 16px;background:#fff1dd;border-left:5px solid #b7791f;border-radius:8px}.teaser{padding:18px 20px;background:#fff;border:2px solid #b9a3cf;border-radius:14px;margin:14px 0}.teaser-head{color:#3d2350;font-weight:600;margin-bottom:6px}.teaser-title{font-family:Georgia;font-size:1.35rem;color:#3d2350;margin-bottom:8px}.teaser-more{margin-top:12px;color:#5b4a6b;font-style:italic}.paylink{display:block;text-align:center;background:#6b3f8f;color:#fff!important;text-decoration:none!important;padding:10px 14px;border-radius:8px;font-weight:600;margin:4px 0}.paylink:hover{background:#56306f}.pay{padding:14px 16px;background:#fff;border:2px solid #b9a3cf;border-radius:12px;margin:6px 0 10px;color:#3d2350}.stay{padding:16px 18px;background:#fde8e8;border:2px solid #b42318;border-radius:10px;font-weight:600;font-size:1.05rem;color:#7a1a12}</style>""", unsafe_allow_html=True)
 
 
 def _secret(name):
@@ -123,8 +126,19 @@ with lang_col:
 lang = "el" if site_language == "Ελληνικά" else "en"
 t = TR[lang]
 
-st.markdown(f'<div class="hero"><h1>{t["hero_title"]}</h1><p>{t["hero_subtitle"]}</p>'
-            f'<p class="motto">{t["hero_motto"]}</p></div>', unsafe_allow_html=True)
+# v22.63: λογότυπο-κείμενο όπως το λογότυπο της ιδιοκτήτριας (AstroCheck / — Career — / σύνθημα)
+def _logo_tag():
+    try:
+        import base64 as _b64
+        with open(os.path.join(_ASSETS, "logo_symbol.png"), "rb") as fh:
+            return f'<img class="logo" alt="" src="data:image/png;base64,{_b64.b64encode(fh.read()).decode()}">'
+    except OSError:
+        return ""
+
+
+st.markdown(f'<div class="hero">{_logo_tag()}<h1>AstroCheck</h1><div class="career"><i></i><span>Career</span><i></i></div>'
+            f'<p class="motto">{t["hero_subtitle"]}</p></div>',   # v22.64: μία γραμμή κάτω από το Career
+            unsafe_allow_html=True)
 
 ss = st.session_state
 ss.setdefault("chart", None)

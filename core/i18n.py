@@ -16,7 +16,7 @@ TR = {
     "el": {
         "hero_title": "AstroCheck Career",
         "hero_subtitle": "Ανάδειξη ταλέντων και διερεύνηση επαγγελματικών επιλογών",
-        "hero_motto": "Δύνασαι. Γνώρισε τις δυνατότητές σου.",
+        "hero_motto": "Τα ταλέντα είναι μέσα σου",
         "sidebar_header": "AstroCheck Career",
         "sidebar_privacy": "Τα δεδομένα επεξεργάζονται στη συνεδρία και δεν αποθηκεύονται από την εφαρμογή. Για τη δημιουργία της αναφοράς, τα τεχνικά δεδομένα του χάρτη και το όνομα αποστέλλονται στον επιλεγμένο πάροχο τεχνητής νοημοσύνης (Anthropic ή OpenAI) (ενδεχομένως σε περισσότερες από μία κλήσεις, λόγω αυτόματης αυτοδιόρθωσης) για την παραγωγή του αποτελέσματος.",
         "sidebar_privacy_engine": "Τα δεδομένα επεξεργάζονται στη συνεδρία και δεν αποθηκεύονται από την εφαρμογή. Ο χάρτης και η αναφορά υπολογίζονται μέσα στην εφαρμογή· κανένα στοιχείο σου δεν αποστέλλεται σε πάροχο τεχνητής νοημοσύνης.",
@@ -351,7 +351,7 @@ TR = {
     "en": {
         "hero_title": "AstroCheck Career",
         "hero_subtitle": "Talent mapping and career-path exploration",
-        "hero_motto": "Thou mayest. Get to know your potential.",
+        "hero_motto": "Your talents are within you",
         "sidebar_header": "AstroCheck Career",
         "sidebar_privacy": "Data is processed only for this session and is not stored by the app. To create the report, the chart's technical data and the name are sent to the selected AI provider (Anthropic or OpenAI) (possibly across more than one call, due to automatic self-correction) to produce the result.",
         "sidebar_privacy_engine": "Data is processed only for this session and is not stored by the app. The chart and the report are computed inside the app; none of your data is sent to an AI provider.",
