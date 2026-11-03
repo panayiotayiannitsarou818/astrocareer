@@ -180,6 +180,10 @@ EMAIL_LIVE = EMAIL_ON and not EMAIL_TEST
 # v22.49: πρόγραμμα παραπομπών (ενεργό μαζί με τις πληρωμές). Ρυθμίσεις στα Secrets (προαιρετικές).
 # v22.65: το «Φέρε έναν φίλο» είναι ΠΑΓΩΜΕΝΟ εκτός αν REFERRAL_ON = "1" στα Secrets (απόφαση ιδιοκτήτριας:
 # πρώτες πωλήσεις με την απλή διαδρομή). Οι πιστώσεις που έχουν ήδη δοθεί μένουν στο Stripe -- δεν σβήνεται τίποτα.
+try:   # v22.70: static serving ενεργό (config.toml [server] enableStaticServing = true)
+    STATIC_ON = bool(st.get_option("server.enableStaticServing"))
+except Exception:  # noqa: BLE001
+    STATIC_ON = False
 FREE_REPORTS = str(_secret("FREE_REPORTS") or "0").strip().lower() in ("1", "true", "yes", "on")
 REF_ON = PAYMENTS_ON and str(_secret("REFERRAL_ON") or "0").strip().lower() in ("1", "true", "yes", "on")
 REF_SECRET = str(_secret("REFERRAL_SECRET") or STRIPE_KEY)
@@ -1177,9 +1181,33 @@ def _sample_pdf(lang_code):
     return build_report_pdf(service_title(lang_code), tx["sample_name"], rep.client_text)
 
 
+_STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+
+
+@st.cache_resource(show_spinner=False)
+def _sample_static(lang_code):
+    """v22.70: το δείγμα ως αρχείο στο static/ -> ανοίγει ΜΠΡΟΣΤΑ στον πελάτη (νέα καρτέλα), δεν «κατεβαίνει».
+    Ξαναγράφεται όταν αλλάξουν τα κείμενα (μία φορά ανά εκκίνηση του server). None αν δεν γίνεται."""
+    try:
+        pdf = _sample_pdf(lang_code)
+        os.makedirs(_STATIC_DIR, exist_ok=True)
+        path = os.path.join(_STATIC_DIR, TR[lang_code]["sample_file"])
+        old = open(path, "rb").read() if os.path.exists(path) else b""
+        if old != pdf:
+            with open(path, "wb") as fh:
+                fh.write(pdf)
+        return "app/static/" + TR[lang_code]["sample_file"]
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def _sample_button():
     if REQUIRE_APPROVAL and not fully_approved() and not is_admin:
         return   # όσο τα κείμενα είναι πρόχειρα, όχι δείγμα στους πελάτες
+    url = _sample_static(lang) if STATIC_ON else None
+    if url:
+        st.link_button(t["sample_button"], url, use_container_width=True)
+        return
     try:
         pdf = _sample_pdf(lang)
     except Exception:  # noqa: BLE001
