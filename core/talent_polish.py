@@ -37,7 +37,7 @@ from .talent_texts import field_text, load_texts, talent_text
 from .validator import _absolute_claims, _past_experience_claims, _simple_presentation_technical_terms
 
 MAX_ATTEMPTS = 2
-MAX_OUTPUT_TOKENS = 6000
+MAX_OUTPUT_TOKENS = 12000   # v22.71: τα ελληνικά «κοστίζουν» πολλά tokens· με 14 ταλέντα το 6000 έκοβε το JSON
 LIMITS = {"intro": (35, 160), "talent": (6, 35), "field": (6, 40)}   # λέξεις ανά πεδίο
 
 # Επαγγέλματα υγείας ΑΝΑ τομέα (Κανόνας 15): η έγκριση ενός τομέα δεν ανοίγει τους άλλους.
@@ -160,7 +160,8 @@ def build_polish_prompt(engine_text: str, result: EngineResult, lang: str, name:
 υποθέσεις για το παρελθόν του πελάτη· το «είσαι» -- γράφε «μπορεί να», «συχνά», «ίσως».
 Απόφυγε μεταφορές όπως «το ταξίδι σου» ή «η σκηνή της ζωής». Γλώσσα: ελληνικά, απλά, ζεστά, β΄ ενικό, χωρίς markdown.
 
-Απάντησε ΜΟΝΟ με έγκυρο JSON, ακριβώς με αυτά τα κλειδιά (ούτε λιγότερα ούτε περισσότερα):
+Απάντησε ΜΟΝΟ με έγκυρο JSON, ακριβώς με αυτά τα κλειδιά (ούτε λιγότερα ούτε περισσότερα). Μέσα στα κείμενα
+για εισαγωγικά χρησιμοποίησε ΜΟΝΟ «», ποτέ ", και μην αλλάζεις γραμμή:
 {json.dumps(skeleton, ensure_ascii=False)}
 
 ΔΕΔΟΜΕΝΑ
@@ -186,7 +187,8 @@ FORBIDDEN: mentioning any talent, ability or field NOT in the DATA (e.g. "and a 
 certainty ("you will succeed", "born to", "must become"); assumptions about the client's past; "you are" -- write
 "you may", "often", "perhaps". Avoid metaphors such as "your journey" or "the stage of life". Language: English, plain and warm, second person, no markdown.
 
-Reply ONLY with valid JSON, with exactly these keys (no fewer, no more):
+Reply ONLY with valid JSON, with exactly these keys (no fewer, no more). Inside the texts use only single
+quotes ' for quotations, never ", and do not insert line breaks:
 {json.dumps(skeleton, ensure_ascii=False)}
 
 DATA
@@ -199,8 +201,8 @@ def parse_segments(raw: str) -> dict | None:
     start, end = text.find("{"), text.rfind("}")
     if start < 0 or end < 0:
         return None
-    try:
-        data = json.loads(text[start:end + 1])
+    try:   # v22.71: strict=False -> δεκτές και αλλαγές γραμμής μέσα στα κείμενα (συχνό λάθος των μοντέλων)
+        data = json.loads(text[start:end + 1], strict=False)
     except ValueError:
         return None
     return data if isinstance(data, dict) else None
@@ -295,7 +297,8 @@ def polish_report(engine_text: str, result: EngineResult, lang: str, generate_fn
                      truncated=getattr(raw, "truncated", False))
         seg = parse_segments(getattr(raw, "text", raw))
         if seg is None:
-            outcome.issues = ["η απάντηση δεν είναι έγκυρο JSON"]
+            outcome.issues = ["η απάντηση δεν είναι έγκυρο JSON" +
+                              (" (κόπηκε λόγω ορίου μήκους)" if getattr(raw, "truncated", False) else "")]
             continue
         issues = check_segments(seg, engine_text, result, lang)
         if getattr(raw, "truncated", False):
